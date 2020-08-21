@@ -190,5 +190,37 @@ sudo fio <job_file>
 ### Latency
 
 ``` shell
-ioping /dev/nvme1n1
+ioping -c 50 /dev/nvme1n1
+
+[...]
+4 KiB <<< /dev/nvme0n1 (block device 931.5 GiB): request=47 time=81.4 us
+4 KiB <<< /dev/nvme0n1 (block device 931.5 GiB): request=48 time=71.2 us
+4 KiB <<< /dev/nvme0n1 (block device 931.5 GiB): request=49 time=56.5 us (fast)
+4 KiB <<< /dev/nvme0n1 (block device 931.5 GiB): request=50 time=87.1 us
+[...]
+--- /dev/nvme0n1 (block device 931.5 GiB) ioping statistics ---
+49 requests completed in 3.45 ms, 196 KiB read, 14.2 k iops, 55.4 MiB/s
+generated 50 requests in 49.0 s, 200 KiB, 1 iops, 4.08 KiB/s
+min/avg/max/mdev = 52.7 us / 70.5 us / 214.1 us / 28.4 us
 ```
+
+## Bibliography
+
+### NVMeoF
+
+* [NVMeoF Specifications](https://nvmexpress.org/specifications/)
+* Various talks about NVMe and NVMeoF
+  * [Under the Hood with NVMe over Fabrics](https://www.snia.org/sites/default/files/ESF/NVMe_Under_Hood_12_15_Final2.pdf)
+  * [An NVM Express Tutorial](https://www.flashmemorysummit.com/English/Collaterals/Proceedings/2013/20130812_PreConfD_Marks.pdf)
+* Blog posts by Jérôme Tissière
+  * [NVMe, NVMe over Fabrics and RDMA for network engineers](https://aboutnetworks.net/nvme-and-nvmeof/)
+  * [https://aboutnetworks.net/rocev2-on-nexus9k/](https://aboutnetworks.net/rocev2-on-nexus9k/)
+* nvme-cli tool - NVM-Express user space tooling for Linux (different from nvmetcli!)
+  * [Git repo of nvme-cli](https://github.com/linux-nvme/nvme-cli)
+* nvmetcli tool - Configure NVMe-over-Fabrics Target
+  * [Git repo of nvmetcli](https://github.com/JunxiongGuan/nvmetcli)
+  * [Man page](https://www.mankier.com/8/nvmetcli)
+* Configuration
+  * [NVM Express over Fabrics using Intel Ethernet Connection X722 iWARP RDMA - Configuration guide](https://www.intel.com/content/dam/www/public/us/en/documents/guides/nvme-over-fabrics-x722-iwarp-rdma-configuration-guide.pdf)
+  * [HowTo Configure NVMe over Fabrics](https://community.mellanox.com/s/article/howto-configure-nvme-over-fabrics)
+
