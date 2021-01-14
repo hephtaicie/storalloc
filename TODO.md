@@ -7,3 +7,9 @@
 * Disconnect all subsystems
   * Save and load status of connected devices
 * Bug fix "resourcesGranted job allocation"
+* Set up a default path for the client config file
+
+## Orchestrator
+
+## All
+* Better requests handling (comma-seperated list so far)
