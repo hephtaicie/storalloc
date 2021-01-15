@@ -12,11 +12,9 @@ from src.job import Job
 from src.request import Request
 from src.job_queue import JobQueue
 from src.sched_strategy import SchedStrategy
-
-sys.path.append("..")
-from common.resources import ResourceCatalog, NodeStatus, DiskStatus
-from common.config_file import ConfigFile
-from common.message import Message
+from src.resources import ResourceCatalog, NodeStatus, DiskStatus
+from src.config_file import ConfigFile
+from src.message import Message
 
 # Default values
 conf_file = None

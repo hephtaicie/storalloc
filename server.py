@@ -8,10 +8,9 @@ import zmq
 import time
 #from src.nvmet import nvme
 
-sys.path.append("..")
-from common.resources import ResourceCatalog
-from common.config_file import ConfigFile
-from common.message import Message
+from src.resources import ResourceCatalog
+from src.config_file import ConfigFile
+from src.message import Message
 
 # Default values
 conf_file        = None

@@ -5,7 +5,6 @@ import sys
 import pickle
 import zmq
 
-
 class Message (object):
 
     def __init__ (self, msg_type, msg_content):

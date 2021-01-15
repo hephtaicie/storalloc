@@ -8,9 +8,8 @@ import yaml
 import zmq
 from shutil import which
 
-sys.path.append("..")
-from common.message import Message
-from common.config_file import ConfigFile
+from src.message import Message
+from src.config_file import ConfigFile
 
 # Default values
 req_size   = 0

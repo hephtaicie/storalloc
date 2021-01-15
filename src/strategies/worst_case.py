@@ -3,8 +3,7 @@
 import sys
 import logging
 
-sys.path.append("..")
-from common.resources import NodeStatus, DiskStatus
+from src.resources import NodeStatus, DiskStatus
 
 class WorstCase (object):
 
