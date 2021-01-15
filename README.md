@@ -1,16 +1,6 @@
 # Storalloc - A Scheduler for Storage Resources
 
-Storalloc is a prototype of a job scheduler for storage
-resources. While compute resources are usually allocatable exclusively
-on a HPC system, storage resources are still either a global and
-shared file system or distributed intermediate resources difficult to
-effectively use. We propose here a proof-of-concept of a scheduler
-based on a three-component design (client, orchestrator, server) for
-allocating storage space the same way we allocate compute resources on
-a supercomputer. Storalloc can also run locally in a simulation mode
-for testing scheduling algorithms or playing traces (Darshan support
-in progress). Our prototype can now support NVMeoF technology to attach
-storage resources through a high-speed network.
+Storalloc is a prototype of a job scheduler for storage resources. While compute resources are usually allocatable exclusively on a HPC system, storage resources are still either a global and shared file system or distributed intermediate resources difficult to effectively use. We propose here a proof-of-concept of a scheduler based on a three-component design (client, orchestrator, server) for allocating storage space the same way we allocate compute resources on a supercomputer. Storalloc can also run locally in a simulation mode for testing scheduling algorithms or playing traces ([Darshan]{https://www.mcs.anl.gov/research/projects/darshan/} support in progress). Our prototype can now support NVMeoF technology to attach storage resources through a high-speed network. 
 
 ## Design
 
@@ -92,3 +82,7 @@ storalloc: job 0 queued and waiting for resources
 storalloc: Granted job allocation 0
 storalloc: {'job_id': 0, 'type': 'nvme', 'nqn': 'nqn.2014-08.com.vendor:nvme:nvm-subsystem-sn-d78432'}
 ```
+
+## Replay traces
+
+[Darshan dataset]{https://reports.alcf.anl.gov/data/theta.html} of Theta, a 10PFlops system at Argonne National Laboratory from Jan. 1st 2020 to Dec. 31st of the same year.
