@@ -1,6 +1,6 @@
 # Storalloc - A Scheduler for Storage Resources
 
-Storalloc is a prototype of a job scheduler for storage resources. While compute resources are usually allocatable exclusively on a HPC system, storage resources are still either a global and shared file system or distributed intermediate resources difficult to effectively use. We propose here a proof-of-concept of a scheduler based on a three-component design (client, orchestrator, server) for allocating storage space the same way we allocate compute resources on a supercomputer. Storalloc can also run locally in a simulation mode for testing scheduling algorithms or playing traces ([Darshan]{https://www.mcs.anl.gov/research/projects/darshan/} support in progress). Our prototype can now support NVMeoF technology to attach storage resources through a high-speed network. 
+Storalloc is a prototype of a job scheduler for storage resources. While compute resources are usually allocatable exclusively on a HPC system, storage resources are still either a global and shared file system or distributed intermediate resources difficult to effectively use. We propose here a proof-of-concept of a scheduler based on a three-component design (client, orchestrator, server) for allocating storage space the same way we allocate compute resources on a supercomputer. Storalloc can also run locally in a simulation mode for testing scheduling algorithms or playing traces ([Darshan](https://www.mcs.anl.gov/research/projects/darshan/) support in progress). Our prototype can now support NVMeoF technology to attach storage resources through a high-speed network. 
 
 ## Design
 
@@ -8,7 +8,7 @@ Storalloc is a prototype of a job scheduler for storage resources. While compute
 
 ## Requirements
 
-Storalloc uses the [ZeroMQ]{https://zeromq.org/} messaging library to implement the communication layer between components. ZeroMQ is an active open source project (LGPL) that offers an advanced communication API built on top of sockets. The Python bindings and the library can be easily installed on most systems through the package manager (`python3-zmq` on Debian for instance) or via `pip`.
+Storalloc uses the [ZeroMQ](https://zeromq.org/) messaging library to implement the communication layer between components. ZeroMQ is an active open source project (LGPL) that offers an advanced communication API built on top of sockets. The Python bindings and the library can be easily installed on most systems through the package manager (`python3-zmq` on Debian for instance) or via `pip`.
 
 A few other Python libraries are necessary for Storalloc to run such as `yaml`.
 
@@ -85,4 +85,4 @@ storalloc: {'job_id': 0, 'type': 'nvme', 'nqn': 'nqn.2014-08.com.vendor:nvme:nvm
 
 ## Replay traces
 
-[Darshan dataset]{https://reports.alcf.anl.gov/data/theta.html} of Theta, a 10PFlops system at Argonne National Laboratory from Jan. 1st 2020 to Dec. 31st of the same year.
+[Darshan dataset](https://reports.alcf.anl.gov/data/theta.html) of Theta, a 10PFlops system at Argonne National Laboratory from Jan. 1st 2020 to Dec. 31st of the same year.
