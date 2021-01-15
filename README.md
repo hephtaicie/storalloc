@@ -85,4 +85,6 @@ storalloc: {'job_id': 0, 'type': 'nvme', 'nqn': 'nqn.2014-08.com.vendor:nvme:nvm
 
 ## Replay traces
 
-[Darshan dataset](https://reports.alcf.anl.gov/data/theta.html) of Theta, a 10PFlops system at Argonne National Laboratory from Jan. 1st 2020 to Dec. 31st of the same year.
+[Darshan dataset](https://reports.alcf.anl.gov/data/theta.html) of Theta[^1], a 10PFlops system at Argonne National Laboratory from Jan. 1st 2020 to Dec. 31st of the same year.
+
+[^1]  This data was generated from resources of the Argonne Leadership Computing Facility, which is a DOE Office of Science User Facility supported under Contract DE-AC02-06CH11357. 
