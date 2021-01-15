@@ -14,4 +14,4 @@ storage resources through a high-speed network.
 
 ## Design
 
-![Storalloc design](img/StorAlloc_design.png)
+![Storalloc design](doc/img/StorAlloc_design.png)
