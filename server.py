@@ -109,7 +109,7 @@ def main (argv):
     sock.send(message.pack())
 
     while True:
-        data = sock.recv()
+        client_id, data = sock.recv_multipart ()
         message = Message.from_packed_message (data)
 
         if message.get_type () == "allocate":
@@ -118,7 +118,7 @@ def main (argv):
             connection = {"job_id":job_id, "type":"nvme",
                           "nqn":"nqn.2014-08.com.vendor:nvme:nvm-subsystem-sn-d78432"}
             message = Message ("connection", connection)
-            sock.send(message.pack())
+            sock.send_multipart ([client_id, message.pack()])
         elif message.get_type () == "deallocate":
             print ("storalloc: "+message.get_content())
         elif message.get_type () == "error":

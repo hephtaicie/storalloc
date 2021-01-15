@@ -3,6 +3,7 @@
 import os
 import sys
 import pickle
+import zmq
 
 
 class Message (object):
@@ -29,3 +30,10 @@ class Message (object):
 
     def get_content (self):
         return self._content
+
+
+    def send (self, socket, identities):
+        if isinstance (identities, list):
+            socket.send_multipart (identities + [self.pack()])
+        else:
+            socket.send_multipart ([identities, self.pack()])
