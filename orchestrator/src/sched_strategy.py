@@ -28,6 +28,9 @@ class SchedStrategy (object):
             sys.exit(1)
             
             
-    def compute (self, storage_resources, new_r):
-        return self._strategy.compute (storage_resources, new_r)
+    def compute (self, resource_catalog, job):
+        if resource_catalog.is_empty():
+            return -1, -1
+        
+        return self._strategy.compute (resource_catalog, job)
         

@@ -6,7 +6,7 @@ class RandomAlloc (object):
         super().__init__()
 
         
-    def compute (self, storage_resources, new_r):
+    def compute (self, resource_catalog, job):
         random.seed()
         target_node = randint(0, 1)
         target_disk = randint(0, 9)

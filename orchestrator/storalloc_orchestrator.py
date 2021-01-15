@@ -8,7 +8,9 @@ import logging
 import zmq
 import time
 
+from src.job import Job
 from src.request import Request
+from src.job_queue import JobQueue
 from src.sched_strategy import SchedStrategy
 
 sys.path.append("..")
@@ -41,18 +43,6 @@ def parse_args ():
         logging.basicConfig(level=logging.DEBUG, format="[D] %(message)s")
         
 
-def parse_client_request (req):
-    """Parse comma-separated request received by a client"""
-    try:
-        capacity = int(req.split(',')[0])
-        duration = int(req.split(',')[1])
-    except:
-        capacity = 0
-        duration = 0
-
-    return capacity, duration
-
-
 def client_bind_url ():
     return ("tcp://"+conf_file.get_orch_client_bind_ipv4()
             +":"+str(conf_file.get_orch_client_bind_port()))
@@ -63,8 +53,7 @@ def server_bind_url ():
             +":"+str(conf_file.get_orch_server_bind_port()))
 
 
-
-def recv_msg(socket):
+def recv_msg (socket):
     """Receive a message on a socket"""
     message_parts = socket.recv_multipart()
     identities, data = message_parts[:-1], message_parts[-1]
@@ -92,9 +81,8 @@ def main (argv):
     poller.register(client_socket, zmq.POLLIN)
 
     #TODO: Keep the state in a file and allow loading it at startup
-    allocated_requests = list ()
-    job_id_to_identity = dict ()
-    awaiting_requests  = list ()
+    pending_jobs = JobQueue ()
+    running_jobs = JobQueue ()
 
     resource_catalog    = ResourceCatalog ()
     scheduling_strategy = SchedStrategy ()
@@ -105,70 +93,75 @@ def main (argv):
         events = dict(poller.poll(100))
 
         if client_socket in events:
-            identities, data   = recv_msg(client_socket)
-            message            = Message.from_packed_message (data)
-            capacity, duration = parse_client_request (message.get_content())
-           
-            if capacity <= 0 or duration <= 0:
-                reply = Message ("error", "Wrong request")
-                client_socket.send_multipart ([identities[0], reply.pack()])
-            else:
-                job_idx = len(awaiting_requests) + len (allocated_requests)
-                new_r   = Request (job_idx, identities[0], capacity, duration)
-                logging.debug ("["+str(new_r.get_idx()).zfill(5)+"] New incoming request: "+new_r.request_string())
-                                
-                reply = Message ("notification", "Pending job allocation "+str(new_r.get_idx()))
-                client_socket.send_multipart ([identities[0], reply.pack()])
+            identities, data  = recv_msg(client_socket)
+            message           = Message.from_packed_message (data)
+            client_id         = identities[0]
+            
+            if message.get_type () == "request":
+                try:
+                    req = Request (message.get_content())
+                except ValueError:
+                    notification = Message ("error", "Wrong request")
+                    notification.send (client_socket, client_id)
+                else:                
+                    job = Job (pending_jobs.count() + running_jobs.count(), identities[0], req)
+                    
+                    notification = Message ("notification", f"Pending job allocation {job.id()}")
+                    notification.send (client_socket, client_id)
 
-                new_r.set_status ("queued")
-                awaiting_requests.append (new_r)
-                
-                reply = Message ("notification", "job "+str(new_r.get_idx())+" queued and waiting for resources")
-                client_socket.send_multipart ([identities[0], reply.pack()])
+                    job.set_queued()
+                    pending_jobs.add (job)
+
+                    notification = Message ("notification", f"job {job.id()} queued and waiting for resources")
+                    notification.send (client_socket, client_id)
+            else:
+                print ("[W] Wrong message type received from a client")
 
         if server_socket in events:
-            identities, data   = recv_msg(server_socket)
-            message            = Message.from_packed_message (data)
+            identities, data  = recv_msg(server_socket)
+            message           = Message.from_packed_message (data)
             
             if message.get_type () == "register":
-                resource_catalog.append_resources (identities[0], message.get_content ())
+                server_id = identities[0]
+                resource_catalog.append_resources (server_id, message.get_content ())
                 logging.debug ('Server registered. New resources available.')
             elif message.get_type () == "connection":
-                message = Message ("allocation", message.get_content())
-                job_id  = message.get_content()["job_id"]
-                client_socket.send_multipart ([job_id_to_identity[job_id], message.pack()])
+                client_id    = identities[1]
+                notification = Message ("allocation", message.get_content())
+                notification.send (client_socket, client_id)
+            else:
+                print ("[W] Wrong message type received from a server")
                 
         """Process the requests in queue"""
-        for req in awaiting_requests:
+        for job in pending_jobs:
             
-            target_node, target_disk = scheduling_strategy.compute (resource_catalog.get_resources_list (), req)
+            target_node, target_disk = scheduling_strategy.compute (resource_catalog, job)
 
             # If a disk on a node has been found, we allocate the request
             if target_node >= 0 and target_disk >= 0:
-                job_id = new_r.get_idx()
-                logging.debug ("["+str(job_id).zfill(5)+"] Add "+req.request_string()+
+                logging.debug ("["+str(job.id()).zfill(5)+"] Add "+job.request.to_string()+
                                " on node "+str(target_node)+", disk "+str(target_disk))
 
                 # Submit request to the selected node
-                alloc_request = {"job_id":job_id, "disk":target_disk,
-                                 "capacity":new_r.get_capacity(), "duration":new_r.get_duration()}
-                message = Message ("allocate", alloc_request)
-                server_socket.send_multipart ([resource_catalog.get_identity_of_node(target_node), message.pack()])
+                alloc_request = {"job_id":job.id(), "disk":target_disk,
+                                 "capacity":job.request.capacity(), "duration":job.request.duration()}
+                identities    = [resource_catalog.identity_of_node(target_node), job.client_identity()]
+                notification  = Message ("allocate", alloc_request)
+                notification.send (server_socket, identities)
 
-                req.set_status ("allocated")
-                allocated_requests.append (req)
-                awaiting_requests.remove (req)
-                job_id_to_identity [job_id] = req.get_identity()
-
-                resource_catalog.add_allocation (target_node, target_disk, req)
+                job.set_allocated ()
+                running_jobs.add (job)
+                pending_jobs.remove (job)
+                
+                resource_catalog.add_allocation (target_node, target_disk, job)
                 resource_catalog.print_status (target_node, target_disk)
 
-                message = Message ("notification", "Granted job allocation "+str(job_id))
-                client_socket.send_multipart ([req.get_identity(), message.pack()])
+                notification = Message ("notification", f"Granted job allocation {job.id()}")
+                notification.send (client_socket, job.client_identity())
             else:
-                if req.get_status () != "awaiting":
-                    logging.debug ("["+str(req.get_idx()).zfill(5)+"] Unable to allocate incoming request for now")
-                    req.set_status ("awaiting")
+                if not job.is_pending():
+                    logging.debug ("["+str(job.id()).zfill(5)+"] Unable to allocate incoming request for now")
+                    job.set_pending()
             
         time.sleep (1)
    
