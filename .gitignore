@@ -3,4 +3,4 @@
 \#*#
 slurm-*
 __pycache__
-simulation/traces
+simulation/traces/*.csv
