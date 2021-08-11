@@ -1,1 +1,6 @@
+# Download traces
 Execution traces of Theta at Argonne National Laboratory can be downloaded from this ALCF website: https://reports.alcf.anl.gov/data/theta.html
+
+# Files
+- ANL-ALCF-DARSHAN-THETA_20200101_20201231.csv
+- ANL-ALCF-DJC-THETA_20200101_20201231.csv

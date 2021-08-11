@@ -10,7 +10,8 @@ Storalloc is a prototype of a job scheduler for storage resources. While compute
 
 Storalloc uses the [ZeroMQ](https://zeromq.org/) messaging library to implement the communication layer between components. ZeroMQ is an active open source project (LGPL) that offers an advanced communication API built on top of sockets. The Python bindings and the library can be easily installed on most systems through the package manager (`python3-zmq` on Debian for instance) or via `pip`.
 
-A few other Python libraries are necessary for Storalloc to run such as `yaml`.
+A few other Python libraries are necessary for Storalloc to run such
+as `yaml` and `pandas` (data extraction from traces).
 
 ## Simulation mode
 
