@@ -1,0 +1,10 @@
+reportlab==3.5.57
+six==1.15.0
+scipy==1.5.4
+numpy==1.19.4
+pandas==1.0.5
+matplotlib==3.3.4
+kmodpy==0.1.13
+Pillow==8.3.0
+PyYAML==5.4.1
+pyzmq==22.1.0
