@@ -1,0 +1,9 @@
+orchestrator:
+  hostname: localhost
+  client_bind:
+    ipv4: 127.0.0.1
+    port: 35000
+  server_bind:
+    ipv4: 127.0.0.1
+    port: 35001
+  sched_strategy: random_alloc
