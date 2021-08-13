@@ -7,6 +7,8 @@ import argparse
 import logging
 import zmq
 import time
+import datetime
+import math
 
 from src.job import Job
 from src.request import Request
@@ -18,52 +20,57 @@ from src.message import Message
 
 # Default values
 conf_file = None
+simulate  = False
 
 
-def parse_args ():
+def parse_args():
     """Parse arguments given as input on the command line"""
-    global conf_file
+    global conf_file, simulate
 
     parser = argparse.ArgumentParser ()
-    parser.add_argument ('-c', '--config', help="Path of the StorAlloc configuration file (YAML)")
-    parser.add_argument ('-v', '--verbose', help="Display debug information", action='store_true')
+    parser.add_argument('-c', '--config', help="Path of the StorAlloc configuration file (YAML)")
+    parser.add_argument('--simulate', help="Simulation mode for replaying traces", action='store_true')
+    parser.add_argument('-v', '--verbose', help="Display debug information", action='store_true')
 
-    args = parser.parse_args ()
+    args = parser.parse_args()
 
     if not args.config:
         parser.print_usage()
-        print ('Error: argument --config (-c) is mandatory!')
+        print('Error: argument --config (-c) is mandatory!')
         sys.exit(1)
     else:
         conf_file = ConfigFile(args.config)
+
+    if args.simulate:
+        simulate = True
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, format="[D] %(message)s")
         
 
-def client_bind_url ():
-    return ("tcp://"+conf_file.get_orch_client_bind_ipv4()
+def client_bind_url():
+    return("tcp://"+conf_file.get_orch_client_bind_ipv4()
             +":"+str(conf_file.get_orch_client_bind_port()))
 
             
-def server_bind_url ():
-    return ("tcp://"+conf_file.get_orch_server_bind_ipv4()
+def server_bind_url():
+    return("tcp://"+conf_file.get_orch_server_bind_ipv4()
             +":"+str(conf_file.get_orch_server_bind_port()))
 
 
-def recv_msg (socket):
+def recv_msg(socket):
     """Receive a message on a socket"""
     message_parts = socket.recv_multipart()
     identities, data = message_parts[:-1], message_parts[-1]
     return identities, data
 
 
-def main (argv):
+def main(argv):
     """Main loop
 
     """
     
-    parse_args ()
+    parse_args()
 
     context = zmq.Context()
 
@@ -79,20 +86,24 @@ def main (argv):
     poller.register(client_socket, zmq.POLLIN)
 
     #TODO: Keep the state in a file and allow loading it at startup
-    pending_jobs = JobQueue ()
-    running_jobs = JobQueue ()
-
-    resource_catalog    = ResourceCatalog ()
-    scheduling_strategy = SchedStrategy ()
+    pending_jobs = JobQueue()
+    running_jobs = JobQueue()
+    
+    resource_catalog    = ResourceCatalog()
+    scheduling_strategy = SchedStrategy()
+    current_job_id = 0
 
     scheduling_strategy.set_strategy (conf_file.get_orch_strategy())
 
     while True:
         events = dict(poller.poll(100))
 
+        ################
+        # CLIENT SOCKET
+        ################
         if client_socket in events:
             identities, data  = recv_msg(client_socket)
-            message           = Message.from_packed_message (data)
+            message           = Message.from_packed_message(data)
             client_id         = identities[0]
             
             if message.get_type () == "request":
@@ -102,19 +113,24 @@ def main (argv):
                     notification = Message ("error", "Wrong request")
                     notification.send (client_socket, client_id)
                 else:                
-                    job = Job (pending_jobs.count() + running_jobs.count(), identities[0], req)
+                    job = Job (current_job_id, identities[0], req)
+                    current_job_id += 1
                     
                     notification = Message ("notification", f"Pending job allocation {job.id()}")
                     notification.send (client_socket, client_id)
 
                     job.set_queued()
-                    pending_jobs.add (job)
+                    pending_jobs.add(job)
 
                     notification = Message ("notification", f"job {job.id()} queued and waiting for resources")
                     notification.send (client_socket, client_id)
             else:
                 print ("[W] Wrong message type received from a client")
 
+
+        ################
+        # SERVER SOCKET
+        ################
         if server_socket in events:
             identities, data  = recv_msg(server_socket)
             message           = Message.from_packed_message (data)

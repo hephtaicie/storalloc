@@ -21,6 +21,12 @@ class JobQueue (object):
     def count (self):
         return len (self._queue)
 
+    def is_id_in_queue (self, job_id):
+        for job in self._queue:
+            if job.id() == job_id:
+                return True
+        return False
+
 
 class JobQueueIterator (object):
 
