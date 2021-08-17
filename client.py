@@ -6,6 +6,8 @@ import sys
 import os
 import yaml
 import zmq
+import re
+import datetime
 from shutil import which
 
 from src.message import Message
@@ -15,53 +17,56 @@ from src.config_file import ConfigFile
 req_size   = 0
 req_time   = 0
 conf_file  = None
-simulate   = False
+start_time = None
 
 
+def cli_error (parser, message):
+    parser.print_usage ()
+    print (message)
+    sys.exit(1)
+
+    
 def parse_args ():
     """Parse arguments given as input on the command line"""
-    global req_size, req_time, conf_file, simulate
+    global req_size, req_time, conf_file, start_time
 
     parser = argparse.ArgumentParser ()
     parser.add_argument ('-c', '--config', help="Path of the StorAlloc configuration file (YAML)")
     parser.add_argument ('-s', '--size', type=int, help="Size of the requested storage allocation (GB)")
     parser.add_argument ('-t', '--time', type=int, help="Total run time of the storage allocation (min)")
-    parser.add_argument ('--simulate', help="Submit requests only. No actual storage allocation", action='store_true')
+    parser.add_argument ('--start_time', help="Timestamp of the allocation's starting time (Simulation only)")
     parser.add_argument ('-v', '--verbose', help="Display debug information", action='store_true')
     
     args = parser.parse_args ()
 
     if not args.config:
-        parser.print_usage()
-        print ('Error: argument --config (-c) is mandatory!')
-        sys.exit(1)
+        cli_error (parser, 'Error: argument --config (-c) is mandatory!')
     else:
         conf_file = ConfigFile(args.config)
      
     if not args.size or args.size == 0:
-        parser.print_usage()
-        print ('Error: argument --size (-s) is mandatory!')
-        sys.exit(1)
+        cli_error (parser, 'Error: argument --size (-s) is mandatory!')
     else:
         req_size = args.size
 
     if not args.time or args.time == 0:
-        parser.print_usage()
-        print ('Error: argument --time (-t) is mandatory!')
-        sys.exit(1)
+        cli_error (parser, 'Error: argument --time (-t) is mandatory!')
     else:
         req_time = args.time
 
-    if args.simulate:
-        simulate = True
+    if args.start_time:
+        if re.match('\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', args.start_time):
+            start_time = args.start_time
+        else:
+            cli_error (parser, 'Error: Allocation\'s starting time format is wrong!')
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, format="[D] %(message)s")
         
 
-def build_request (size, time):
+def build_request (size, time, start_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")):
     """Concatenate request details in a comma-separated format"""
-    return str(size)+','+str(time)
+    return str(size)+','+str(time)+','+str(start_time)
 
 
 def orchestrator_url ():
@@ -82,8 +87,12 @@ def main (argv):
     context = zmq.Context()
     sock = context.socket(zmq.DEALER)
     sock.connect(orchestrator_url())
-            
-    request = build_request (req_size, req_time)
+
+    if start_time is not None:
+        request = build_request (req_size, req_time, start_time)
+    else:
+        request = build_request (req_size, req_time)
+        
     message = Message ("request", request)
     
     logging.debug ('Submitting request ['+request+']')
