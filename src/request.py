@@ -8,14 +8,16 @@ class Request (object):
     def __init__ (self, request):
         super().__init__()
 
-        capacity = int(request.split(',')[0])
-        duration = int(request.split(',')[1])
+        capacity   = int(request.split(',')[0])
+        duration   = int(request.split(',')[1])
+        start_time = dt.datetime.strptime(request.split(',')[2], '%Y-%m-%d %H:%M:%S')
                 
         if capacity <= 0 or duration <= 0:
             raise ValueError
         
         self._capacity   = capacity
         self._duration   = duration
+        self._start_time = start_time
 
         
     def print_request (self):
@@ -33,3 +35,6 @@ class Request (object):
     def duration (self):
         return self._duration
 
+
+    def start_time (self):
+        return self._start_time
