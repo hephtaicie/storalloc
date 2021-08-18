@@ -36,6 +36,8 @@ class JobQueueIterator (object):
 
     def __next__(self):
         if self._idx < self._job_queue.count():
-            return self._job_queue._queue[self._idx]
-
-        raise StopIteration
+            job = self._job_queue._queue[self._idx]
+            self._idx += 1
+            return job
+        else:
+            raise StopIteration
