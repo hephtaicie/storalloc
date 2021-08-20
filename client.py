@@ -18,6 +18,7 @@ req_size   = 0
 req_time   = 0
 conf_file  = None
 start_time = None
+eos        = False
 
 
 def cli_error (parser, message):
@@ -28,13 +29,14 @@ def cli_error (parser, message):
     
 def parse_args ():
     """Parse arguments given as input on the command line"""
-    global req_size, req_time, conf_file, start_time
+    global req_size, req_time, conf_file, start_time, eos
 
     parser = argparse.ArgumentParser ()
     parser.add_argument ('-c', '--config', help="Path of the StorAlloc configuration file (YAML)")
     parser.add_argument ('-s', '--size', type=int, help="Size of the requested storage allocation (GB)")
     parser.add_argument ('-t', '--time', type=int, help="Total run time of the storage allocation (min)")
     parser.add_argument ('--start_time', help="Timestamp of the allocation's starting time (Simulation only)")
+    parser.add_argument ('--eos', help="Send EndOfSimulation flag to the orchestrator (Simulation only)", action='store_true')
     parser.add_argument ('-v', '--verbose', help="Display debug information", action='store_true')
     
     args = parser.parse_args ()
@@ -60,11 +62,14 @@ def parse_args ():
         else:
             cli_error (parser, 'Error: Allocation\'s starting time format is wrong!')
 
+    if args.eos:
+        eos = True
+
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, format="[D] %(message)s")
         
 
-def build_request (size, time, start_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")):
+def build_request (size, time, start_time = None):
     """Concatenate request details in a comma-separated format"""
     return str(size)+','+str(time)+','+str(start_time)
 
@@ -92,8 +97,11 @@ def main (argv):
         request = build_request (req_size, req_time, start_time)
     else:
         request = build_request (req_size, req_time)
-        
-    message = Message ("request", request)
+
+    if eos:
+        message = Message ("eos", request)
+    else:
+        message = Message ("request", request)
     
     logging.debug ('Submitting request ['+request+']')
     sock.send(message.pack())
