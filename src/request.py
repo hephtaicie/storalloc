@@ -10,7 +10,10 @@ class Request (object):
 
         capacity   = int(request.split(',')[0])
         duration   = int(request.split(',')[1])
-        start_time = dt.datetime.strptime(request.split(',')[2], '%Y-%m-%d %H:%M:%S')
+        if request.split(',')[2] != "None":
+            start_time = dt.datetime.strptime(request.split(',')[2], '%Y-%m-%d %H:%M:%S')
+        else:
+            start_time = None
                 
         if capacity <= 0 or duration <= 0:
             raise ValueError
@@ -25,7 +28,7 @@ class Request (object):
 
         
     def to_string (self):
-        return ("["+str(self._capacity)+" GB, "+str(self._duration)+" m]")
+        return ("["+str(self._capacity)+" GB, "+str(self._duration)+" m, "+str(self._start_time)+"]")
 
     
     def capacity (self):

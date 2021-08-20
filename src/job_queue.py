@@ -27,6 +27,9 @@ class JobQueue (object):
                 return True
         return False
 
+    def sort_asc_start_time (self):
+        self._queue.sort(key=lambda j: j.start_time())
+
 
 class JobQueueIterator (object):
 

@@ -11,7 +11,7 @@ class Job (object):
     request details,  timings and the job status
     """
     
-    def __init__ (self, job_id, client_identity, request):
+    def __init__ (self, job_id, client_identity, request, simulate):
         super().__init__()
 
         self._job_id          = job_id
@@ -22,7 +22,12 @@ class Job (object):
 
         self._status          = "new"
         self._submission_time = dt.datetime.now(dt.timezone.utc)
-        self._start_time      = dt.datetime.now(dt.timezone.utc)
+        
+        if self.request.start_time () is not None and simulate:
+            self._start_time  = self.request.start_time ()
+        else:
+            self._start_time  = dt.datetime.now(dt.timezone.utc)
+            
         self._end_time        = self._start_time + dt.timedelta(minutes=self.request.duration())
 
         
@@ -51,6 +56,3 @@ class Job (object):
         if self._status == "pending":
             return True
         return False
-    
-                       
-            
