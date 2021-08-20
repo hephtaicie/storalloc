@@ -34,7 +34,7 @@ def parse_args ():
     parser = argparse.ArgumentParser ()
     parser.add_argument ('-c', '--config', help="Path of the StorAlloc configuration file (YAML)")
     parser.add_argument ('-s', '--size', type=int, help="Size of the requested storage allocation (GB)")
-    parser.add_argument ('-t', '--time', type=int, help="Total run time of the storage allocation (min)")
+    parser.add_argument ('-t', '--time', help="Total run time of the storage allocation (HH:MM:SS)")
     parser.add_argument ('--start_time', help="Timestamp of the allocation's starting time (Simulation only)")
     parser.add_argument ('--eos', help="Send EndOfSimulation flag to the orchestrator (Simulation only)", action='store_true')
     parser.add_argument ('-v', '--verbose', help="Display debug information", action='store_true')
@@ -51,10 +51,14 @@ def parse_args ():
     else:
         req_size = args.size
 
-    if not args.time or args.time == 0:
+    if not args.time:
         cli_error (parser, 'Error: argument --time (-t) is mandatory!')
     else:
-        req_time = args.time
+        try:
+            duration = datetime.datetime.strptime(args.time, "%H:%M:%S")
+            req_time = datetime.timedelta(hours=duration.hour, minutes=duration.minute, seconds=duration.second)
+        except:
+            cli_error (parser, 'Error: Time format is wrong!')
 
     if args.start_time:
         if re.match('\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', args.start_time):
@@ -93,11 +97,8 @@ def main (argv):
     sock = context.socket(zmq.DEALER)
     sock.connect(orchestrator_url())
 
-    if start_time is not None:
-        request = build_request (req_size, req_time, start_time)
-    else:
-        request = build_request (req_size, req_time)
-
+    request = build_request (req_size, req_time, start_time)
+    
     if eos:
         message = Message ("eos", request)
     else:
