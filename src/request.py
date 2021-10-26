@@ -28,7 +28,9 @@ class Request (object):
 
         
     def to_string (self):
-        return ("["+str(self._capacity)+" GB, "+str(self._duration)+" m, "+str(self._start_time)+"]")
+        return ("["+str(self._capacity)+" GB, "
+                +str(dt.timedelta(seconds=self._duration))+", "
+                +str(self._start_time)+"]")
 
     
     def capacity (self):

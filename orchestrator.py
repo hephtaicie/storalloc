@@ -7,8 +7,8 @@ import argparse
 import logging
 import zmq
 import time
+import simpy
 import datetime
-import math
 
 from src.job import Job
 from src.request import Request
@@ -18,9 +18,13 @@ from src.resources import ResourceCatalog, NodeStatus, DiskStatus
 from src.config_file import ConfigFile
 from src.message import Message
 
-# Default values
+# Global variables
 conf_file = None
 simulate  = False
+pending_jobs = JobQueue()
+running_jobs = JobQueue()
+resource_catalog    = ResourceCatalog()
+scheduling_strategy = SchedStrategy()
 
 
 def parse_args():
@@ -65,10 +69,54 @@ def recv_msg(socket):
     return identities, data
 
 
+def grant_allocation(job, server_socket, client_socket, target_node, target_disk):
+    global pending_jobs, running_jobs, resource_catalog
+    
+    logging.debug ("["+str(job.id()).zfill(5)+"] Add "+job.request.to_string()+
+                   " on node "+str(target_node)+", disk "+str(target_disk))
+    
+    alloc_request = {"job_id":job.id(), "disk":target_disk,
+                     "capacity":job.request.capacity(), "duration":job.request.duration()}
+    identities    = [resource_catalog.identity_of_node(target_node), job.client_identity()]
+    notification  = Message ("allocate", alloc_request)
+    notification.send (server_socket, identities)
+
+    job.set_allocated ()
+    running_jobs.add (job)
+    pending_jobs.remove (job)
+
+    resource_catalog.add_allocation (target_node, target_disk, job)
+    resource_catalog.print_status (target_node, target_disk)
+
+    notification = Message ("notification", f"Granted job allocation {job.id()}")
+    notification.send (client_socket, job.client_identity())    
+
+
+def release_allocation(job, server_socket, client_socket):
+    print ("["+str(job.id()).zfill(5)+"] Release allocation")
+    
+    
+def simulate_scheduling(job, server_socket, client_socket, earliest_start_time):
+    yield env.timeout(job.sim_start_time(earliest_start_time))
+        
+    target_node, target_disk = scheduling_strategy.compute (resource_catalog, job)
+
+    # If a disk on a node has been found, we allocate the request
+    if target_node >= 0 and target_disk >= 0:
+        grant_allocation(job, server_socket, client_socket, target_node, target_disk)
+    else:
+        print("["+str(job.id()).zfill(5)+"] Unable to allocate request. Exiting...")
+        sys.exit(1)
+
+    # Duration + Fix seconds VS minutes
+    yield env.timeout(job.sim_start_time())
+    
+
 def main(argv):
     """Main loop
 
     """
+    global pending_jobs, running_jobs, resource_catalog, scheduling_strategy
     
     parse_args()
 
@@ -85,13 +133,10 @@ def main(argv):
     poller.register(server_socket, zmq.POLLIN)
     poller.register(client_socket, zmq.POLLIN)
 
-    #TODO: Keep the state in a file and allow loading it at startup
-    pending_jobs = JobQueue()
-    running_jobs = JobQueue()
-    
-    resource_catalog    = ResourceCatalog()
-    scheduling_strategy = SchedStrategy()
     current_job_id = 0
+
+    # Simulation mode
+    end_of_simulation  = False
 
     scheduling_strategy.set_strategy (conf_file.get_orch_strategy())
 
@@ -113,7 +158,7 @@ def main(argv):
                     notification = Message ("error", "Wrong request")
                     notification.send (client_socket, client_id)
                 else:                
-                    job = Job (current_job_id, identities[0], req)
+                    job = Job (current_job_id, client_id, req, simulate)
                     current_job_id += 1
                     
                     notification = Message ("notification", f"Pending job allocation {job.id()}")
@@ -124,6 +169,10 @@ def main(argv):
 
                     notification = Message ("notification", f"job {job.id()} queued and waiting for resources")
                     notification.send (client_socket, client_id)
+            elif message.get_type () == "eos":
+                end_of_simulation = True
+                notification = Message ("shutdown", None)
+                notification.send (client_socket, client_id)
             else:
                 print ("[W] Wrong message type received from a client")
 
@@ -133,49 +182,58 @@ def main(argv):
         ################
         if server_socket in events:
             identities, data  = recv_msg(server_socket)
-            message           = Message.from_packed_message (data)
+            message           = Message.from_packed_message(data)
             
-            if message.get_type () == "register":
+            if message.get_type() == "register":
                 server_id = identities[0]
-                resource_catalog.append_resources (server_id, message.get_content ())
-                logging.debug ('Server registered. New resources available.')
+                resource_catalog.append_resources(server_id, message.get_content ())
+                logging.debug('Server registered. New resources available.')
+                # TODO: setup monitoring system with newly added resources
             elif message.get_type () == "connection":
                 client_id    = identities[1]
-                notification = Message ("allocation", message.get_content())
-                notification.send (client_socket, client_id)
+                notification = Message("allocation", message.get_content())
+                notification.send(client_socket, client_id)
             else:
-                print ("[W] Wrong message type received from a server")
+                print("[W] Wrong message type received from a server")
                 
-        """Process the requests in queue"""
-        for job in pending_jobs:
-            
-            target_node, target_disk = scheduling_strategy.compute (resource_catalog, job)
 
-            # If a disk on a node has been found, we allocate the request
-            if target_node >= 0 and target_disk >= 0:
-                logging.debug ("["+str(job.id()).zfill(5)+"] Add "+job.request.to_string()+
-                               " on node "+str(target_node)+", disk "+str(target_disk))
 
-                # Submit request to the selected node
-                alloc_request = {"job_id":job.id(), "disk":target_disk,
-                                 "capacity":job.request.capacity(), "duration":job.request.duration()}
-                identities    = [resource_catalog.identity_of_node(target_node), job.client_identity()]
-                notification  = Message ("allocate", alloc_request)
-                notification.send (server_socket, identities)
+        ################
+        # PROCESS QUEUES
+        ################
+        if simulate:
+            if end_of_simulation:
+                sim_env = simpy.Environment()
 
-                job.set_allocated ()
-                running_jobs.add (job)
-                pending_jobs.remove (job)
-                
-                resource_catalog.add_allocation (target_node, target_disk, job)
-                resource_catalog.print_status (target_node, target_disk)
+                earliest_start_time = datetime.datetime.now()
+                latest_end_time     = datetime.datetime(1970, 1, 1)
 
-                notification = Message ("notification", f"Granted job allocation {job.id()}")
-                notification.send (client_socket, job.client_identity())
-            else:
-                if not job.is_pending():
-                    logging.debug ("["+str(job.id()).zfill(5)+"] Unable to allocate incoming request for now")
-                    job.set_pending()
+                pending_jobs.sort_asc_start_time ()
+
+                for job in pending_jobs:
+                    if job.start_time() < earliest_start_time:
+                        earliest_start_time = job.start_time()
+                    if job.end_time() > latest_end_time:
+                        latest_end_time     = job.end_time()
+
+                sim_duration = (latest_end_time - earliest_start_time).total_seconds() + 1
+
+                for job in pending_jobs:
+                    env.process(simulate_scheduling())
+
+                env.run(until=sim_duration)
+        else:
+            for job in pending_jobs:
+                target_node, target_disk = scheduling_strategy.compute (resource_catalog, job)
+
+                # If a disk on a node has been found, we allocate the request
+                if target_node >= 0 and target_disk >= 0:
+                    grant_allocation(job, server_socket, client_socket, target_node, target_disk)
+                else:
+                    if not job.is_pending():
+                        logging.debug ("["+str(job.id()).zfill(5)+"] Unable to allocate incoming request for now")
+                        job.set_pending()
+
             
         time.sleep (1)
    

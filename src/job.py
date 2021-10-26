@@ -28,7 +28,7 @@ class Job (object):
         else:
             self._start_time  = dt.datetime.now(dt.timezone.utc)
             
-        self._end_time        = self._start_time + dt.timedelta(minutes=self.request.duration())
+        self._end_time        = self._start_time + dt.timedelta(seconds=self.request.duration())
 
         
     def id (self):
@@ -56,3 +56,6 @@ class Job (object):
         if self._status == "pending":
             return True
         return False
+
+    def relative_start_time (self, origin):
+        return (self._start_time - origin).total_seconds()

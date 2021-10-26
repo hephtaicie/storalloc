@@ -56,7 +56,7 @@ def parse_args ():
     else:
         try:
             duration = datetime.datetime.strptime(args.time, "%H:%M:%S")
-            req_time = datetime.timedelta(hours=duration.hour, minutes=duration.minute, seconds=duration.second)
+            req_time = int(datetime.timedelta(hours=duration.hour, minutes=duration.minute, seconds=duration.second).total_seconds())
         except:
             cli_error (parser, 'Error: Time format is wrong!')
 
