@@ -39,18 +39,30 @@ setup(
     package_dir={"": "src"},  # Optional
     packages=find_packages(where="src"),  # Required
     python_requires=">=3.6, <4",
-    # install_requires=[""],  # Optional
+    install_requires=[
+        "reportlab>=3.5.57",
+        "six>=1.15.0",
+        "scipy>=1.5.4",
+        "numpy>=1.19.4",
+        "pandas>=1.0.5",
+        "matplotlib>=3.3.4",
+        "kmodpy>=0.1.13",
+        "Pillow>=8.3.0",
+        "PyYAML>=5.4.1",
+        "pyzmq>=22.1.0",
+        "click",
+    ],
     extras_require={  # Optional
         # "dev": ["check-manifest"],
         "test": ["pytest", "pytest-cov"],
     },
-    # package_data={  # Optional
+    entry_points={
+        "console_scripts": [
+            "storalloc=storalloc.cli:cli",
+        ],
+    },
+    # package_data={
     #     "sample": ["package_data.dat"],
     # },
-    # data_files=[("my_data", ["data/data_file"])],  # Optional
-    # entry_points={  # Optional
-    #    "console_scripts": [
-    #        "sample=sample:main",
-    #    ],
-    # },
+    # data_files=[("my_data", ["data/data_file"])],
 )

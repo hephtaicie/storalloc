@@ -10,8 +10,8 @@ import re
 import datetime
 from shutil import which
 
-from src.message import Message
-from src.config_file import ConfigFile
+from storalloc.message import Message
+from storalloc.config_file import ConfigFile
 
 # Default values
 req_size = 0

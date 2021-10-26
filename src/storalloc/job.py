@@ -2,7 +2,7 @@
 
 import datetime as dt
 import logging
-from src.request import Request
+from storalloc.request import Request
 
 
 class Job(object):

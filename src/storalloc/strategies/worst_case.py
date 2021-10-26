@@ -3,7 +3,7 @@
 import sys
 import logging
 
-from src.resources import NodeStatus, DiskStatus
+from storalloc.resources import NodeStatus, DiskStatus
 
 
 class WorstCase(object):

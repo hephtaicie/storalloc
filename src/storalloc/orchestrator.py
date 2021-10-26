@@ -10,13 +10,13 @@ import time
 import simpy
 import datetime
 
-from src.job import Job
-from src.request import Request
-from src.job_queue import JobQueue
-from src.sched_strategy import SchedStrategy
-from src.resources import ResourceCatalog, NodeStatus, DiskStatus
-from src.config_file import ConfigFile
-from src.message import Message
+from storalloc.job import Job
+from storalloc.request import Request
+from storalloc.job_queue import JobQueue
+from storalloc.sched_strategy import SchedStrategy
+from storalloc.resources import ResourceCatalog, NodeStatus, DiskStatus
+from storalloc.config_file import ConfigFile
+from storalloc.message import Message
 
 # Global variables
 conf_file = None

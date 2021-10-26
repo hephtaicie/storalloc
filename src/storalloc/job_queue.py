@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from src.job import Job
+from storalloc.job import Job
 
 
 class JobQueue(object):

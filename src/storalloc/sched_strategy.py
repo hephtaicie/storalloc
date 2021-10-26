@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import sys
-from src.strategies.worst_case import WorstCase
-from src.strategies.random_alloc import RandomAlloc
+from storalloc.strategies.worst_case import WorstCase
+from storalloc.strategies.random_alloc import RandomAlloc
 
 
 class SchedStrategy(object):

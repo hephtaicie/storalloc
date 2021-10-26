@@ -7,11 +7,11 @@ import logging
 import zmq
 import time
 
-# from src.nvmet import nvme
+# from storalloc.nvmet import nvme
 
-from src.resources import ResourceCatalog
-from src.config_file import ConfigFile
-from src.message import Message
+from storalloc.resources import ResourceCatalog
+from storalloc.config_file import ConfigFile
+from storalloc.message import Message
 
 # Default values
 conf_file = None
