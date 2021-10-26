@@ -2,38 +2,37 @@
 
 from src.job import Job
 
-class JobQueue (object):
 
-    def __init__ (self):
+class JobQueue(object):
+    def __init__(self):
         super().__init__()
 
-        self._queue = list ()
+        self._queue = list()
 
-    def __iter__ (self):
-        return JobQueueIterator (self)
+    def __iter__(self):
+        return JobQueueIterator(self)
 
-    def add (self, job):
-        self._queue.append (job)
+    def add(self, job):
+        self._queue.append(job)
 
-    def remove (self, job):
-        self._queue.remove (job)
+    def remove(self, job):
+        self._queue.remove(job)
 
-    def count (self):
-        return len (self._queue)
+    def count(self):
+        return len(self._queue)
 
-    def is_id_in_queue (self, job_id):
+    def is_id_in_queue(self, job_id):
         for job in self._queue:
             if job.id() == job_id:
                 return True
         return False
 
-    def sort_asc_start_time (self):
+    def sort_asc_start_time(self):
         self._queue.sort(key=lambda j: j.start_time())
 
 
-class JobQueueIterator (object):
-
-    def __init__ (self, job_queue):
+class JobQueueIterator(object):
+    def __init__(self, job_queue):
         self._job_queue = job_queue
         self._idx = 0
 

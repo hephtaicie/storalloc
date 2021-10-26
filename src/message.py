@@ -5,34 +5,29 @@ import sys
 import pickle
 import zmq
 
-class Message (object):
 
-    def __init__ (self, msg_type, msg_content):
+class Message(object):
+    def __init__(self, msg_type, msg_content):
         super().__init__()
 
-        self._type    = msg_type
+        self._type = msg_type
         self._content = msg_content
 
-        
     @classmethod
-    def from_packed_message (cls, packed_data):
-        return pickle.loads (packed_data)
-        
+    def from_packed_message(cls, packed_data):
+        return pickle.loads(packed_data)
 
-    def pack (self):
-        return pickle.dumps (self)
-    
-    
-    def get_type (self):
+    def pack(self):
+        return pickle.dumps(self)
+
+    def get_type(self):
         return self._type
 
-
-    def get_content (self):
+    def get_content(self):
         return self._content
 
-
-    def send (self, socket, identities):
-        if isinstance (identities, list):
-            socket.send_multipart (identities + [self.pack()])
+    def send(self, socket, identities):
+        if isinstance(identities, list):
+            socket.send_multipart(identities + [self.pack()])
         else:
-            socket.send_multipart ([identities, self.pack()])
+            socket.send_multipart([identities, self.pack()])
