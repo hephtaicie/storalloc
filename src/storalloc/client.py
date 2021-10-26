@@ -2,14 +2,8 @@
     Default Client
 """
 
-
-import argparse
 import datetime
 import logging
-import sys
-import re
-from shutil import which
-import os
 import yaml
 import zmq
 
@@ -23,7 +17,7 @@ def zmq_init(conf: ConfigFile):
     context = zmq.Context()
     sock = context.socket(zmq.DEALER)
     sock.connect(f"tcp://{conf.get_orch_ipv4()}:{conf.get_orch_port()}")
-    return sock
+    return (context, sock)
 
 
 def run(
@@ -37,7 +31,7 @@ def run(
 
     conf = ConfigFile(config)
 
-    sock = zmq_init(conf)
+    context, sock = zmq_init(conf)
 
     request = f"{size},{time},{start_time}"
 

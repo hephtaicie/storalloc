@@ -106,15 +106,9 @@ class Orchestrator:
 
         # If a disk on a node has been found, we allocate the request
         if target_node >= 0 and target_disk >= 0:
-            grant_allocation(
-                job, server_socket, client_socket, target_node, target_disk
-            )
+            grant_allocation(job, server_socket, client_socket, target_node, target_disk)
         else:
-            print(
-                "["
-                + str(job.id()).zfill(5)
-                + "] Unable to allocate request. Exiting..."
-            )
+            print("[" + str(job.id()).zfill(5) + "] Unable to allocate request. Exiting...")
             sys.exit(1)
 
         # Duration + Fix seconds VS minutes
@@ -151,9 +145,7 @@ class Orchestrator:
                         job = Job(current_job_id, client_id, req, simulate)
                         current_job_id += 1
 
-                        notification = Message(
-                            "notification", f"Pending job allocation {job.id()}"
-                        )
+                        notification = Message("notification", f"Pending job allocation {job.id()}")
                         notification.send(self.client_socket, client_id)
 
                         job.set_queued()
@@ -180,9 +172,7 @@ class Orchestrator:
 
                 if message.get_type() == "register":
                     server_id = identities[0]
-                    self.resource_catalog.append_resources(
-                        server_id, message.get_content()
-                    )
+                    self.resource_catalog.append_resources(server_id, message.get_content())
                     logging.debug("Server registered. New resources available.")
                     # TODO: setup monitoring system with newly added resources
                 elif message.get_type() == "connection":
@@ -210,9 +200,7 @@ class Orchestrator:
                         if job.end_time() > latest_end_time:
                             latest_end_time = job.end_time()
 
-                    sim_duration = (
-                        latest_end_time - earliest_start_time
-                    ).total_seconds() + 1
+                    sim_duration = (latest_end_time - earliest_start_time).total_seconds() + 1
 
                     for job in self.pending_jobs:
                         env.process(simulate_scheduling())
