@@ -4,6 +4,7 @@
 
 import datetime as dt
 
+
 class Request:
     """Default storage allocation request"""
 
