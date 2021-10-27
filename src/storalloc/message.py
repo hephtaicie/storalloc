@@ -1,32 +1,29 @@
-#!/usr/bin/env python3
+""" Storalloc
+    Default message implementation
+"""
 
-import os
-import sys
 import pickle
-import zmq
 
 
-class Message(object):
+class Message:
+    """Default message implementation"""
+
     def __init__(self, msg_type, msg_content):
-        super().__init__()
 
-        self._type = msg_type
-        self._content = msg_content
+        self.type = msg_type
+        self.content = msg_content
 
     @classmethod
     def from_packed_message(cls, packed_data):
+        """Extract message from pickled data"""
         return pickle.loads(packed_data)
 
     def pack(self):
+        """Pack message into pickle"""
         return pickle.dumps(self)
 
-    def get_type(self):
-        return self._type
-
-    def get_content(self):
-        return self._content
-
     def send(self, socket, identities):
+        """Send message..."""
         if isinstance(identities, list):
             socket.send_multipart(identities + [self.pack()])
         else:
