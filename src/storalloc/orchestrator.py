@@ -89,7 +89,7 @@ class Orchestrator:
         self.resource_catalog.print_status(target_node, target_disk)
 
         notification = Message("notification", f"Granted job allocation {job.uid}")
-        notification.send(self.client_socket, job.client_identity())
+        notification.send(self.client_socket, job.client_identity)
 
     def release_allocation(self, job: Job):
         """Release a storage allocation"""

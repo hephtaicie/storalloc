@@ -151,8 +151,8 @@ class ResourceCatalog:
 
         # Concatenate lists of requests per disk to determine ealiest start time and latest end time
         job_list = list()
-        for n in range(0, len(self.storage_resources)):
-            for d in range(0, len(self.storage_resources[n].disks)):
+        for n in range(0, self.node_count()):
+            for d in range(0, self.disk_count(n)):
                 job_list.extend(self.storage_resources[n].disks[d].allocs)
 
         if job_list:
@@ -182,7 +182,7 @@ class ResourceCatalog:
                         offset = int((j.start_time - earliest_request).seconds / 300)
                         for o in range(0, offset):
                             print(" ", end="")
-                        req_time = int((j.end_time - j.start_time()).seconds / 300)
+                        req_time = int((j.end_time - j.start_time).seconds / 300)
                         req_time = 1 if req_time == 0 else req_time
                         for j in range(0, req_time):
                             if (
