@@ -1,46 +1,26 @@
-#!/usr/bin/env python3
+""" Storalloc
+    Default storage allocation request
+"""
 
 import datetime as dt
-import logging
 
+class Request:
+    """Default storage allocation request"""
 
-class Request(object):
     def __init__(self, request):
-        super().__init__()
+        """Init request object from raw request"""
 
-        capacity = int(request.split(",")[0])
-        duration = int(request.split(",")[1])
-        if request.split(",")[2] != "None":
-            start_time = dt.datetime.strptime(request.split(",")[2], "%Y-%m-%d %H:%M:%S")
+        req_parts = request.split(",")
+        self.capacity = int(req_parts[0])
+        self.duration = int(req_parts[1])
+
+        if self.capacity <= 0 or self.duration <= 0:
+            raise ValueError("Capacity or duration is <= 0 for request")
+
+        if req_parts[2] != "None":
+            self.start_time = dt.datetime.strptime(req_parts[2], "%Y-%m-%d %H:%M:%S")
         else:
-            start_time = None
+            self.start_time = None
 
-        if capacity <= 0 or duration <= 0:
-            raise ValueError
-
-        self._capacity = capacity
-        self._duration = duration
-        self._start_time = start_time
-
-    def print_request(self):
-        print(self.to_string())
-
-    def to_string(self):
-        return (
-            "["
-            + str(self._capacity)
-            + " GB, "
-            + str(dt.timedelta(seconds=self._duration))
-            + ", "
-            + str(self._start_time)
-            + "]"
-        )
-
-    def capacity(self):
-        return self._capacity
-
-    def duration(self):
-        return self._duration
-
-    def start_time(self):
-        return self._start_time
+    def __str__(self):
+        return f"[{self.capacity} GB, {dt.timedelta(seconds=self.duration)}, {self.start_time}]"
