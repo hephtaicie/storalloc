@@ -20,12 +20,12 @@ class Job:
         if it's part of a simulation or not
         """
 
-        self.job_id = job_id
+        self.uid = job_id
         self.client_identity = client_identity
 
         self.request = request
         logging.debug(
-            "[" + str(self.job_id).zfill(5) + "] New incoming request: " + self.request.to_string()
+            "[" + str(self.uid).zfill(5) + "] New incoming request: " + self.request.to_string()
         )
 
         self._status = "new"

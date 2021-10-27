@@ -2,21 +2,18 @@
     Default orchestrator
 """
 
-import os
-import yaml
+import datetime
+import time
 import sys
-import argparse
 import logging
 import zmq
-import time
 import simpy
-import datetime
 
 from storalloc.job import Job
 from storalloc.request import Request
 from storalloc.job_queue import JobQueue
 from storalloc.sched_strategy import SchedStrategy
-from storalloc.resources import ResourceCatalog, NodeStatus, DiskStatus
+from storalloc.resources import ResourceCatalog
 from storalloc.config_file import ConfigFile
 from storalloc.message import Message
 
@@ -33,12 +30,12 @@ def zmq_init(conf: ConfigFile):
 
     context = zmq.Context()
 
-    client_socket = context.socket(zmq.ROUTER)
+    client_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
     client_socket.bind(
         f"tcp://{conf.get_orch_client_bind_ipv4()}:{conf.get_orch_client_bind_port()}"
     )
 
-    server_socket = context.socket(zmq.ROUTER)
+    server_socket = context.socket(zmq.ROUTER)  # pylint: disable)no-member
     server_socket.bind(
         f"tcp://{conf.get_orch_server_bind_ipv4()}:{conf.get_orch_server_bind_port()}"
     )
@@ -64,8 +61,10 @@ class Orchestrator:
         self.resource_catalog = ResourceCatalog()
         self.scheduling_strategy = SchedStrategy()
         self.scheduling_strategy.set_strategy(self.conf.get_orch_strategy())
+        self.env = simpy.Environment()
 
     def grant_allocation(self, job, target_node, target_disk):
+        """Grant a storage request and register it"""
 
         logging.debug(
             f"[{job.id():05}] Add {job.request} on node {target_node}, disk {target_disk}"
@@ -78,41 +77,42 @@ class Orchestrator:
             "duration": job.request.duration(),
         }
         identities = [
-            resource_catalog.identity_of_node(target_node),
+            self.resource_catalog.identity_of_node(target_node),
             job.client_identity(),
         ]
         notification = Message("allocate", alloc_request)
-        notification.send(server_socket, identities)
+        notification.send(self.server_socket, identities)
 
         job.set_allocated()
         self.running_jobs.add(job)
         self.pending_jobs.remove(job)
 
-        resource_catalog.add_allocation(target_node, target_disk, job)
-        resource_catalog.print_status(target_node, target_disk)
+        self.resource_catalog.add_allocation(target_node, target_disk, job)
+        self.resource_catalog.print_status(target_node, target_disk)
 
         notification = Message("notification", f"Granted job allocation {job.id()}")
-        notification.send(client_socket, job.client_identity())
+        notification.send(self.client_socket, job.client_identity())
 
-    def release_allocation(self, job):
-        print(f"[{job.id():05}] Release allocation")
+    def release_allocation(self, job: Job):
+        """Release a storage allocation"""
+        print(f"[{job.uid:05}] Release allocation")
 
     def simulate_scheduling(self, job, earliest_start_time):
         """Simpy"""
 
-        yield env.timeout(job.sim_start_time(earliest_start_time))
+        yield self.env.timeout(job.sim_start_time(earliest_start_time))
 
-        target_node, target_disk = scheduling_strategy.compute(resource_catalog, job)
+        target_node, target_disk = self.scheduling_strategy.compute(self.resource_catalog, job)
 
         # If a disk on a node has been found, we allocate the request
         if target_node >= 0 and target_disk >= 0:
-            grant_allocation(job, server_socket, client_socket, target_node, target_disk)
+            self.grant_allocation(job, target_node, target_disk)
         else:
             print("[" + str(job.id()).zfill(5) + "] Unable to allocate request. Exiting...")
             sys.exit(1)
 
         # Duration + Fix seconds VS minutes
-        yield env.timeout(job.sim_start_time())
+        yield self.env.timeout(job.sim_start_time())
 
     def run(self):
         """Init and start an orchestrator"""
@@ -142,10 +142,10 @@ class Orchestrator:
                         notification = Message("error", "Wrong request")
                         notification.send(self.client_socket, client_id)
                     else:
-                        job = Job(current_job_id, client_id, req, simulate)
+                        job = Job(current_job_id, client_id, req, self.simulate)
                         current_job_id += 1
 
-                        notification = Message("notification", f"Pending job allocation {job.id()}")
+                        notification = Message("notification", f"Pending job allocation {job.uid}")
                         notification.send(self.client_socket, client_id)
 
                         job.set_queued()
@@ -153,7 +153,7 @@ class Orchestrator:
 
                         notification = Message(
                             "notification",
-                            f"job {job.id()} queued and waiting for resources",
+                            f"job {job.uid} queued and waiting for resources",
                         )
                         notification.send(self.client_socket, client_id)
                 elif message.get_type() == "eos":
@@ -187,14 +187,13 @@ class Orchestrator:
             ################
             if self.simulate:
                 if end_of_simulation:
-                    sim_env = simpy.Environment()
 
                     earliest_start_time = datetime.datetime.now()
                     latest_end_time = datetime.datetime(1970, 1, 1)
 
-                    pending_jobs.sort_asc_start_time()
+                    self.pending_jobs.sort_asc_start_time()
 
-                    for job in pending_jobs:
+                    for job in self.pending_jobs:
                         if job.start_time() < earliest_start_time:
                             earliest_start_time = job.start_time()
                         if job.end_time() > latest_end_time:
@@ -203,13 +202,13 @@ class Orchestrator:
                     sim_duration = (latest_end_time - earliest_start_time).total_seconds() + 1
 
                     for job in self.pending_jobs:
-                        env.process(simulate_scheduling())
+                        self.env.process(self.simulate_scheduling)
 
-                    env.run(until=sim_duration)
+                    self.env.run(until=sim_duration)
             else:
                 for job in self.pending_jobs:
                     target_node, target_disk = self.scheduling_strategy.compute(
-                        resource_catalog, job
+                        self.resource_catalog, job
                     )
 
                     # If a disk on a node has been found, we allocate the request
@@ -218,9 +217,7 @@ class Orchestrator:
                     else:
                         if not job.is_pending():
                             logging.debug(
-                                "["
-                                + str(job.id()).zfill(5)
-                                + "] Unable to allocate incoming request for now"
+                                f"[{job.uid:05}] Currently unable to allocate incoming request"
                             )
                             job.set_pending()
 

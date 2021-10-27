@@ -43,7 +43,7 @@ def zmq_init(url: str):
     """Init ZeroMQ socket"""
 
     context = zmq.Context()
-    sock = context.socket(zmq.DEALER)
+    sock = context.socket(zmq.DEALER)  # pylint: disable=no-member
     sock.connect(url)
 
     return (context, sock)
@@ -66,11 +66,12 @@ def run(config_file, system, reset, simulate):
     orchestrator_url = f"tcp://{conf.get_orch_ipv4()}:{conf.get_orch_port()}"
     context, sock = zmq_init(orchestrator_url)
 
-    # if reset:
+    if reset:
+        pass
     #   reset_resources(storage_resources)
 
     logging.debug(f"Registering to the orchestrator ({orchestrator_url})")
-    message = Message("register", resource_catalog.get_resources_list())
+    message = Message("register", resource_catalog.storage_resources)
     sock.send(message.pack())
 
     while True:
