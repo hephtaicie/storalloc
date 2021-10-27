@@ -3,7 +3,6 @@
 """
 
 import datetime
-import logging
 import zmq
 
 from storalloc.message import Message
@@ -36,14 +35,14 @@ def run(
     context, sock = zmq_init(conf)
 
     request = f"{size},{time},{start_time}"
-    log.info(f"Request : {request}")
+    log.info(f"New user request [{request}]")
 
     if eos:
         message = Message("eos", request)
     else:
         message = Message("request", request)
 
-    logging.debug(f"Submitting request [{request}]")
+    log.debug(f"Submitting user message [{message}]")
 
     sock.send(message.pack())
 
@@ -52,17 +51,17 @@ def run(
         message = Message.from_packed_message(data)
 
         if message.type == "notification":
-            print(f"storalloc: {message.content}")
+            log.info(f"New notification received [{message.content}]")
         elif message.type == "allocation":
-            print(f"storalloc: {message.content}")
+            log.info(f"New allocation received [{message.content}]")
             # Do stuff with connection details
             break
         elif message.type == "error":
-            print(f"storalloc: [ERR] {message.content}")
             break
         elif message.type == "shutdown":
-            print("storalloc: closing the connection at the orchestrator's initiative")
+            log.warning("Orchestrator has asked to close the connection")
             break
 
+    # should be part of some context manager ?
     sock.close(linger=0)
     context.term()

@@ -1,6 +1,11 @@
 """ Storalloc
     CLI entrypoint
+
+    No loggers are defined here, we'll only use click.secho()
+    for basic text output. Processing and logging has to be
+    'contained' in other parts of the app.
 """
+
 import datetime
 import click
 

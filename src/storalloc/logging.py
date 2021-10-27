@@ -31,6 +31,7 @@ def get_storalloc_logger(verbose: bool = True):
     rotating_file_hdl = RotatingFileHandler(
         "storalloc.log", maxBytes=1000000, encoding="utf-8", backupCount=4
     )
+    rotating_file_hdl.setFormatter(formatter)
 
     logger.addHandler(stream_hdl)
     logger.addHandler(rotating_file_hdl)

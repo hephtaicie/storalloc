@@ -24,4 +24,4 @@ class Request:
             self.start_time = None
 
     def __str__(self):
-        return f"[{self.capacity} GB, {dt.timedelta(seconds=self.duration)}, {self.start_time}]"
+        return f"{self.capacity} GB, {dt.timedelta(seconds=self.duration)}, {self.start_time}"

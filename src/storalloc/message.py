@@ -1,5 +1,9 @@
 """ Storalloc
     Default message implementation
+
+    Pickle is well known for its security vulnerabilities,
+    we may want to move to another serialisation format at
+    some point (protobuf ?)
 """
 
 import pickle
@@ -13,8 +17,12 @@ class Message:
         self.type = msg_type
         self.content = msg_content
 
-    @classmethod
-    def from_packed_message(cls, packed_data):
+    def __str__(self):
+        """String representation for debugging purpose"""
+        return f"{self.type}-{self.content}"
+
+    @staticmethod
+    def from_packed_message(packed_data):
         """Extract message from pickled data"""
         return pickle.loads(packed_data)
 

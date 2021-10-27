@@ -1,5 +1,7 @@
 """ Storalloc
     ThreadAllocation
+
+    [Will probably be removed]
 """
 
 import threading

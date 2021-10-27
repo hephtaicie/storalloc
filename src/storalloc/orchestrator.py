@@ -16,6 +16,7 @@ from storalloc.sched_strategy import SchedStrategy
 from storalloc.resources import ResourceCatalog
 from storalloc.config_file import ConfigFile
 from storalloc.message import Message
+from storalloc.logging import get_storalloc_logger
 
 
 def recv_msg(socket):
@@ -35,7 +36,7 @@ def zmq_init(conf: ConfigFile):
         f"tcp://{conf.get_orch_client_bind_ipv4()}:{conf.get_orch_client_bind_port()}"
     )
 
-    server_socket = context.socket(zmq.ROUTER)  # pylint: disable)no-member
+    server_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
     server_socket.bind(
         f"tcp://{conf.get_orch_server_bind_ipv4()}:{conf.get_orch_server_bind_port()}"
     )
@@ -53,6 +54,7 @@ class Orchestrator:
     def __init__(self, config_file: str, simulate: bool):
         """Init orchestrator"""
 
+        self.log = get_storalloc_logger()
         self.conf = ConfigFile(config_file)
         self.simulate = simulate
         self.client_socket, self.server_socket, self.poller = zmq_init(self.conf)
@@ -93,7 +95,7 @@ class Orchestrator:
 
     def release_allocation(self, job: Job):
         """Release a storage allocation"""
-        print(f"[{job.uid:05}] Release allocation")
+        self.log.info(f"Job<{job.uid:05}> - Release allocation")
 
     def simulate_scheduling(self, job, earliest_start_time):
         """Simpy"""
@@ -106,7 +108,7 @@ class Orchestrator:
         if target_node >= 0 and target_disk >= 0:
             self.grant_allocation(job, target_node, target_disk)
         else:
-            print(f"[{job.uid:05}] Unable to allocate request. Exiting...")
+            self.log.warning(f"Job<{job.uid:05}> - Unable to allocate request. Exiting...")
             sys.exit(1)
 
         # Duration + Fix seconds VS minutes
@@ -159,7 +161,7 @@ class Orchestrator:
                     notification = Message("shutdown", None)
                     notification.send(self.client_socket, client_id)
                 else:
-                    print("[W] Wrong message type received from a client")
+                    self.log.warning("Wrong message type ({message.type}) received from a client")
 
             ################
             # SERVER SOCKET
@@ -178,7 +180,7 @@ class Orchestrator:
                     notification = Message("allocation", message.content)
                     notification.send(self.client_socket, client_id)
                 else:
-                    print("[W] Wrong message type received from a server")
+                    self.log.warning("Wrong message type ({message.type}) received from a server")
 
             ################
             # PROCESS QUEUES
@@ -214,8 +216,8 @@ class Orchestrator:
                         self.grant_allocation(job, target_node, target_disk)
                     else:
                         if not job.is_pending():
-                            logging.debug(
-                                f"[{job.uid:05}] Currently unable to allocate incoming request"
+                            self.log.debug(
+                                f"Job<{job.uid:05}> - Currently unable to allocate incoming request"
                             )
                             job.set_pending()
 

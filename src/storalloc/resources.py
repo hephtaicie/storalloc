@@ -55,7 +55,6 @@ class DiskStatus:
 
     def __init__(self, idx, capacity):
         """Disk status"""
-        super().__init__()
         self.idx = idx
         self.bw = 0.0
         self.capacity = capacity

@@ -5,7 +5,6 @@
 import time
 import os
 import sys
-import logging
 import zmq
 
 # from storalloc.nvmet import nvme
@@ -13,6 +12,7 @@ import zmq
 from storalloc.resources import ResourceCatalog
 from storalloc.config_file import ConfigFile
 from storalloc.message import Message
+from storalloc.logging import get_storalloc_logger
 
 # def reset_resources(storage_resources):
 #    """Reset storage configurations
@@ -55,8 +55,10 @@ def run(config_file, system, reset, simulate):
     and wait for allocation requests.
     """
 
+    log = get_storalloc_logger()
+
     if not simulate and os.getuid() != 0:
-        print("Error: this script must be run with root privileges in a non-simulated mode!")
+        log.error("This script must be run with root privileges in a non-simulated mode!")
         sys.exit(1)
 
     conf = ConfigFile(config_file)
@@ -70,7 +72,7 @@ def run(config_file, system, reset, simulate):
         pass
     #   reset_resources(storage_resources)
 
-    logging.debug(f"Registering to the orchestrator ({orchestrator_url})")
+    log.debug(f"Registering to the orchestrator ({orchestrator_url})")
     message = Message("register", resource_catalog.storage_resources)
     sock.send(message.pack())
 
@@ -79,7 +81,7 @@ def run(config_file, system, reset, simulate):
         message = Message.from_packed_message(data)
 
         if message.type == "allocate":
-            print(f"storalloc: {message.content}")
+            log.info(f"New allocation received [{message.content}]")
             job_id = message.content["job_id"]
             connection = {
                 "job_id": job_id,
@@ -89,12 +91,12 @@ def run(config_file, system, reset, simulate):
             message = Message("connection", connection)
             sock.send_multipart([client_id, message.pack()])
         elif message.type == "deallocate":
-            print(f"storalloc: {message.content}")
+            log.info(f"New deallocation received [{message.content}]")
         elif message.get_type() == "error":
-            print(f"storalloc: [ERR] {message.content}")
+            log.error(f"Error received [{message.content}]")
             break
         elif message.type == "shutdown":
-            print("storalloc: closing the connection at the orchestrator's initiative")
+            log.warning("The orchestrator has asked to close the connection")
             break
 
     time.sleep(1)

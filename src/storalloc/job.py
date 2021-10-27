@@ -27,7 +27,7 @@ class Job:
         self.client_identity = client_identity
 
         self.request = request
-        self.log.debug(f"[{self.uid:05}] New incoming request: {request}")
+        self.log.debug(f"Job<{self.uid:05}> - New incoming request [{request}]")
 
         self._status = "new"
         self._submission_time = dt.datetime.now(dt.timezone.utc)
