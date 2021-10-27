@@ -1,7 +1,7 @@
 """ Storalloc
     CLI entrypoint
 """
-
+import datetime
 import click
 
 from storalloc import client, server, orchestrator
@@ -113,7 +113,13 @@ def run_client(ctx, config, size, time, start_time, eos):
     """Start a Storalloc client (an orchestrator need to be already running)"""
 
     click.secho("[~] Starting client...", fg="green")
-    client.run(config, size, time, start_time, eos)
+    # Convert duration of requested storage allocation to seconds
+    time_delta = int(
+        datetime.timedelta(
+            hours=time.hour, minutes=time.minute, seconds=time.second
+        ).total_seconds()
+    )
+    client.run(config, size, time_delta, start_time, eos)
 
 
 if __name__ == "__main__":

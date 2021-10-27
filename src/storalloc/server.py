@@ -61,7 +61,7 @@ def run(config_file, system, reset, simulate):
 
     conf = ConfigFile(config_file)
 
-    resource_catalog = ResourceCatalog.from_yaml(system)
+    resource_catalog = ResourceCatalog(system)
 
     orchestrator_url = f"tcp://{conf.get_orch_ipv4()}:{conf.get_orch_port()}"
     context, sock = zmq_init(orchestrator_url)
@@ -78,9 +78,9 @@ def run(config_file, system, reset, simulate):
         client_id, data = sock.recv_multipart()
         message = Message.from_packed_message(data)
 
-        if message.get_type() == "allocate":
-            print(f"storalloc: {message.get_content()}")
-            job_id = message.get_content()["job_id"]
+        if message.type == "allocate":
+            print(f"storalloc: {message.content}")
+            job_id = message.content["job_id"]
             connection = {
                 "job_id": job_id,
                 "type": "nvme",
@@ -88,12 +88,12 @@ def run(config_file, system, reset, simulate):
             }
             message = Message("connection", connection)
             sock.send_multipart([client_id, message.pack()])
-        elif message.get_type() == "deallocate":
-            print(f"storalloc: {message.get_content()}")
+        elif message.type == "deallocate":
+            print(f"storalloc: {message.content}")
         elif message.get_type() == "error":
-            print(f"storalloc: [ERR] {message.get_content()}")
+            print(f"storalloc: [ERR] {message.content}")
             break
-        elif message.get_type() == "shutdown":
+        elif message.type == "shutdown":
             print("storalloc: closing the connection at the orchestrator's initiative")
             break
 

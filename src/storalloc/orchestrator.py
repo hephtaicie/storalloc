@@ -66,19 +66,17 @@ class Orchestrator:
     def grant_allocation(self, job, target_node, target_disk):
         """Grant a storage request and register it"""
 
-        logging.debug(
-            f"[{job.id():05}] Add {job.request} on node {target_node}, disk {target_disk}"
-        )
+        logging.debug(f"[{job.uid:05}] Add {job.request} on node {target_node}, disk {target_disk}")
 
         alloc_request = {
-            "job_id": job.id(),
+            "job_id": job.uid,
             "disk": target_disk,
-            "capacity": job.request.capacity(),
-            "duration": job.request.duration(),
+            "capacity": job.request.capacity,
+            "duration": job.request.duration,
         }
         identities = [
             self.resource_catalog.identity_of_node(target_node),
-            job.client_identity(),
+            job.client_identity,
         ]
         notification = Message("allocate", alloc_request)
         notification.send(self.server_socket, identities)
@@ -90,7 +88,7 @@ class Orchestrator:
         self.resource_catalog.add_allocation(target_node, target_disk, job)
         self.resource_catalog.print_status(target_node, target_disk)
 
-        notification = Message("notification", f"Granted job allocation {job.id()}")
+        notification = Message("notification", f"Granted job allocation {job.uid}")
         notification.send(self.client_socket, job.client_identity())
 
     def release_allocation(self, job: Job):
@@ -108,7 +106,7 @@ class Orchestrator:
         if target_node >= 0 and target_disk >= 0:
             self.grant_allocation(job, target_node, target_disk)
         else:
-            print("[" + str(job.id()).zfill(5) + "] Unable to allocate request. Exiting...")
+            print(f"[{job.uid:05}] Unable to allocate request. Exiting...")
             sys.exit(1)
 
         # Duration + Fix seconds VS minutes
@@ -135,9 +133,9 @@ class Orchestrator:
                 message = Message.from_packed_message(data)
                 client_id = identities[0]
 
-                if message.get_type() == "request":
+                if message.type == "request":
                     try:
-                        req = Request(message.get_content())
+                        req = Request(message.content)
                     except ValueError:
                         notification = Message("error", "Wrong request")
                         notification.send(self.client_socket, client_id)
@@ -156,7 +154,7 @@ class Orchestrator:
                             f"job {job.uid} queued and waiting for resources",
                         )
                         notification.send(self.client_socket, client_id)
-                elif message.get_type() == "eos":
+                elif message.type == "eos":
                     end_of_simulation = True
                     notification = Message("shutdown", None)
                     notification.send(self.client_socket, client_id)
@@ -170,14 +168,14 @@ class Orchestrator:
                 identities, data = recv_msg(self.server_socket)
                 message = Message.from_packed_message(data)
 
-                if message.get_type() == "register":
+                if message.type == "register":
                     server_id = identities[0]
-                    self.resource_catalog.append_resources(server_id, message.get_content())
+                    self.resource_catalog.append_resources(server_id, message.content)
                     logging.debug("Server registered. New resources available.")
                     # TODO: setup monitoring system with newly added resources
-                elif message.get_type() == "connection":
+                elif message.type == "connection":
                     client_id = identities[1]
-                    notification = Message("allocation", message.get_content())
+                    notification = Message("allocation", message.content)
                     notification.send(self.client_socket, client_id)
                 else:
                     print("[W] Wrong message type received from a server")

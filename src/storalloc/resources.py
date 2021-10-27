@@ -4,6 +4,8 @@
 
 import yaml
 
+from storalloc.logging import get_storalloc_logger
+
 # TODO: turn resource classes into namedtuple definitions ?
 
 
@@ -79,27 +81,31 @@ class ResourceCatalog:
     This list can evolve accoding to subscribed storage servers
     """
 
-    def __init__(self):
-        self.storage_resources = []
+    def __init__(self, yaml_file: str = None):
+        """Init ResourceCatalog (with an empty list)"""
 
-    @classmethod
-    def from_yaml(cls, yaml_file):
+        self.log = get_storalloc_logger()
+        self.storage_resources = []
+        if yaml_file:
+            self.populate_from_yaml(yaml_file)
+
+    def populate_from_yaml(self, yaml_file):
         """Translate a system configuration file (YAML) into a set of storage resources."""
 
-        resource_catalog = cls()
+        self.log.info("Populating resource catalog from yaml file...")
 
         # TODO: file exists?
         with open(yaml_file, "r", encoding="utf-8") as yaml_stream:
             content = yaml.safe_load(yaml_stream)
 
-        for idx_n, node in enumerate(content["hosts"]):
-            new_node = Node(idx_n, node)
-            for idx_d, disk in enumerate(node["disks"]):
-                new_disk = Disk(idx_d, disk)
-                new_node.disks.append(new_disk)
-            resource_catalog.storage_resources.append(new_node)
+            for idx_n, node in enumerate(content["hosts"]):
+                new_node = Node(idx_n, node)
+                for idx_d, disk in enumerate(node["disks"]):
+                    new_disk = Disk(idx_d, disk)
+                    new_node.disks.append(new_disk)
+                self.storage_resources.append(new_node)
 
-        return resource_catalog
+        self.log.info(f"storage_resources catalog now contains {len(self.storage_resources)} nodes")
 
     def add_allocation(self, node, disk, job):
         """Add allocation in a given disk of a given node, for a specific job"""
@@ -119,11 +125,12 @@ class ResourceCatalog:
 
     def disk_capacity(self, node, disk):
         """Return disk capacity for a specific disk in a specific node"""
-        return self.storage_resources[node].disks[disk].get_capacity()
+        return self.storage_resources[node].disks[disk].capacity
 
     def identity_of_node(self, node):
         """Get node ID"""
-        return self.storage_resources[node].get_identity()
+        self.log.debug(f"Querying identity of node : {node}")
+        return self.storage_resources[node].identity
 
     def is_empty(self):
         """Check whether any storage resources are populated or not"""
@@ -135,7 +142,7 @@ class ResourceCatalog:
         """Append the given resources received from a server to the catalog."""
 
         for node in resources:
-            node.set_identity(src_identity)
+            node.identity = src_identity
             self.storage_resources.append(node)
 
     def print_status(self, target_node_id, target_disk_id):
@@ -149,8 +156,8 @@ class ResourceCatalog:
                 job_list.extend(self.storage_resources[n].disks[d].allocs)
 
         if job_list:
-            earliest_request = min([x.start_time() for x in job_list])
-            latest_request = max([x.end_time() for x in job_list])
+            earliest_request = min([x.start_time for x in job_list])
+            latest_request = max([x.end_time for x in job_list])
             steps = int((latest_request - earliest_request).seconds / 300)  # granularity: 5 minutes
         else:
             earliest_request = 0
@@ -172,10 +179,10 @@ class ResourceCatalog:
                             print("│" + str(d).rjust(3) + "│", end="")
                         else:
                             print("│   │", end="")
-                        offset = int((j.start_time() - earliest_request).seconds / 300)
+                        offset = int((j.start_time - earliest_request).seconds / 300)
                         for o in range(0, offset):
                             print(" ", end="")
-                        req_time = int((j.end_time() - j.start_time()).seconds / 300)
+                        req_time = int((j.end_time - j.start_time()).seconds / 300)
                         req_time = 1 if req_time == 0 else req_time
                         for j in range(0, req_time):
                             if (

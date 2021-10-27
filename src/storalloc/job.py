@@ -3,7 +3,8 @@
 """
 
 import datetime as dt
-import logging
+
+from storalloc.logging import get_storalloc_logger
 
 # TODO : use enum class for job status ?
 
@@ -20,23 +21,23 @@ class Job:
         if it's part of a simulation or not
         """
 
+        self.log = get_storalloc_logger()
+
         self.uid = job_id
         self.client_identity = client_identity
 
         self.request = request
-        logging.debug(
-            "[" + str(self.uid).zfill(5) + "] New incoming request: " + self.request.to_string()
-        )
+        self.log.debug(f"[{self.uid:05}] New incoming request: {request}")
 
         self._status = "new"
         self._submission_time = dt.datetime.now(dt.timezone.utc)
 
-        if self.request.start_time() is not None and simulate:
-            self.start_time = self.request.start_time()
+        if self.request.start_time is not None and simulate:
+            self.start_time = self.request.start_time
         else:
             self.start_time = dt.datetime.now(dt.timezone.utc)
 
-        self.end_time = self.start_time + dt.timedelta(seconds=self.request.duration())
+        self.end_time = self.start_time + dt.timedelta(seconds=self.request.duration)
 
     def set_queued(self):
         """Change job status to queued"""
