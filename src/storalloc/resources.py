@@ -1,76 +1,50 @@
-#!/usr/bin/env python3
+""" Storalloc
+    Hadware resources abstraction
+"""
 
 import yaml
 
+# TODO: turn resource classes into namedtuple definitions ?
 
-class Node(object):
+
+class Node:
     """Node class
 
     Describe a storage node as a remote node with a set of disks
     """
 
     def __init__(self, idx, node):
-        super().__init__()
+        """Init a storage node from dict of parameters"""
 
-        self._idx = idx
-        self._identity = ""
-        self._hostname = node["hostname"]
-        self._ipv4 = node["ipv4"]
-        self._bw = node["network_bw"]
-
-        self.disks = list()
-
-    def get_idx(self):
-        return self._idx
-
-    def set_identity(self, identity):
-        self._identity = identity
-
-    def get_identity(self):
-        return self._identity
-
-    def get_ipv4(self):
-        return self._ipv4
-
-    def get_bw(self):
-        return self._bw
+        self.idx = idx
+        self.identity = ""
+        self.hostname = node["hostname"]
+        self.ipv4 = node["ipv4"]
+        self.bw = node["network_bw"]
+        self.disks = []
 
 
-class Disk(object):
+class Disk:
     """Disk class
 
     Define a disk with a set of characteristics, including allocated space by jobs
     """
 
     def __init__(self, idx, disk):
-        super().__init__()
+        """Disk representation"""
 
-        self._idx = idx
-
-        self._vendor = disk["vendor"]
-        self._model = disk["model"]
-        self._serial = disk["serial"]
-        self._capacity = disk["capacity"]
-        self._w_bw = disk["w_bw"]
-        self._r_bw = disk["r_bw"]
-        self._blk_dev = disk["blk_dev"]
-
-        self.allocs = list()
-
-    def get_idx(self):
-        return self._idx
-
-    def get_bw(self):
-        return self._w_bw
-
-    def get_capacity(self):
-        return self._capacity
-
-    def get_blk_dev(self):
-        return self._blk_dev
+        self.idx = idx
+        self.vendor = disk["vendor"]
+        self.model = disk["model"]
+        self.serial = disk["serial"]
+        self.capacity = disk["capacity"]
+        self.w_bw = disk["w_bw"]
+        self.r_bw = disk["r_bw"]
+        self.blk_dev = disk["blk_dev"]
+        self.allocs = []
 
 
-class DiskStatus(object):
+class DiskStatus:
     """Disk status class
 
     This object is used temporarily to store the status (bw, occupancy, ...)  of a disk
@@ -78,16 +52,14 @@ class DiskStatus(object):
     """
 
     def __init__(self, idx, capacity):
+        """Disk status"""
         super().__init__()
-        self._idx = idx
+        self.idx = idx
         self.bw = 0.0
         self.capacity = capacity
 
-    def get_idx(self):
-        return self._idx
 
-
-class NodeStatus(object):
+class NodeStatus:
     """Node status class
 
     This object is used temporarily to store the status (bw, occupancy, ...)  of a node
@@ -95,16 +67,12 @@ class NodeStatus(object):
     """
 
     def __init__(self, idx):
-        super().__init__()
-        self._idx = idx
+        self.idx = idx
         self.bw = 0.0
-        self.disk_status = list()
-
-    def get_idx(self):
-        return self._idx
+        self.disk_status = []
 
 
-class ResourceCatalog(object):
+class ResourceCatalog:
     """ResourceCatalog class
 
     List of nodes and disks on nodes available for storage allocations.
@@ -112,8 +80,7 @@ class ResourceCatalog(object):
     """
 
     def __init__(self):
-        super().__init__()
-        self._storage_resources = list()
+        self.storage_resources = []
 
     @classmethod
     def from_yaml(cls, yaml_file):
@@ -122,42 +89,45 @@ class ResourceCatalog(object):
         resource_catalog = cls()
 
         # TODO: file exists?
-        stream = open(yaml_file, "r")
-        content = yaml.safe_load(stream)
-        stream.close()
+        with open(yaml_file, "r", encoding="utf-8") as yaml_stream:
+            content = yaml.safe_load(yaml_stream)
 
         for idx_n, node in enumerate(content["hosts"]):
             new_node = Node(idx_n, node)
             for idx_d, disk in enumerate(node["disks"]):
                 new_disk = Disk(idx_d, disk)
                 new_node.disks.append(new_disk)
-            resource_catalog._storage_resources.append(new_node)
+            resource_catalog.storage_resources.append(new_node)
 
         return resource_catalog
 
     def add_allocation(self, node, disk, job):
-        self._storage_resources[node].disks[disk].allocs.append(job)
-
-    def get_resources_list(self):
-        return self._storage_resources
+        """Add allocation in a given disk of a given node, for a specific job"""
+        self.storage_resources[node].disks[disk].allocs.append(job)
 
     def get_node(self, node):
-        return self._storage_resources[node]
+        """Get a specific node from list of resources"""
+        return self.storage_resources[node]
 
     def node_count(self):
-        return len(self._storage_resources)
+        """Return node count from resource list"""
+        return len(self.storage_resources)
 
     def disk_count(self, node):
-        return len(self._storage_resources[node].disks)
+        """Return disk count for a specific node"""
+        return len(self.storage_resources[node].disks)
 
     def disk_capacity(self, node, disk):
-        return self._storage_resources[node].disks[disk].get_capacity()
+        """Return disk capacity for a specific disk in a specific node"""
+        return self.storage_resources[node].disks[disk].get_capacity()
 
     def identity_of_node(self, node):
-        return self._storage_resources[node].get_identity()
+        """Get node ID"""
+        return self.storage_resources[node].get_identity()
 
     def is_empty(self):
-        if not self._storage_resources:
+        """Check whether any storage resources are populated or not"""
+        if not self.storage_resources:
             return True
         return False
 
@@ -166,16 +136,17 @@ class ResourceCatalog(object):
 
         for node in resources:
             node.set_identity(src_identity)
-            self._storage_resources.append(node)
+            self.storage_resources.append(node)
 
     def print_status(self, target_node_id, target_disk_id):
         """ASCII-based output of the given scheduling."""
+        # TODO: Has to be deleted entirely at some point
 
         # Concatenate lists of requests per disk to determine ealiest start time and latest end time
         job_list = list()
-        for n in range(0, len(self._storage_resources)):
-            for d in range(0, len(self._storage_resources[n].disks)):
-                job_list.extend(self._storage_resources[n].disks[d].allocs)
+        for n in range(0, len(self.storage_resources)):
+            for d in range(0, len(self.storage_resources[n].disks)):
+                job_list.extend(self.storage_resources[n].disks[d].allocs)
 
         if job_list:
             earliest_request = min([x.start_time() for x in job_list])
@@ -187,16 +158,16 @@ class ResourceCatalog(object):
             steps = 0
 
         # Print the current status of the scheduling on nodes and disks
-        for n in range(0, len(self._storage_resources)):
+        for n in range(0, len(self.storage_resources)):
             print("┌───┬", end="")
             for s in range(0, steps):
                 print("─", end="")
             print()
-            for d in range(0, len(self._storage_resources[n].disks)):
-                if not self._storage_resources[n].disks[d].allocs:
+            for d in range(0, len(self.storage_resources[n].disks)):
+                if not self.storage_resources[n].disks[d].allocs:
                     print("│" + str(d).rjust(3) + "│")
                 else:
-                    for i, j in enumerate(self._storage_resources[n].disks[d].allocs):
+                    for i, j in enumerate(self.storage_resources[n].disks[d].allocs):
                         if i == 0:
                             print("│" + str(d).rjust(3) + "│", end="")
                         else:
@@ -210,13 +181,13 @@ class ResourceCatalog(object):
                             if (
                                 target_node_id == n
                                 and target_disk_id == d
-                                and i == len(self._storage_resources[n].disks[d].allocs) - 1
+                                and i == len(self.storage_resources[n].disks[d].allocs) - 1
                             ):
                                 print("□", end="")
                             else:
                                 print("■", end="")
                         print()
-                if d < len(self._storage_resources[n].disks) - 1:
+                if d < len(self.storage_resources[n].disks) - 1:
                     print("├---┼", end="")
                     for s in range(0, steps):
                         print("-", end="")
