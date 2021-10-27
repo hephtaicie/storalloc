@@ -13,7 +13,7 @@ class ThreadAlloc_meta(type):
     """ThreadAllocation metaclass"""
 
     def __init__(cls, *args, **kwargs):
-
+        """"""
         cls._current_time = None
 
     @property
@@ -59,6 +59,8 @@ class ThreadAlloc(threading.Thread, metaclass=ThreadAlloc_meta):
 
     @classmethod
     def increaseCurrentTime(self, duration):
+        """Step time"""
+
         timeLock.acquire()
         print("ThreadAlloc : current time = " + str(ThreadAlloc.time))
         print("ThreadAlloc : increase currentTime by " + str(duration) + " minutes")
@@ -67,8 +69,9 @@ class ThreadAlloc(threading.Thread, metaclass=ThreadAlloc_meta):
         timeLock.release()
 
     def checkDeallocation(self):
-        print("Checking if Thread " + str(self._allocID) + " resources have to be deallocated")
-        if ThreadAlloc.time >= self._allocTimestamp + datetime.timedelta(
+        """Checking if resources have correctly been deallocated"""
+        print("Checking if Thread " + str(self._alloc_iD) + " resources have to be deallocated")
+        if ThreadAlloc.time >= self._alloc_timestamp + datetime.timedelta(
             minutes=self._allocDuration
         ):
             print(

@@ -1,11 +1,15 @@
-#!/usr/bin/env python3
+""" Storalloc
+    Scheduler stargegy
+"""
 
 import sys
 from storalloc.strategies.worst_case import WorstCase
 from storalloc.strategies.random_alloc import RandomAlloc
 
 
-class SchedStrategy(object):
+class SchedStrategy:
+    """Choice of scheduling algorithm"""
+
     def __init__(self):
         super().__init__()
         self._strategy_str = ""
@@ -16,6 +20,8 @@ class SchedStrategy(object):
         self._target_disk = None
 
     def set_strategy(self, strategy):
+        """Set a strategy"""
+
         self._strategy_str = strategy
 
         if self._strategy_str == "random_alloc":
@@ -29,6 +35,7 @@ class SchedStrategy(object):
             sys.exit(1)
 
     def compute(self, resource_catalog, job):
+        """Actually call the chosen scheduling strategy"""
         if resource_catalog.is_empty():
             return -1, -1
 
