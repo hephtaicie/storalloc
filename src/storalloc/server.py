@@ -56,9 +56,7 @@ def run(config_file, system, reset, simulate):
     """
 
     if not simulate and os.getuid() != 0:
-        print(
-            "Error: this script must be run with root privileges in a non-simulated mode!"
-        )
+        print("Error: this script must be run with root privileges in a non-simulated mode!")
         sys.exit(1)
 
     conf = ConfigFile(config_file)

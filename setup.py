@@ -50,11 +50,11 @@ setup(
         "Pillow>=8.3.0",
         "PyYAML>=5.4.1",
         "pyzmq>=22.1.0",
-        "click",
+        "click>=8.0",
     ],
     extras_require={  # Optional
-        # "dev": ["check-manifest"],
-        "test": ["pytest", "pytest-cov"],
+        "dev": ["black>=21.9b0"],
+        "test": ["tox", "pylint", "pytest", "pytest-cov"],
     },
     entry_points={
         "console_scripts": [

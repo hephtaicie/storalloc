@@ -1,11 +1,14 @@
-#!/usr/bin/env python3
+""" Storalloc
+    Default Job implementation
+"""
 
 import datetime as dt
 import logging
-from storalloc.request import Request
+
+# TODO : use enum class for job status ?
 
 
-class Job(object):
+class Job:
     """Job
 
     A job object represents a request from a client, including connection id of the client,
@@ -13,51 +16,46 @@ class Job(object):
     """
 
     def __init__(self, job_id, client_identity, request, simulate):
-        super().__init__()
+        """Init job with an id, a client, the request from whichit originates, and choose
+        if it's part of a simulation or not
+        """
 
-        self._job_id = job_id
-        self._client_identity = client_identity
+        self.job_id = job_id
+        self.client_identity = client_identity
 
         self.request = request
         logging.debug(
-            "[" + str(self._job_id).zfill(5) + "] New incoming request: " + self.request.to_string()
+            "[" + str(self.job_id).zfill(5) + "] New incoming request: " + self.request.to_string()
         )
 
         self._status = "new"
         self._submission_time = dt.datetime.now(dt.timezone.utc)
 
         if self.request.start_time() is not None and simulate:
-            self._start_time = self.request.start_time()
+            self.start_time = self.request.start_time()
         else:
-            self._start_time = dt.datetime.now(dt.timezone.utc)
+            self.start_time = dt.datetime.now(dt.timezone.utc)
 
-        self._end_time = self._start_time + dt.timedelta(seconds=self.request.duration())
-
-    def id(self):
-        return self._job_id
-
-    def client_identity(self):
-        return self._client_identity
-
-    def start_time(self):
-        return self._start_time
-
-    def end_time(self):
-        return self._end_time
+        self.end_time = self.start_time + dt.timedelta(seconds=self.request.duration())
 
     def set_queued(self):
+        """Change job status to queued"""
         self._status = "queued"
 
     def set_allocated(self):
+        """Change job status to allocated"""
         self._status = "allocated"
 
     def set_pending(self):
+        """Change job status to pending"""
         self._status = "pending"
 
     def is_pending(self):
+        """Check whether or not job is currently in 'pending' state"""
         if self._status == "pending":
             return True
         return False
 
     def relative_start_time(self, origin):
-        return (self._start_time - origin).total_seconds()
+        """Get job relative start time (compared to 'origin')"""
+        return (self.start_time - origin).total_seconds()

@@ -1,16 +1,19 @@
-#!/usr/bin/env python3
+""" Storalloc
+    ThreadAllocation
+"""
 
-import time
 import threading
 import datetime
-import sys
 import subprocess
 
 time_lock = threading.Lock()
 
 
 class ThreadAlloc_meta(type):
+    """ThreadAllocation metaclass"""
+
     def __init__(cls, *args, **kwargs):
+
         cls._current_time = None
 
     @property
