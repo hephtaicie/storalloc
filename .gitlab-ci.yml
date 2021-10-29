@@ -1,0 +1,15 @@
+before_script:
+  - date
+  - env
+
+stages:
+  - lint
+
+black:
+  stage: lint
+  image: python:3.9.7
+  script:
+    - pip install tox
+    - tox -e black
+  tags:
+    - storalloc
