@@ -3,65 +3,80 @@
 """
 
 import datetime
+import uuid
 import zmq
 
 from storalloc.message import Message
-from storalloc.config_file import ConfigFile
+from storalloc.config import config_from_yaml
 from storalloc.logging import get_storalloc_logger
 
 
-def zmq_init(conf: ConfigFile):
-    """Connect to orchestrator with ZeroMQ"""
+class Client:
+    """Default client for Storalloc"""
 
-    context = zmq.Context()
-    sock = context.socket(zmq.DEALER)  # pylint: disable=no-member
-    sock.connect(f"tcp://{conf.get_orch_ipv4()}:{conf.get_orch_port()}")
-    return (context, sock)
+    def __init__(self, config_path: str, uid: str = None, verbose: bool = True):
+        """Init a client with a yaml configuration file"""
 
+        self.uid = uid or str(uuid.uuid4().hex)
 
-def run(
-    config: str,
-    size: int,
-    time: datetime.datetime,
-    start_time: datetime.datetime = None,
-    eos: bool = False,
-):
-    """Init and start a new client"""
+        self.log = get_storalloc_logger(verbose)
+        self.conf = config_from_yaml(config_path)
+        self.context, self.socket = self.zmq_init()
 
-    log = get_storalloc_logger()
+    def zmq_init(self):
+        """Connect to orchestrator with ZeroMQ"""
 
-    conf = ConfigFile(config)
+        self.log.info(f"Initialise ZMQ Context for Client {self.uid}")
+        context = zmq.Context()
+        sock = context.socket(zmq.DEALER)  # pylint: disable=no-member
 
-    context, sock = zmq_init(conf)
+        if self.conf["transport"] == "tcp":
+            url = f"tcp://{self.conf['orchestrator_addr']}:{self.conf['client_port']}"
+        elif self.conf["transport"] == "ipc":
+            url = f"ipc://{self.conf['orchestrator_fr_ipc']}.ipc"
 
-    request = f"{size},{time},{start_time}"
-    log.info(f"New user request [{request}]")
+        self.log.debug(f"Client {self.uid} connecting to the orchestrator at ({url})")
+        sock.connect(url)
 
-    if eos:
-        message = Message("eos", request)
-    else:
-        message = Message("request", request)
+        return (context, sock)
 
-    log.debug(f"Submitting user message [{message}]")
+    def run(
+        self,
+        size: int,
+        time: datetime.datetime,
+        start_time: datetime.datetime = None,
+        eos: bool = False,
+    ):
+        """Init and start a new client"""
 
-    sock.send(message.pack())
+        request = f"{size},{time},{start_time}"
+        self.log.info(f"Payload for new user request : [{request}]")
 
-    while True:
-        data = sock.recv()
-        message = Message.from_packed_message(data)
+        if eos:
+            message = Message("eos", request)
+        else:
+            message = Message("request", request)
 
-        if message.type == "notification":
-            log.info(f"New notification received [{message.content}]")
-        elif message.type == "allocation":
-            log.info(f"New allocation received [{message.content}]")
-            # Do stuff with connection details
-            break
-        elif message.type == "error":
-            break
-        elif message.type == "shutdown":
-            log.warning("Orchestrator has asked to close the connection")
-            break
+        self.log.debug(f"Submitting user message [{message}]")
 
-    # should be part of some context manager ?
-    sock.close(linger=0)
-    context.term()
+        self.socket.send(message.pack())
+
+        while True:
+            data = self.socket.recv()
+            message = Message.from_packed_message(data)
+
+            if message.type == "notification":
+                self.log.info(f"New notification received [{message.content}]")
+            elif message.type == "allocation":
+                self.log.info(f"New allocation received [{message.content}]")
+                # Do stuff with connection details
+                break
+            elif message.type == "error":
+                break
+            elif message.type == "shutdown":
+                self.log.warning("Orchestrator has asked to close the connection")
+                break
+
+        # should be part of some context manager ?
+        self.socket.close(linger=0)
+        self.context.term()

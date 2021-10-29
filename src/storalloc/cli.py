@@ -53,6 +53,7 @@ def cli(ctx, verbose):
 def run_server(ctx, config, system, reset, simulate):
     """Server command"""
     click.secho("[~] Starting server...", fg="green")
+
     server.run(config, system, reset, simulate)
 
 
@@ -124,9 +125,11 @@ def run_client(ctx, config, size, time, start_time, eos):
             hours=time.hour, minutes=time.minute, seconds=time.second
         ).total_seconds()
     )
-    client.run(config, size, time_delta, start_time, eos)
+
+    client_endpoint = client.Client(config, verbose=ctx.obj["verbose"])
+    client_endpoint.run(size, time_delta, start_time, eos)
 
 
 if __name__ == "__main__":
-    """CLI Entrypoint"""
-    cli(obj={})
+
+    cli(obj={})  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter

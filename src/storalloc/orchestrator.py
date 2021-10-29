@@ -14,7 +14,7 @@ from storalloc.request import Request
 from storalloc.job_queue import JobQueue
 from storalloc.sched_strategy import SchedStrategy
 from storalloc.resources import ResourceCatalog
-from storalloc.config_file import ConfigFile
+from storalloc.config import config_from_yaml
 from storalloc.message import Message
 from storalloc.logging import get_storalloc_logger
 
@@ -26,44 +26,48 @@ def recv_msg(socket):
     return (identities, data)
 
 
-def zmq_init(conf: ConfigFile):
-    """Init ZMQ in order to be ready for connections"""
-
-    context = zmq.Context()
-
-    client_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
-    client_socket.bind(
-        f"tcp://{conf.get_orch_client_bind_ipv4()}:{conf.get_orch_client_bind_port()}"
-    )
-
-    server_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
-    server_socket.bind(
-        f"tcp://{conf.get_orch_server_bind_ipv4()}:{conf.get_orch_server_bind_port()}"
-    )
-
-    poller = zmq.Poller()
-    poller.register(server_socket, zmq.POLLIN)
-    poller.register(client_socket, zmq.POLLIN)
-
-    return (client_socket, server_socket, poller)
-
-
 class Orchestrator:
     """Default orchestrator"""
 
-    def __init__(self, config_file: str, simulate: bool):
+    def __init__(self, config_path: str):
         """Init orchestrator"""
 
         self.log = get_storalloc_logger()
-        self.conf = ConfigFile(config_file)
-        self.simulate = simulate
-        self.client_socket, self.server_socket, self.poller = zmq_init(self.conf)
+        self.conf = config_from_yaml(config_path)
+        self.client_socket, self.server_socket, self.poller = self.zmq_init()
         self.pending_jobs = JobQueue()
         self.running_jobs = JobQueue()
-        self.resource_catalog = ResourceCatalog()
+        self.rcatalog = ResourceCatalog()
         self.scheduling_strategy = SchedStrategy()
-        self.scheduling_strategy.set_strategy(self.conf.get_orch_strategy())
-        self.env = simpy.Environment()
+        self.scheduling_strategy.set_strategy(self.conf["sched_strategy"])
+        # self.env = simpy.Environment()
+
+    def zmq_init(self):
+        """Init ZMQ in order to be ready for connections"""
+
+        context = zmq.Context()
+
+        if self.conf["transport"] == "tcp":
+            client_url = f"tcp://{self.conf['orchestrator_addr']}:{self.conf['client_port']}"
+            server_url = f"tcp://{self.conf['orchestrator_addr']}:{self.conf['server_port']}"
+        elif self.conf["transport"] == "ipc":
+            client_url = f"ipc://{self.conf['orchestrator_fe_ipc']}.ipc"
+            server_url = f"ipc://{self.conf['orchestrator_be_ipc']}.ipc"
+
+        self.log.info(f"Binding socket for client on {client_url}")
+        client_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
+        client_socket.bind(client_url)
+
+        self.log.info(f"Binding socket for server on {server_url}")
+        server_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
+        server_socket.bind(server_url)
+
+        self.log.info("Creating poller for both client and server")
+        poller = zmq.Poller()
+        poller.register(server_socket, zmq.POLLIN)
+        poller.register(client_socket, zmq.POLLIN)
+
+        return (client_socket, server_socket, poller)
 
     def grant_allocation(self, job, target_node, target_disk):
         """Grant a storage request and register it"""
@@ -77,7 +81,7 @@ class Orchestrator:
             "duration": job.request.duration,
         }
         identities = [
-            self.resource_catalog.identity_of_node(target_node),
+            self.rcatalog.identity_of_node(target_node),
             job.client_identity,
         ]
         notification = Message("allocate", alloc_request)
@@ -87,8 +91,8 @@ class Orchestrator:
         self.running_jobs.add(job)
         self.pending_jobs.remove(job)
 
-        self.resource_catalog.add_allocation(target_node, target_disk, job)
-        self.resource_catalog.print_status(target_node, target_disk)
+        self.rcatalog.add_allocation(target_node, target_disk, job)
+        self.rcatalog.print_status(target_node, target_disk)
 
         notification = Message("notification", f"Granted job allocation {job.uid}")
         notification.send(self.client_socket, job.client_identity)
@@ -102,7 +106,7 @@ class Orchestrator:
 
         yield self.env.timeout(job.sim_start_time(earliest_start_time))
 
-        target_node, target_disk = self.scheduling_strategy.compute(self.resource_catalog, job)
+        target_node, target_disk = self.scheduling_strategy.compute(self.rcatalog, job)
 
         # If a disk on a node has been found, we allocate the request
         if target_node >= 0 and target_disk >= 0:
@@ -114,7 +118,7 @@ class Orchestrator:
         # Duration + Fix seconds VS minutes
         yield self.env.timeout(job.sim_start_time())
 
-    def run(self):
+    def run(self, simulate: bool):
         """Init and start an orchestrator"""
 
         current_job_id = 0
@@ -142,7 +146,7 @@ class Orchestrator:
                         notification = Message("error", "Wrong request")
                         notification.send(self.client_socket, client_id)
                     else:
-                        job = Job(current_job_id, client_id, req, self.simulate)
+                        job = Job(current_job_id, client_id, req, simulate)
                         current_job_id += 1
 
                         notification = Message("notification", f"Pending job allocation {job.uid}")
@@ -172,7 +176,7 @@ class Orchestrator:
 
                 if message.type == "register":
                     server_id = identities[0]
-                    self.resource_catalog.append_resources(server_id, message.content)
+                    self.rcatalog.append_resources(server_id, message.content)
                     logging.debug("Server registered. New resources available.")
                     # TODO: setup monitoring system with newly added resources
                 elif message.type == "connection":
@@ -185,7 +189,7 @@ class Orchestrator:
             ################
             # PROCESS QUEUES
             ################
-            if self.simulate:
+            if simulate:
                 if end_of_simulation:
 
                     earliest_start_time = datetime.datetime.now()
@@ -207,9 +211,7 @@ class Orchestrator:
                     self.env.run(until=sim_duration)
             else:
                 for job in self.pending_jobs:
-                    target_node, target_disk = self.scheduling_strategy.compute(
-                        self.resource_catalog, job
-                    )
+                    target_node, target_disk = self.scheduling_strategy.compute(self.rcatalog, job)
 
                     # If a disk on a node has been found, we allocate the request
                     if target_node >= 0 and target_disk >= 0:
