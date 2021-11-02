@@ -53,8 +53,8 @@ def cli(ctx, verbose):
 def run_server(ctx, config, system, reset, simulate):
     """Server command"""
     click.secho("[~] Starting server...", fg="green")
-
-    server.run(config, system, reset, simulate)
+    cli_server = server.Server(config, system, verbose=ctx.obj["verbose"])
+    cli_server.run(reset, simulate)
 
 
 # ORCHESTRATOR
@@ -75,8 +75,8 @@ def run_server(ctx, config, system, reset, simulate):
 def run_orchestrator(ctx, config, simulate):
     """Orchestrator command"""
     click.secho("[~] Starting orchestrator...", fg="green")
-    orches = orchestrator.Orchestrator(config, simulate)
-    orches.run()
+    orches = orchestrator.Orchestrator(config)
+    orches.run(simulate)
 
 
 # CLIENT

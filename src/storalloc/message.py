@@ -38,9 +38,9 @@ class Message:
     @classmethod
     def unpack(cls, packed_data: bytes):
         """Extract message from packed data"""
-        category_id, content = msgpack.unpackb(packed_data)
+        category_id, content = msgpack.unpackb(packed_data, use_list=False)
         return cls(MsgCat(category_id), content)
 
     def pack(self):
         """Pack message into MessagePack serialised data"""
-        return msgpack.packb([self.category, self.content])
+        return msgpack.packb([self.category.value, self.content])

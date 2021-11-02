@@ -18,7 +18,7 @@ class Request:
     def __post_init__(self):
         """Init request object from raw request"""
 
-        req_parts = [int(part) for part in self.raw_request.split(",")]
+        req_parts = self.raw_request.split(",")
         assert len(req_parts) == 3  # capacity, duration, start_time
         self.capacity = int(req_parts[0])
         self.duration = int(req_parts[1])

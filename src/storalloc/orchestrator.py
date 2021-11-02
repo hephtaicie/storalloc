@@ -11,7 +11,7 @@ from storalloc.job import Job, JobStatus
 from storalloc.request import Request
 from storalloc.job_queue import JobQueue
 from storalloc.sched_strategy import SchedStrategy
-from storalloc.resources import ResourceCatalog
+from storalloc.resources import ResourceCatalog, Node
 from storalloc.config import config_from_yaml
 from storalloc.message import Message, MsgCat
 from storalloc.logging import get_storalloc_logger
@@ -94,7 +94,7 @@ class Orchestrator:
         self.rcatalog.print_status(target_node, target_disk)
 
         notification = Message(MsgCat.NOTIFICATION, f"Granted job allocation {job.uid}")
-        self.client_socket.send_multipart(job.client_identity, notification.pack())
+        self.client_socket.send_multipart([job.client_identity, notification.pack()])
         # notification.send(self.client_socket, job.client_identity)
 
     def release_allocation(self, job: Job):
@@ -127,7 +127,7 @@ class Orchestrator:
                         req = Request(message.content)
                     except ValueError:
                         notification = Message(MsgCat.ERROR, "Wrong request")
-                        self.client_socket.send_mulipart(client_id, notification.pack())
+                        self.client_socket.send_multipart([client_id, notification.pack()])
                         # notification.send(self.client_socket, client_id)
                     else:
                         job = Job(current_job_id, client_id, req, simulate)
@@ -136,7 +136,10 @@ class Orchestrator:
                         notification = Message(
                             MsgCat.NOTIFICATION, f"Pending job allocation {job.uid}"
                         )
-                        self.client_socket.send_mulipart(client_id, notification.pack())
+                        print(notification)
+                        print(notification.pack())
+                        print(client_id)
+                        self.client_socket.send_multipart([client_id, notification.pack()])
                         # notification.send(self.client_socket, client_id)
 
                         job.status = JobStatus.QUEUED
@@ -146,12 +149,12 @@ class Orchestrator:
                             MsgCat.NOTIFICATION,
                             f"job {job.uid} queued and waiting for resources",
                         )
-                        self.client_socket.send_mulipart(client_id, notification.pack())
+                        self.client_socket.send_multipart([client_id, notification.pack()])
                         # notification.send(self.client_socket, client_id)
                 elif message.category == MsgCat.EOS:
                     end_of_simulation = True
                     notification = Message(MsgCat.SHUTDOWN, None)
-                    self.client_socket.send_mulipart(client_id, notification.pack())
+                    self.client_socket.send_multipart([client_id, notification.pack()])
                     # notification.send(self.client_socket, client_id)
                 else:
                     self.log.warning(
@@ -167,13 +170,15 @@ class Orchestrator:
 
                 if message.category == MsgCat.REGISTRATION:
                     server_id = identities[0]
-                    self.rcatalog.append_resources(server_id, message.content)
+                    self.rcatalog.append_resources(
+                        server_id, [Node.from_dict(data) for data in message.content]
+                    )
                     logging.debug("Server registered. New resources available.")
                     # TODO: setup monitoring system with newly added resources
                 elif message.category == MsgCat.CONNECTION:
                     client_id = identities[1]
                     notification = Message(MsgCat.ALLOCATION, message.content)
-                    self.client_socket.send_mulipart(client_id, notification.pack())
+                    self.client_socket.send_multipart([client_id, notification.pack()])
                     # notification.send(self.client_socket, client_id)
                 else:
                     self.log.warning(

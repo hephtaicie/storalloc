@@ -11,21 +11,19 @@ from storalloc.logging import get_storalloc_logger
 # Cerberus
 
 CONFIG_SCHEMA = {
-    "orchestrator_hostname": {"type": "str"},
-    "orchestrator_addr": {"type": "str"},
-    "orchestrator_fe_ipc": {"type": "str"},
-    "orchestrator_be_ipc": {"type": "str"},
-    "client_port": {"type": "int", "min": 1025, "max": 65535, "required": False},
-    "server_port": {"type": "int", "min": 1025, "max": 65535, "required": False},
-    "transport": {"type": "str", "allowed": ["tcp", "ipc"]},
-    "sched_strategy": {"type": "str", "allowed": ["random_alloc", "worst_case"]},
+    "orchestrator_hostname": {"type": "string"},
+    "orchestrator_addr": {"type": "string"},
+    "orchestrator_fe_ipc": {"type": "string"},
+    "orchestrator_be_ipc": {"type": "string"},
+    "client_port": {"type": "integer", "min": 1025, "max": 65535, "required": False},
+    "server_port": {"type": "integer", "min": 1025, "max": 65535, "required": False},
+    "transport": {"type": "string", "allowed": ["tcp", "ipc"]},
+    "sched_strategy": {"type": "string", "allowed": ["random_alloc", "worst_case"]},
     "simulation": {
-        {
-            "type": "dict",
-            "schema": {
-                "nb_clients": {"type": "int"},
-                "nb_servers": {"type": "int"},
-            },
+        "type": "dict",
+        "schema": {
+            "nb_clients": {"type": "integer"},
+            "nb_servers": {"type": "integer"},
         },
     },
 }

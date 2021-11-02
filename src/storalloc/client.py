@@ -17,7 +17,7 @@ class Client:
     def __init__(self, config_path: str, uid: str = None, verbose: bool = True):
         """Init a client with a yaml configuration file"""
 
-        self.uid = uid or str(uuid.uuid4().hex)
+        self.uid = uid or str(uuid.uuid4().hex)[:6]
 
         self.log = get_storalloc_logger(verbose)
         self.conf = config_from_yaml(config_path)

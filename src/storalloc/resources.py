@@ -14,25 +14,43 @@ class Disk:
     """Disk class Define a disk from a node, including allocated space by jobs"""
 
     uid: int
-    vendor: str = ""
-    model: str = ""
-    serial: str = ""
-    capacity: int = 0
-    write_bandwidth: float = 0.0
-    read_bandwidth: float = 0.0
-    block_device: str = ""
+    vendor: str
+    model: str
+    serial: str
+    capacity: int
+    write_bandwidth: float
+    read_bandwidth: float
+    block_device: str
     allocations: "typing.Any" = field(default_factory=list)
 
-    def from_yaml_disk(self, disk):
-        """Disk representation"""
+    def to_dict(self):
+        """Export disk to dict format"""
+        return {
+            "uid": self.uid,
+            "vendor": self.vendor,
+            "model": self.serial,
+            "capacity": self.capacity,
+            "write_bandwidth": self.write_bandwidth,
+            "read_bandwidth": self.read_bandwidth,
+            "block_device": self.block_device,
+            "allocations": self.allocations,
+        }
 
-        self.vendor = disk["vendor"]
-        self.model = disk["model"]
-        self.serial = disk["serial"]
-        self.capacity = disk["capacity"]
-        self.write_bandwidth = disk["w_bw"]
-        self.read_bandwidth = disk["r_bw"]
-        self.block_device = disk["blk_dev"]
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Create disk from dictionnary (either for yaml import or deserialisation"""
+        disk = cls(
+            data["uid"],
+            data["vendor"],
+            data["model"],
+            data["serial"],
+            data["capacity"],
+            data["write_bandwidth"],
+            data["read_bandwidth"],
+            data["block_device"],
+        )
+        disk.allocations = data["allocations"] if data.get("allocations") else []
+        return disk
 
 
 @dataclass
@@ -47,6 +65,25 @@ class Node:
     bandwidth: float = 0
     disks: list[Disk] = field(default_factory=list, init=False, repr=False)
     identity: str = field(default="", init=False)
+
+    def to_dict(self):
+        """Dictionnary representation for serialisation"""
+        return {
+            "uid": self.uid,
+            "hostname": self.hostname,
+            "ipv4": self.ipv4,
+            "bandwidth": self.bandwidth,
+            "identidy": self.identity,
+            "disks": [disk.to_dict() for disk in self.disks],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Create Node object from dict, for deserialisation"""
+        node = cls(data["uid"], data["hostname"], data["ipv4"], data["bandwidth"])
+        node.identity = data["identity"] if data.get("identity") else ""
+        node.disks = data["disks"]
+        return node
 
 
 @dataclass
@@ -104,12 +141,12 @@ class ResourceCatalog:
                     uid=index,  # So far we use the index as node identifier, that may change
                     hostname=node["hostname"],
                     ipv4=node["ipv4"],
-                    bandwidth=node["bandwidth"],
+                    bandwidth=node["network_bw"],
                 )
 
                 for dindex, disk in enumerate(node["disks"]):
-                    new_disk = Disk(dindex)
-                    new_disk.from_yaml_disk(disk)
+                    disk["uid"] = dindex
+                    new_disk = Disk.from_dict(disk)
                     new_node.disks.append(new_disk)
 
                 self.storage_resources.append(new_node)
@@ -118,7 +155,7 @@ class ResourceCatalog:
 
     def add_allocation(self, node_id: int, disk_id: int, job):
         """Add allocation in a given disk of a given node, for a specific job"""
-        self.storage_resources[node_id].disks[disk_id].allocs.append(job)
+        self.storage_resources[node_id].disks[disk_id].allocations.append(job)
 
     def get_node(self, node_id: int):
         """Get a specific node from list of resources"""
@@ -201,7 +238,7 @@ class ResourceCatalog:
                             if (
                                 target_node_id == node.uid
                                 and target_disk_id == disk.uid
-                                and idx == len(disk.allocs) - 1
+                                and idx == len(disk.allocation) - 1
                             ):
                                 print("□", end="")
                             else:
