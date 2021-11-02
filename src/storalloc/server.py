@@ -12,7 +12,7 @@ import zmq
 
 from storalloc.resources import ResourceCatalog
 from storalloc.config import config_from_yaml
-from storalloc.message import Message
+from storalloc.message import Message, MsgCat
 from storalloc.logging import get_storalloc_logger
 
 # def reset_resources(storage_resources):
@@ -78,37 +78,40 @@ class Server:
 
         if not simulate and os.getuid() != 0:
             self.log.error("This script must be run with root privileges in a non-simulated mode!")
-            # TODO : raise instead of exiting
-            sys.exit(1)
+            raise AttributeError(
+                "This script must be run with root privileges in a non-simulated mode!"
+            )
 
         if reset:
             pass
         #   reset_resources(storage_resources)
 
-        message = Message("register", self.rcatalog.storage_resources)
+        message = Message(MsgCat.REGISTRATION, self.rcatalog.storage_resources)
         self.socket.send(message.pack())
 
         while True:
             frames = self.socket.recv_multipart()
             client_id, data = frames[0], frames[1:]
-            message = Message.from_packed_message(data)
+            message = Message.unpack(data)
 
-            if message.type == "allocate":
+            if message.category == MsgCat.ALLOCATION:
                 self.log.info(f"New allocation received [{message.content}]")
-                job_id = message.content["job_id"]
+                job_id = message.content[
+                    "job_id"
+                ]  # content is supposed to be a dict representing an alloc_resquest
                 connection = {
                     "job_id": job_id,
                     "type": "nvme",
                     "nqn": "nqn.2014-08.com.vendor:nvme:nvm-subsystem-sn-d78432",
                 }
-                message = Message("connection", connection)
+                message = Message(MsgCat.CONNECTION, connection)
                 self.socket.send_multipart([client_id, message.pack()])
-            elif message.type == "deallocate":
+            elif message.category == MsgCat.DEALLOCATION:
                 self.log.info(f"New deallocation received [{message.content}]")
-            elif message.get_type() == "error":
+            elif message.category == MsgCat.ERROR:
                 self.log.error(f"Error received [{message.content}]")
                 break
-            elif message.type == "shutdown":
+            elif message.category == MsgCat.SHUTDOWN:
                 self.log.warning("The orchestrator has asked to close the connection")
                 break
 

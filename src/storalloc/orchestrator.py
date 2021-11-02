@@ -4,18 +4,16 @@
 
 import datetime
 import time
-import sys
 import logging
 import zmq
-import simpy
 
-from storalloc.job import Job
+from storalloc.job import Job, JobStatus
 from storalloc.request import Request
 from storalloc.job_queue import JobQueue
 from storalloc.sched_strategy import SchedStrategy
 from storalloc.resources import ResourceCatalog
 from storalloc.config import config_from_yaml
-from storalloc.message import Message
+from storalloc.message import Message, MsgCat
 from storalloc.logging import get_storalloc_logger
 
 
@@ -69,7 +67,7 @@ class Orchestrator:
 
         return (client_socket, server_socket, poller)
 
-    def grant_allocation(self, job, target_node, target_disk):
+    def grant_allocation(self, job: Job, target_node: int, target_disk: int):
         """Grant a storage request and register it"""
 
         logging.debug(f"[{job.uid:05}] Add {job.request} on node {target_node}, disk {target_disk}")
@@ -84,39 +82,24 @@ class Orchestrator:
             self.rcatalog.identity_of_node(target_node),
             job.client_identity,
         ]
-        notification = Message("allocate", alloc_request)
-        notification.send(self.server_socket, identities)
+        notification = Message(MsgCat.ALLOCATION, alloc_request)
+        self.server_socket.send_multipart(identities + [notification.pack()])
+        # notification.send(self.server_socket, identities)
 
-        job.set_allocated()
+        job.status = JobStatus.ALLOCATED
         self.running_jobs.add(job)
         self.pending_jobs.remove(job)
 
         self.rcatalog.add_allocation(target_node, target_disk, job)
         self.rcatalog.print_status(target_node, target_disk)
 
-        notification = Message("notification", f"Granted job allocation {job.uid}")
-        notification.send(self.client_socket, job.client_identity)
+        notification = Message(MsgCat.NOTIFICATION, f"Granted job allocation {job.uid}")
+        self.client_socket.send_multipart(job.client_identity, notification.pack())
+        # notification.send(self.client_socket, job.client_identity)
 
     def release_allocation(self, job: Job):
         """Release a storage allocation"""
         self.log.info(f"Job<{job.uid:05}> - Release allocation")
-
-    def simulate_scheduling(self, job, earliest_start_time):
-        """Simpy"""
-
-        yield self.env.timeout(job.sim_start_time(earliest_start_time))
-
-        target_node, target_disk = self.scheduling_strategy.compute(self.rcatalog, job)
-
-        # If a disk on a node has been found, we allocate the request
-        if target_node >= 0 and target_disk >= 0:
-            self.grant_allocation(job, target_node, target_disk)
-        else:
-            self.log.warning(f"Job<{job.uid:05}> - Unable to allocate request. Exiting...")
-            sys.exit(1)
-
-        # Duration + Fix seconds VS minutes
-        yield self.env.timeout(job.sim_start_time())
 
     def run(self, simulate: bool):
         """Init and start an orchestrator"""
@@ -136,55 +119,66 @@ class Orchestrator:
             if self.client_socket in events:
 
                 identities, data = recv_msg(self.client_socket)
-                message = Message.from_packed_message(data)
+                message = Message.unpack(data)
                 client_id = identities[0]
 
-                if message.type == "request":
+                if message.category == MsgCat.REQUEST:
                     try:
                         req = Request(message.content)
                     except ValueError:
-                        notification = Message("error", "Wrong request")
-                        notification.send(self.client_socket, client_id)
+                        notification = Message(MsgCat.ERROR, "Wrong request")
+                        self.client_socket.send_mulipart(client_id, notification.pack())
+                        # notification.send(self.client_socket, client_id)
                     else:
                         job = Job(current_job_id, client_id, req, simulate)
                         current_job_id += 1
 
-                        notification = Message("notification", f"Pending job allocation {job.uid}")
-                        notification.send(self.client_socket, client_id)
+                        notification = Message(
+                            MsgCat.NOTIFICATION, f"Pending job allocation {job.uid}"
+                        )
+                        self.client_socket.send_mulipart(client_id, notification.pack())
+                        # notification.send(self.client_socket, client_id)
 
-                        job.set_queued()
+                        job.status = JobStatus.QUEUED
                         self.pending_jobs.add(job)
 
                         notification = Message(
-                            "notification",
+                            MsgCat.NOTIFICATION,
                             f"job {job.uid} queued and waiting for resources",
                         )
-                        notification.send(self.client_socket, client_id)
-                elif message.type == "eos":
+                        self.client_socket.send_mulipart(client_id, notification.pack())
+                        # notification.send(self.client_socket, client_id)
+                elif message.category == MsgCat.EOS:
                     end_of_simulation = True
-                    notification = Message("shutdown", None)
-                    notification.send(self.client_socket, client_id)
+                    notification = Message(MsgCat.SHUTDOWN, None)
+                    self.client_socket.send_mulipart(client_id, notification.pack())
+                    # notification.send(self.client_socket, client_id)
                 else:
-                    self.log.warning("Wrong message type ({message.type}) received from a client")
+                    self.log.warning(
+                        "Unknown message cat. ({message.category}) received from a client"
+                    )
 
             ################
             # SERVER SOCKET
             ################
             if self.server_socket in events:
                 identities, data = recv_msg(self.server_socket)
-                message = Message.from_packed_message(data)
+                message = Message.unpack(data)
 
-                if message.type == "register":
+                if message.category == MsgCat.REGISTRATION:
                     server_id = identities[0]
                     self.rcatalog.append_resources(server_id, message.content)
                     logging.debug("Server registered. New resources available.")
                     # TODO: setup monitoring system with newly added resources
-                elif message.type == "connection":
+                elif message.category == MsgCat.CONNECTION:
                     client_id = identities[1]
-                    notification = Message("allocation", message.content)
-                    notification.send(self.client_socket, client_id)
+                    notification = Message(MsgCat.ALLOCATION, message.content)
+                    self.client_socket.send_mulipart(client_id, notification.pack())
+                    # notification.send(self.client_socket, client_id)
                 else:
-                    self.log.warning("Wrong message type ({message.type}) received from a server")
+                    self.log.warning(
+                        "Unknown message cat. ({message.category}) received from a server"
+                    )
 
             ################
             # PROCESS QUEUES

@@ -51,7 +51,8 @@ setup(
         "PyYAML>=5.4.1",
         "pyzmq>=22.1.0",
         "click>=8.0",
-        "cerberus",
+        "cerberus>=1.3.4",
+        "msgpack>1.0.2",
     ],
     extras_require={  # Optional
         "dev": ["black>=21.9b0"],

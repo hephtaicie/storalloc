@@ -6,7 +6,7 @@ import datetime
 import uuid
 import zmq
 
-from storalloc.message import Message
+from storalloc.message import Message, MsgCat
 from storalloc.config import config_from_yaml
 from storalloc.logging import get_storalloc_logger
 
@@ -53,9 +53,9 @@ class Client:
         self.log.info(f"Payload for new user request : [{request}]")
 
         if eos:
-            message = Message("eos", request)
+            message = Message(MsgCat.EOS, request)
         else:
-            message = Message("request", request)
+            message = Message(MsgCat.REQUEST, request)
 
         self.log.debug(f"Submitting user message [{message}]")
 
@@ -63,17 +63,17 @@ class Client:
 
         while True:
             data = self.socket.recv()
-            message = Message.from_packed_message(data)
+            message = Message.unpack(data)
 
-            if message.type == "notification":
+            if message.category == MsgCat.NOTIFICATION:
                 self.log.info(f"New notification received [{message.content}]")
-            elif message.type == "allocation":
+            elif message.category == MsgCat.ALLOCATION:
                 self.log.info(f"New allocation received [{message.content}]")
                 # Do stuff with connection details
                 break
-            elif message.type == "error":
+            elif message.category == MsgCat.ERROR:
                 break
-            elif message.type == "shutdown":
+            elif message.category == MsgCat.SHUTDOWN:
                 self.log.warning("Orchestrator has asked to close the connection")
                 break
 

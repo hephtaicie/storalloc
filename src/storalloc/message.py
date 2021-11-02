@@ -1,38 +1,46 @@
 """ Storalloc
-    Default message implementation
-
-    Pickle is well known for its security vulnerabilities,
-    we may want to move to another serialisation format at
-    some point (protobuf ?)
+    Default message implementation.
+    Basically a wrapper for binary serialisation.
+    Allows classification of content by category
 """
 
-import pickle
+from dataclasses import dataclass
+from enum import Enum
+
+import msgpack
 
 
+class MsgCat(Enum):
+    """Allowed message category"""
+
+    NOTIFICATION = 1
+    ERROR = 2
+    REQUEST = 3
+    ALLOCATION = 4
+    REGISTRATION = 5
+    CONNECTION = 6
+    DEALLOCATION = 7
+    EOS = 10
+    SHUTDOWN = 16
+
+
+@dataclass
 class Message:
     """Default message implementation"""
 
-    def __init__(self, msg_type, msg_content):
-
-        self.type = msg_type
-        self.content = msg_content
+    category: MsgCat
+    content: "typing.Any"
 
     def __str__(self):
         """String representation for debugging purpose"""
-        return f"{self.type}-{self.content}"
+        return f"{self.category.name}-{self.content}"
 
-    @staticmethod
-    def from_packed_message(packed_data):
-        """Extract message from pickled data"""
-        return pickle.loads(packed_data)
+    @classmethod
+    def unpack(cls, packed_data: bytes):
+        """Extract message from packed data"""
+        category_id, content = msgpack.unpackb(packed_data)
+        return cls(MsgCat(category_id), content)
 
     def pack(self):
-        """Pack message into pickle"""
-        return pickle.dumps(self)
-
-    def send(self, socket, identities):
-        """Send message..."""
-        if isinstance(identities, list):
-            socket.send_multipart(identities + [self.pack()])
-        else:
-            socket.send_multipart([identities, self.pack()])
+        """Pack message into MessagePack serialised data"""
+        return msgpack.packb([self.category, self.content])
