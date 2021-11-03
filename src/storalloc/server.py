@@ -5,7 +5,6 @@
 import time
 import uuid
 import os
-import sys
 import zmq
 
 # from storalloc.nvmet import nvme
@@ -90,13 +89,14 @@ class Server:
             MsgCat.REGISTRATION, [node.to_dict() for node in self.rcatalog.storage_resources]
         )
         self.log.debug(
-            f"Sending registration message for server {self.uid[:6]}, with {self.rcatalog.node_count()}"
+            f"Sending registration message for server {self.uid[:6]}"
+            + f" with {self.rcatalog.node_count()}"
         )
         self.socket.send(message.pack())
 
         while True:
             frames = self.socket.recv_multipart()
-            client_id, data = frames[0], frames[1]      # TODO not safe
+            client_id, data = frames[0], frames[1]  # TODO not safe
             message = Message.unpack(data)
 
             if message.category == MsgCat.ALLOCATION:

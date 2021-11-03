@@ -266,9 +266,9 @@ class ResourceCatalog:
                         print()
 
                 if disk.uid < len(node.disks) - 1:
-                    print("├---┼", end="")
+                    print("├───┼", end="")
                     for _ in range(0, steps):
-                        print("-", end="")
+                        print("─", end="")
                     print()
             print("└───┴", end="")
             for _ in range(0, steps):
