@@ -28,7 +28,8 @@ class Disk:
         return {
             "uid": self.uid,
             "vendor": self.vendor,
-            "model": self.serial,
+            "model": self.model,
+            "serial": self.serial,
             "capacity": self.capacity,
             "write_bandwidth": self.write_bandwidth,
             "read_bandwidth": self.read_bandwidth,
@@ -51,6 +52,14 @@ class Disk:
         )
         disk.allocations = data["allocations"] if data.get("allocations") else []
         return disk
+
+    def __str__(self):
+        """HR representation"""
+        return (
+            f"Disk {self.uid}//{self.serial} - [{self.vendor}/{self.model}] "
+            + f"({self.capacity}:{self.read_bandwidth}:{self.write_bandwidth}) "
+            + f"at {self.block_device}"
+        )
 
 
 @dataclass
@@ -82,7 +91,7 @@ class Node:
         """Create Node object from dict, for deserialisation"""
         node = cls(data["uid"], data["hostname"], data["ipv4"], data["bandwidth"])
         node.identity = data["identity"] if data.get("identity") else ""
-        node.disks = data["disks"]
+        node.disks = [Disk.from_dict(disk) for disk in data["disks"]]
         return node
 
 
@@ -147,11 +156,22 @@ class ResourceCatalog:
                 for dindex, disk in enumerate(node["disks"]):
                     disk["uid"] = dindex
                     new_disk = Disk.from_dict(disk)
+                    print(new_disk)
                     new_node.disks.append(new_disk)
 
                 self.storage_resources.append(new_node)
 
         self.log.info(f"storage_resources catalog now contains {len(self.storage_resources)} nodes")
+
+    def pretty_print(self):
+        """Pretty print list of currently registered resources"""
+
+        for node in self.storage_resources:
+            print(f"# Node {node.hostname} at index/uid {node.uid}")
+            print(f"  - IPv4 {node.ipv4}")
+            print(f"  - Has {len(node.disks)} disks")
+            for disk in node.disks:
+                print(disk)
 
     def add_allocation(self, node_id: int, disk_id: int, job):
         """Add allocation in a given disk of a given node, for a specific job"""
@@ -218,11 +238,11 @@ class ResourceCatalog:
             print()
             for disk in node.disks:
                 if not disk.allocations:
-                    print(f"│{disk:>3}│")
+                    print(f"│{disk.uid:>3}│")
                 else:
                     for idx, alloc in enumerate(disk.allocations):
                         if idx == 0:
-                            print(f"│{disk:>3}│", end="")
+                            print(f"│{disk.uid:>3}│", end="")
                         else:
                             print("│   │", end="")
 
@@ -238,7 +258,7 @@ class ResourceCatalog:
                             if (
                                 target_node_id == node.uid
                                 and target_disk_id == disk.uid
-                                and idx == len(disk.allocation) - 1
+                                and idx == len(disk.allocations) - 1
                             ):
                                 print("□", end="")
                             else:

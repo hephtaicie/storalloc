@@ -96,7 +96,7 @@ class Server:
 
         while True:
             frames = self.socket.recv_multipart()
-            client_id, data = frames[0], frames[1:]
+            client_id, data = frames[0], frames[1]      # TODO not safe
             message = Message.unpack(data)
 
             if message.category == MsgCat.ALLOCATION:

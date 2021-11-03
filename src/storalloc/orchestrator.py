@@ -220,6 +220,6 @@ class Orchestrator:
                             self.log.debug(
                                 f"Job<{job.uid:05}> - Currently unable to allocate incoming request"
                             )
-                            job.set_pending()
+                            job.status = JobStatus.PENDING
 
             time.sleep(1)
