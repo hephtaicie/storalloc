@@ -1,10 +1,30 @@
-""" Storalloc
-    Default message implementation.
-    Basically a wrapper for binary serialisation.
-    Allows classification of content by category
+""" Storalloc default message implementation.
+    Basically a wrapper for binary serialisation using msgpack.
+
+    Messages are composed of two parts:
+
+    - category: give the receiver a hint on the purpose of the message and the content type.
+    - content: can be anything as long as it is serialisable with msgpack.
+      Type depend on the category.
+
+    Some message categories are reserved for informational messages
+    (which may lead to an action or not):
+    - NOTIFICATION
+    - ERROR
+    - EOS
+    - SHUTDOWN
+
+    Others are reserved for transimitting actionnable information:
+    - REQUEST ( client to orchestrator to server )  -> Information on the storage
+      requested by / granted to client
+    - REGISTRATION ( server to orchestrator ) -> Information on storage available on server
+
+    Note : so far we don't add anything from ZMQ to the message class, but we might do it in
+    future devs
+
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 import msgpack
@@ -16,10 +36,8 @@ class MsgCat(Enum):
     NOTIFICATION = 1
     ERROR = 2
     REQUEST = 3
-    ALLOCATION = 4
-    REGISTRATION = 5
-    CONNECTION = 6
-    DEALLOCATION = 7
+    REGISTRATION = 4
+    DEALLOCATION = 5
     EOS = 10
     SHUTDOWN = 16
 
@@ -29,7 +47,7 @@ class Message:
     """Default message implementation"""
 
     category: MsgCat
-    content: "typing.Any"
+    content: "typing.Any" = field(default="")  # any type AS LONG AS IT'S RECOGNISED BY MSGPACK
 
     def __str__(self):
         """String representation for debugging purpose"""

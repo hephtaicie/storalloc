@@ -7,6 +7,7 @@ import uuid
 import zmq
 
 from storalloc.message import Message, MsgCat
+from storalloc.request import StorageRequest, RequestSchema
 from storalloc.config import config_from_yaml
 from storalloc.logging import get_storalloc_logger
 
@@ -18,6 +19,8 @@ class Client:
         """Init a client with a yaml configuration file"""
 
         self.uid = uid or str(uuid.uuid4().hex)[:6]
+
+        self.schema = RequestSchema()
 
         self.log = get_storalloc_logger(verbose)
         self.conf = config_from_yaml(config_path)
@@ -42,22 +45,23 @@ class Client:
 
     def run(
         self,
-        size: int,
-        time: datetime.datetime,
+        capacity: int,
+        duration: datetime.timedelta,
         start_time: datetime.datetime = None,
         eos: bool = False,
     ):
         """Init and start a new client"""
 
-        request = f"{size},{time},{start_time}"
-        self.log.info(f"Payload for new user request : [{request}]")
+        # request = f"{size},{time},{start_time}"
 
         if eos:
-            message = Message(MsgCat.EOS, request)
+            message = Message(MsgCat.EOS)
         else:
-            message = Message(MsgCat.REQUEST, request)
+            request = StorageRequest(capacity=capacity, duration=duration, start_time=start_time)
+            self.log.debug(f"Request: {request}")
+            message = Message(MsgCat.REQUEST, self.schema.dump(request))
 
-        self.log.debug(f"Submitting user message [{message}]")
+        self.log.debug(f"Message: {message}")
 
         self.socket.send(message.pack())
 
@@ -66,12 +70,14 @@ class Client:
             message = Message.unpack(data)
 
             if message.category == MsgCat.NOTIFICATION:
-                self.log.info(f"New notification received [{message.content}]")
-            elif message.category == MsgCat.ALLOCATION:
-                self.log.info(f"New allocation received [{message.content}]")
+                self.log.debug(f"New notification received [{message.content}]")
+            elif message.category == MsgCat.REQUEST:
+                request = self.schema.load(message.content)
+                self.log.debug(f"{request}")
                 # Do stuff with connection details
                 break
             elif message.category == MsgCat.ERROR:
+                self.log.error("Error from orchestrator : [{message.content}]")
                 break
             elif message.category == MsgCat.SHUTDOWN:
                 self.log.warning("Orchestrator has asked to close the connection")
