@@ -15,10 +15,19 @@ CONFIG_SCHEMA = {
     "orchestrator_addr": {"type": "string"},
     "orchestrator_fe_ipc": {"type": "string"},
     "orchestrator_be_ipc": {"type": "string"},
-    "client_port": {"type": "integer", "min": 1025, "max": 65535, "required": False},
-    "server_port": {"type": "integer", "min": 1025, "max": 65535, "required": False},
+    "client_port": {"type": "integer", "min": 1025, "max": 65535},
+    "server_port": {"type": "integer", "min": 1025, "max": 65535},
+    "log_server_port": {"type": "integer", "min": 1025, "max": 65535},
+    "simulation_port": {"type": "integer", "min": 1025, "max": 65535},
+    "visualisation_port": {"type": "integer", "min": 1025, "max": 65535},
     "transport": {"type": "string", "allowed": ["tcp", "ipc"]},
     "sched_strategy": {"type": "string", "allowed": ["random_alloc", "worst_case"]},
+    "res_catalog": {
+        "type": "string",
+        "allowed": [
+            "inmemory",
+        ],
+    },
     "simulation": {
         "type": "dict",
         "schema": {
