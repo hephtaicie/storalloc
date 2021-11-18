@@ -2,17 +2,18 @@
     Default server
 """
 
-import time
 import uuid
 import os
 import zmq
 
 # from storalloc.nvmet import nvme
 
+from storalloc.request import RequestSchema, ReqState, StorageRequest
 from storalloc.resources import ResourceCatalog
-from storalloc.config import config_from_yaml
-from storalloc.message import Message, MsgCat
-from storalloc.logging import get_storalloc_logger
+from storalloc.utils.config import config_from_yaml
+from storalloc.utils.message import Message, MsgCat
+from storalloc.utils.transport import Transport
+from storalloc.utils.logging import get_storalloc_logger
 
 # def reset_resources(storage_resources):
 #    """Reset storage configurations
@@ -40,46 +41,80 @@ from storalloc.logging import get_storalloc_logger
 
 
 class Server:
-    """Default server for Storalloc"""
+    """Default storage server agent for Storalloc"""
 
-    def __init__(self, config_path: str, system_path: str, uid: str = None, verbose: bool = True):
+    def __init__(
+        self,
+        config_path: str,
+        system_path: str,
+        uid: str = None,
+        simulate: bool = True,
+        verbose: bool = True,
+    ):
         """Init a server using a yaml configuration file"""
 
-        self.uid = uid or str(uuid.uuid4().hex)[:6]
-
-        self.log = get_storalloc_logger(verbose)
+        self.uid = uid or f"S-{str(uuid.uuid4().hex)[:6]}"
         self.conf = config_from_yaml(config_path)
-        self.rcatalog = ResourceCatalog(system_path)
-        self.context, self.socket = self.zmq_init()
-
-    def zmq_init(self):
-        """Connect to orchestrator with ZeroMQ"""
-
-        self.log.info(f"Initialise ZMQ Context for Server {self.uid}")
-        context = zmq.Context()
-        sock = context.socket(zmq.DEALER)  # pylint: disable=no-member
-
-        if self.conf["transport"] == "tcp":
-            url = f"tcp://{self.conf['orchestrator_addr']}:{self.conf['server_port']}"
-        elif self.conf["transport"] == "ipc":
-            url = f"ipc://{self.conf['orchestrator_be_ipc']}.ipc"
-
-        self.log.debug(f"Server {self.uid} connecting to the orchestrator at ({url})")
-        sock.connect(url)
-
-        return (context, sock)
-
-    def run(self, reset: bool, simulate: bool):
-        """Server main loop
-        Connect to the orchestrator, register (send available resources)
-        and wait for allocation requests.
-        """
+        self.log = get_storalloc_logger(verbose)
 
         if not simulate and os.getuid() != 0:
             self.log.error("This script must be run with root privileges in a non-simulated mode!")
             raise AttributeError(
                 "This script must be run with root privileges in a non-simulated mode!"
             )
+
+        self.transports = self.zmq_init()
+
+        self.rcatalog = ResourceCatalog(system_path)
+        self.schema = RequestSchema()
+
+    def __del__(self):
+        """Close socket / terminate connection"""
+        self.transports["orchestrator"].socket.close(linger=0)
+        self.transports["context"].term()
+
+    def zmq_init(self, remote_logging: bool = True):
+        """Connect to orchestrator with ZeroMQ"""
+
+        context = zmq.Context()
+
+        # Logging PUBLISHER and associated handler ######################################
+        if remote_logging:
+            log_publisher = context.socket(zmq.PUB)  # pylint: disable=no-member
+            log_publisher.bind(f"{self.conf['orchestrator_addr']}:{self.conf['log_server_port']}")
+            self.log.addHandler(zmq.PUBHandler(log_publisher))  # pylint: disable=no-member
+
+        self.log.info(f"Creating a DEALER socket for server {self.uid}")
+
+        socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
+        socket.setsockopt_string(zmq.IDENTITY, self.uid)  # pylint: disable=no-member
+
+        if self.conf["transport"] == "tcp":
+            url = f"tcp://{self.conf['orchestrator_addr']}:{self.conf['server_port']}"
+        elif self.conf["transport"] == "ipc":
+            url = f"ipc://{self.conf['orchestrator_be_ipc']}.ipc"
+
+        self.log.debug(f"Connecting DEALER socket [{self.uid}] to orchestrator at ({url})")
+        socket.connect(url)
+
+        return {"orchestrator": Transport(self.uid, socket), "context": context}
+
+    def allocate_storage(self, request: StorageRequest):
+        """Allocate storage space on disks and update request with connection details"""
+
+        # Only dummy values so far, the server never actually allocate storage
+        request.nqn = "nqn.2014-08.com.vendor:nvme:nvm-subsystem-sn-d78432"
+        request.alloc_type = "nvme"
+        request.state = ReqState.ALLOCATED
+
+    def deallocate_storage(self, request: StorageRequest):
+        """Free space previously allocated to given request"""
+
+    def run(self, reset: bool):
+        """Server main loop
+        Connect to the orchestrator, register (send available resources)
+        and wait for allocation requests.
+        """
 
         if reset:
             pass
@@ -89,38 +124,34 @@ class Server:
             MsgCat.REGISTRATION, [node.to_dict() for node in self.rcatalog.storage_resources]
         )
         self.log.debug(
-            f"Sending registration message for server {self.uid[:6]}"
+            f"Sending registration message for server {self.uid}"
             + f" with {self.rcatalog.node_count()}"
         )
-        self.socket.send(message.pack())
+        self.transports["orchestrator"].send_multipart(message)
 
         while True:
-            frames = self.socket.recv_multipart()
-            client_id, data = frames[0], frames[1]  # TODO not safe
-            message = Message.unpack(data)
 
-            if message.category == MsgCat.ALLOCATION:
-                self.log.info(f"New allocation received [{message.content}]")
-                job_id = message.content[
-                    "job_id"
-                ]  # content is supposed to be a dict representing an alloc_resquest
-                connection = {
-                    "job_id": job_id,
-                    "type": "nvme",
-                    "nqn": "nqn.2014-08.com.vendor:nvme:nvm-subsystem-sn-d78432",
-                }
-                message = Message(MsgCat.CONNECTION, connection)
-                self.socket.send_multipart([client_id, message.pack()])
-            elif message.category == MsgCat.DEALLOCATION:
-                self.log.info(f"New deallocation received [{message.content}]")
+            identities, message = self.transports["orchestrator"].recv_multipart()
+
+            if message.category == MsgCat.REQUEST:
+                self.log.info(f"New request received from {','.join(identities)}")
+                request = self.schema.load(message)
+
+                if request.state == ReqState.GRANTED:
+                    self.log.info("New request in GRANTED state, processing now...")
+                    self.allocate_storage(request)
+                    self.transports["orchestrator"].send_multipart(Message(MsgCat.REQUEST, request))
+                elif request.state == ReqState.ENDED:
+                    self.log.info("New request in ENDED state, processing now...")
+                    self.deallocate_storage(request)
+                else:
+                    self.log.warning(f"New request has undesired state {request.state} ; skipping.")
+                    continue
+            elif message.category == MsgCat.NOTIFICATION:
+                self.log.info(f"?otification received [{message.content}]")
             elif message.category == MsgCat.ERROR:
                 self.log.error(f"Error received [{message.content}]")
                 break
             elif message.category == MsgCat.SHUTDOWN:
                 self.log.warning("The orchestrator has asked to close the connection")
                 break
-
-        time.sleep(1)
-
-        self.socket.close(linger=0)
-        self.context.term()

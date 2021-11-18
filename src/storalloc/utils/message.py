@@ -37,14 +37,17 @@ class MsgCat(Enum):
     ERROR = 2
     REQUEST = 3
     REGISTRATION = 4
-    DEALLOCATION = 5
     EOS = 10
     SHUTDOWN = 16
 
 
 @dataclass
 class Message:
-    """Default message implementation"""
+    """Default message implementation
+    A message has:
+    - a category
+    - a content (whose type is related to the message category, and must be serialisable)
+    """
 
     category: MsgCat
     content: "typing.Any" = field(default="")  # any type AS LONG AS IT'S RECOGNISED BY MSGPACK

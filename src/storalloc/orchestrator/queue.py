@@ -5,6 +5,10 @@ from collections import deque
 
 import zmq
 
+from storalloc.utils.transport import Transport
+from storalloc.utils.message import Message, MsgCat
+from storalloc.request import RequestSchema, ReqState
+
 
 class AllocationQueue:
     """Class responsible for interacting with a request deque"""
@@ -13,27 +17,10 @@ class AllocationQueue:
 
         self.request_deque = deque()
         self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.ROUTER)  # pylint: disable=no-member
-        self.socket.bind("ipc://queue_manager.ipc")
-
-    def run(self):
-        """Start an infinite loop with two objectives :
-        - wake up every few seconds and possibly clean up overdue allocations from queue,
-            then send a message to inform the orchestrator
-        - receive processed requests from orchestrator and keep track of them.
-        """
-
-        while True:
-
-            events = self.socket.poll(timeout=5000)
-
-            if events:
-                # Unpack message and store new request
-                # self._store_request(new)
-                pass
-
-            # Even if we received nothing, check for overdue requests
-            # self._prune_requests()
+        socket = self.context.socket(zmq.ROUTER)  # pylint: disable=no-member
+        socket.bind("ipc://queue_manager.ipc")
+        self.transport = Transport("QM1", socket)
+        self.schema = RequestSchema()
 
     def _store_request(self, new):
         """Store a request ordered by storage allocation walltime inside the inner deque"""
@@ -62,4 +49,30 @@ class AllocationQueue:
         current_time = datetime.datetime.now()
 
         while self.request_deque and self.request_deque[0].is_overdue(current_time):
-            self.request_deque.popleft()
+            request = self.request_deque.popleft()
+            request.state = ReqState.ENDED
+            self.transport.send_multipart(Message(MsgCat.REQUEST, request))
+
+    def run(self):
+        """Start an infinite loop with two objectives :
+        - wake up every few seconds and possibly clean up overdue allocations from queue,
+            then send a message to inform the orchestrator
+        - receive processed requests from orchestrator and keep track of them.
+        """
+
+        while True:
+
+            event = self.transport.socket.poll(timeout=5000)
+
+            # Start by pruning old requests.
+            self._prune_requests()
+
+            if event:
+                _, message = self.transport.recv_multipart()
+                if message.category == MsgCat.REQUEST:
+                    request = self.schema.load(message.content)
+                    self._store_request(request)
+                elif message.category == MsgCat.NOTIFICATION:
+                    # Answer to keep alive messages from router
+                    notification = Message.notification("keep-alive")
+                    self.transport.send_multipart(notification)
