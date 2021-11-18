@@ -30,10 +30,6 @@ class Simulator:
         # Duration + Fix seconds VS minutes
         yield self.env.timeout(job.sim_start_time())
 
-
-
-
-
     def process_queue(self, simulate: bool):
         """Process request queue"""
 
@@ -70,5 +66,3 @@ class Simulator:
                             f"Job<{job.uid:05}> - Currently unable to allocate incoming request"
                         )
                         job.status = JobStatus.PENDING
-
-
