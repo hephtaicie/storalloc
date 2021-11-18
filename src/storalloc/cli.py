@@ -53,8 +53,8 @@ def cli(ctx, verbose):
 def run_server(ctx, config, system, reset, simulate):
     """Server command"""
     click.secho("[~] Starting server...", fg="green")
-    cli_server = server.Server(config, system, verbose=ctx.obj["verbose"])
-    cli_server.run(reset, simulate)
+    cli_server = server.Server(config, system, simulate, verbose=ctx.obj["verbose"])
+    cli_server.run(reset)
 
 
 # ORCHESTRATOR
@@ -75,8 +75,8 @@ def run_server(ctx, config, system, reset, simulate):
 def run_orchestrator(ctx, config, simulate):
     """Orchestrator command"""
     click.secho("[~] Starting orchestrator...", fg="green")
-    orches = orchestrator.Orchestrator(config)
-    orches.run(simulate)
+    orches = orchestrator.router.Router(config)
+    orches.run()
 
 
 # CLIENT
@@ -127,7 +127,10 @@ def run_client(ctx, config, size, time, start_time, eos):
     )
 
     client_endpoint = client.Client(config, verbose=ctx.obj["verbose"])
-    client_endpoint.run(size, time_delta, start_time, eos)
+    if not eos:
+        client_endpoint.run(size, time_delta, start_time)
+    else:
+        click.secho("[!] Not implemented", fg="red")
 
 
 if __name__ == "__main__":
