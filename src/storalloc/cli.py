@@ -9,7 +9,8 @@
 import datetime
 import click
 
-from storalloc import client, server, orchestrator
+from storalloc import client, server
+from storalloc.orchestrator import router
 
 
 @click.group()
@@ -75,8 +76,8 @@ def run_server(ctx, config, system, reset, simulate):
 def run_orchestrator(ctx, config, simulate):
     """Orchestrator command"""
     click.secho("[~] Starting orchestrator...", fg="green")
-    orches = orchestrator.router.Router(config)
-    orches.run()
+    orchestrator = router.Router(config)
+    orchestrator.run()
 
 
 # CLIENT
@@ -120,11 +121,9 @@ def run_client(ctx, config, size, time, start_time, eos):
 
     click.secho("[~] Starting client...", fg="green")
     # Convert duration of requested storage allocation to seconds
-    time_delta = int(
-        datetime.timedelta(
-            hours=time.hour, minutes=time.minute, seconds=time.second
-        ).total_seconds()
-    )
+    time_delta = datetime.timedelta(hours=time.hour, minutes=time.minute, seconds=time.second)
+    if start_time is None:
+        start_time = datetime.datetime.now()
 
     client_endpoint = client.Client(config, verbose=ctx.obj["verbose"])
     if not eos:

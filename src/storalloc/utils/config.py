@@ -6,7 +6,7 @@ import yaml
 
 import cerberus
 
-from storalloc.logging import get_storalloc_logger
+from storalloc.utils.logging import get_storalloc_logger
 
 # Cerberus
 

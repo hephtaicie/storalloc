@@ -67,14 +67,14 @@ class Message:
         return msgpack.packb([self.category.value, self.content])
 
     @classmethod
-    def notification(cls, content: str, pack: bool = True):
+    def notification(cls, content: str, pack: bool = False):
         """Craft a notification message ready to be sent"""
         if pack:
             return cls(MsgCat.NOTIFICATION, content).pack()
         return cls(MsgCat.NOTIFICATION, content)
 
     @classmethod
-    def error(cls, content: str, pack: bool = True):
+    def error(cls, content: str, pack: bool = False):
         """Craft an error message ready to be sent"""
         if pack:
             return cls(MsgCat.ERROR, content).pack()

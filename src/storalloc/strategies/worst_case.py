@@ -4,14 +4,15 @@ import sys
 import logging
 
 from storalloc.resources import NodeStatus, DiskStatus
+from storalloc.strategies.base import StrategyInterface
 
 
-class WorstCase(object):
+class WorstCase(StrategyInterface):
     def __init__(self):
         super().__init__()
 
-    def compute(self, resource_catalog, job):
-        resources_status = self._compute_status(resource_catalog, job)
+    def compute(self, resource_catalog, request):
+        resources_status = self._compute_status(resource_catalog, request)
         req_allocated = False
         resources_status.sort(key=lambda x: x.bw, reverse=True)
 
@@ -22,14 +23,14 @@ class WorstCase(object):
 
             current_node.disk_status.sort(key=lambda x: x.bw, reverse=True)
             for disk in current_node.disk_status:
-                if (disk.capacity - job.request.capacity()) < 0:
+                if (disk.capacity - request.request.capacity()) < 0:
                     logging.debug(
                         "Not enough remaining space on node "
                         + str(current_node.get_idx())
                         + ", disk "
                         + str(disk.get_idx())
                         + " (req: "
-                        + str(job.request.capacity())
+                        + str(request.request.capacity())
                         + " GB, "
                         + "avail: "
                         + str(disk.capacity)
@@ -48,7 +49,7 @@ class WorstCase(object):
     ###############################
     # Compute achievable bandwidth
     ###############################
-    def _compute_status(self, resource_catalog, job):
+    def _compute_status(self, resource_catalog, request):
         # Initialiaze structures for achievable bandwidths (worst-case scenario)
         resources_status = list()
 
@@ -65,7 +66,7 @@ class WorstCase(object):
             node_idx = node.get_idx()
             node_bw = 0.0
             for d in range(0, resource_catalog.disk_count(n)):
-                start_time_chunk = job.start_time()
+                start_time_chunk = request.start_time()
                 disk = node.disks[d]
                 disk_idx = disk.get_idx()
                 disk_bw = 0.0
@@ -81,7 +82,7 @@ class WorstCase(object):
                         if alloc.end_time() > start_time_chunk:
                             overlap_time = min(
                                 alloc.end_time() - start_time_chunk,
-                                job.end_time() - start_time_chunk,
+                                request.end_time() - start_time_chunk,
                             )
                             overlap_reqs = num_allocs - a + 1
 
@@ -91,9 +92,9 @@ class WorstCase(object):
                             disk_bw += overlap_time.seconds * disk.get_bw() / overlap_reqs
                             disk_capacity -= alloc.request.capacity()
 
-                node_bw += (job.end_time() - start_time_chunk).seconds * node.get_bw()
-                disk_bw += (job.end_time() - start_time_chunk).seconds * disk.get_bw()
-                disk_bw = disk_bw / ((job.end_time() - job.start_time()).seconds)
+                node_bw += (request.end_time() - start_time_chunk).seconds * node.get_bw()
+                disk_bw += (request.end_time() - start_time_chunk).seconds * disk.get_bw()
+                disk_bw = disk_bw / ((request.end_time() - request.start_time()).seconds)
 
                 resources_status[n].disk_status[d].bw = disk_bw
                 resources_status[n].disk_status[d].capacity = disk_capacity
@@ -107,7 +108,7 @@ class WorstCase(object):
                     + " GB): %.2f GBps" % disk_bw
                 )
 
-            node_bw = node_bw / ((job.end_time() - job.start_time()).seconds) / len(node.disks)
+            node_bw = node_bw / ((request.end_time() - request.start_time()).seconds) / len(node.disks)
 
             resources_status[n].bw = node_bw
             logging.debug(

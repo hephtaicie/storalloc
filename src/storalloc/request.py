@@ -6,7 +6,7 @@ import datetime
 from dataclasses import dataclass, field
 from enum import Enum
 
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, post_load
 from marshmallow_enum import EnumField
 
 
@@ -35,6 +35,10 @@ class RequestSchema(Schema):
     nqn = fields.Str()
     state = EnumField(ReqState, by_value=True)
     reason = fields.Str()
+
+    @post_load
+    def make_request(self, data, **kwargs):
+        return StorageRequest(**data)
 
 
 @dataclass
@@ -80,26 +84,26 @@ class StorageRequest:
 
         desc = ""
 
-        if self.state == ReqState.OPENED:
+        if self.state is ReqState.OPENED:
             desc = f"Request [OPENED] : {self.capacity} GB, {self.duration}, {self.start_time}"
-        if self.state == ReqState.PENDING:
+        elif self.state is ReqState.PENDING:
             desc = f"Request [PENDING] : {self.capacity} GB, {self.duration}, {self.start_time}"
-        elif self.state == ReqState.GRANTED:
+        elif self.state is ReqState.GRANTED:
             desc = (
                 f"Request [GRANTED] : {self.capacity} GB, for {self.duration}, "
                 + f"{self.start_time} on {self.node_id}:{self.disk_id}"
             )
-        elif self.state == ReqState.REFUSED:
+        elif self.state is ReqState.REFUSED:
             desc = "Request [REFUSED] by orchestrator"
-        elif self.state == ReqState.ALLOCATED:
+        elif self.state is ReqState.ALLOCATED:
             desc = (
                 f"Request [ALLOCATED] by {self.node_id} on disk "
                 + f"{self.disk_id} for {self.capacity} GB - "
                 + f"Connection detail {self.nqn}, {self.alloc_type}"
             )
-        elif self.state == ReqState.FAILED:
+        elif self.state is ReqState.FAILED:
             desc = f"Request [FAILED] on {self.node_id}, reason : {self.reason}"
-        elif self.state == ReqState.ENDED:
+        elif self.state is ReqState.ENDED:
             desc = f"Request [ENDED] at {self.end_time} ({self.node_id}"
         else:
             desc = "[ERROR] Somehow the current state of this request is unknown"
@@ -136,32 +140,3 @@ class StorageRequest:
 
     def __le__(self, other):
         return not self >= other
-
-
-@dataclass
-class Request:
-    """Default storage allocation request"""
-
-    raw_request: str = field(repr=False, compare=False)
-    capacity: int = field(init=False)
-    duration: int = field(init=False)
-    start_time: "typing.Any" = field(init=False)
-
-    def __post_init__(self):
-        """Init request object from raw request"""
-
-        req_parts = self.raw_request.split(",")
-        assert len(req_parts) == 3  # capacity, duration, start_time
-        self.capacity = int(req_parts[0])
-        self.duration = int(req_parts[1])
-
-        if self.capacity <= 0 or self.duration <= 0:
-            raise ValueError("Capacity or duration is <= 0 for request")
-
-        if req_parts[2] != "None":
-            self.start_time = datetime.datetime.strptime(req_parts[2], "%Y-%m-%d %H:%M:%S")
-        else:
-            self.start_time = None
-
-    def __str__(self):
-        return f"{self.capacity} GB, {datetime.timedelta(seconds=self.duration)}, {self.start_time}"

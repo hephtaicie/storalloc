@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import yaml
 
-from storalloc.logging import get_storalloc_logger
+from storalloc.utils.logging import get_storalloc_logger
 
 
 @dataclass

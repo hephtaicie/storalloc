@@ -4,11 +4,13 @@
 
 import random
 
+from storalloc.strategies.base import StrategyInterface
 
-class RandomAlloc:
+
+class RandomAlloc(StrategyInterface):
     """Random scheduler"""
 
-    def compute(self, resource_catalog, job):
+    def compute(self, resource_catalog, request):
         """Make random allocation choice"""
 
         # TODO change random values so that they are actually bounded

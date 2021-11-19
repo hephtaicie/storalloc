@@ -1,5 +1,6 @@
 """Queue manager process"""
 
+from multiprocessing import Process
 import datetime
 from collections import deque
 
@@ -10,17 +11,13 @@ from storalloc.utils.message import Message, MsgCat
 from storalloc.request import RequestSchema, ReqState
 
 
-class AllocationQueue:
+class AllocationQueue(Process):
     """Class responsible for interacting with a request deque"""
 
-    def __init__(self):
-
-        self.request_deque = deque()
-        self.context = zmq.Context()
-        socket = self.context.socket(zmq.ROUTER)  # pylint: disable=no-member
-        socket.bind("ipc://queue_manager.ipc")
-        self.transport = Transport("QM1", socket)
-        self.schema = RequestSchema()
+    def __init__(self, uid: str):
+        """Init"""
+        super().__init__()
+        self.uid = uid
 
     def _store_request(self, new):
         """Store a request ordered by storage allocation walltime inside the inner deque"""
@@ -59,6 +56,16 @@ class AllocationQueue:
             then send a message to inform the orchestrator
         - receive processed requests from orchestrator and keep track of them.
         """
+
+        self.request_deque = deque()
+        self.context = zmq.Context()
+        socket = self.context.socket(zmq.DEALER)  # pylint: disable=no-member
+        socket.setsockopt(zmq.IDENTITY, self.uid.encode("utf-8"))  # pylint: disable=no-member
+        socket.connect("ipc://queue_manager.ipc")
+        self.transport = Transport(socket)
+        self.schema = RequestSchema()
+
+        self.transport.send_multipart(Message.notification("queue_manager-alive"))
 
         while True:
 
