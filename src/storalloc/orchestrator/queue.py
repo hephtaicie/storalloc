@@ -6,6 +6,7 @@ from collections import deque
 
 import zmq
 
+from storalloc.utils.logging import get_storalloc_logger
 from storalloc.utils.transport import Transport
 from storalloc.utils.message import Message, MsgCat
 from storalloc.request import RequestSchema, ReqState
@@ -14,10 +15,11 @@ from storalloc.request import RequestSchema, ReqState
 class AllocationQueue(Process):
     """Class responsible for interacting with a request deque"""
 
-    def __init__(self, uid: str):
+    def __init__(self, uid: str, verbose: bool = True):
         """Init"""
         super().__init__()
         self.uid = uid
+        self.log = get_storalloc_logger(verbose)
 
     def _store_request(self, new):
         """Store a request ordered by storage allocation walltime inside the inner deque"""

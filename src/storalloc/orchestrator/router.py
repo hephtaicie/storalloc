@@ -68,10 +68,11 @@ class Router:
             f"{self.uid}-SC",
             make_strategy(self.conf["sched_strategy"]),
             make_resource_catalog(self.conf["res_catalog"]),
+            verbose,
         )
 
         # Init allocation queue manager
-        self.queue_manager = AllocationQueue(f"{self.uid}-QM")
+        self.queue_manager = AllocationQueue(f"{self.uid}-QM", verbose)
 
         self.schema = RequestSchema()
 
@@ -199,31 +200,31 @@ class Router:
         """Process an incoming server message"""
 
         identities, message = self.transports["server"].recv_multipart()
+        self.log.debug(f"Incoming message from server {identities}")
 
         if message.category == MsgCat.REGISTRATION:
             # Forward registration to the scheduler
             self.log.debug("Transmitting registration message to scheduler")
-            self.transports["scheduler"].send_multipart(message)
+            self.transports["scheduler"].send_multipart(message, [f"{self.uid}-SC"] + identities)
 
             # Forward registration to the simulation and visualisation
             self.transports["simulation"].send_multipart(message)
-            self.transports["visualise"].send_multipart(message)
+            self.transports["visualisation"].send_multipart(message)
 
         elif message.category == MsgCat.REQUEST:
-            request = self.schema.load(message)
+            request = self.schema.load(message.content)
             if request.state == ReqState.ALLOCATED:
                 # Relay request from server to client and ask queue manager to keep track of it
-                self.log.debug("Transmitting request back to client {identities[1]}")
-                client_id = identities[1]
-                self.transports["client"].send_multipart(message, client_id)
-                self.transports["queue"].send_multipart(message, client_id)
+                self.log.debug(f"Transmitting request back to client {request.client_id}")
+                self.transports["client"].send_multipart(message, request.client_id)
+                self.transports["queue"].send_multipart(message)
 
                 # Forward registration to the simulation and visualisation
                 self.transports["simulation"].send_multipart(message)
-                self.transports["visualise"].send_multipart(message)
+                self.transports["visualisation"].send_multipart(message)
             elif request.state == ReqState.FAILED:
                 error = Message.error(f"Requested allocation failed : {request.reason}")
-                self.transports["client"].send_multipart([client_id, error])
+                self.transports["client"].send_multipart(error, request.client_id)
         else:
             self.log.warning("Undesired message ({message.category}) received from a server")
 
@@ -232,20 +233,24 @@ class Router:
         either GRANTED or REFUSED"""
 
         identities, message = self.transports["scheduler"].recv_multipart()
+        self.log.debug(f"Received message from scheduler {identities}")
 
         if message.category != MsgCat.REQUEST:
-            self.log.warning("Undesired message ({message.category}) received from a scheduler")
+            self.log.warning(f"Undesired message ({message.category}) received from a scheduler")
             return
 
-        request = self.schema.load(message)
+        request = self.schema.load(message.content)
 
         if request.state == ReqState.GRANTED:
             # Forward to server for actual allocation
-            self.transports["server"].send_multipart(message)
+            self.log.debug(
+                f"Request [GRANTED], forwarding allocation request to server {request.node_id}"
+            )
+            self.transports["server"].send_multipart(message, request.server_id)
         elif request.state == ReqState.REFUSED:
             # Send an error to client
             error = Message.error(f"Requested allocation refused : {request.reason}")
-            self.transports["client"].send_multipart([identities[1], error])
+            self.transports["client"].send_multipart(error, request.client_id)
         else:
             self.log.error(
                 f"Request transmitted by scheduler has state {request.state},"

@@ -5,6 +5,7 @@
 import uuid
 import os
 import zmq
+from zmq.log.handlers import PUBHandler
 
 # from storalloc.nvmet import nvme
 
@@ -68,11 +69,6 @@ class Server:
         self.rcatalog = ResourceCatalog(system_path)
         self.schema = RequestSchema()
 
-    def __del__(self):
-        """Close socket / terminate connection"""
-        self.transports["orchestrator"].socket.close(linger=0)
-        self.transports["context"].term()
-
     def zmq_init(self, remote_logging: bool = True):
         """Connect to orchestrator with ZeroMQ"""
 
@@ -81,8 +77,10 @@ class Server:
         # Logging PUBLISHER and associated handler ######################################
         if remote_logging:
             log_publisher = context.socket(zmq.PUB)  # pylint: disable=no-member
-            log_publisher.bind(f"{self.conf['orchestrator_addr']}:{self.conf['log_server_port']}")
-            self.log.addHandler(zmq.PUBHandler(log_publisher))  # pylint: disable=no-member
+            log_publisher.connect(
+                f"tcp://{self.conf['orchestrator_addr']}:{self.conf['log_server_port']}"
+            )
+            self.log.addHandler(PUBHandler(log_publisher))  # pylint: disable=no-member
 
         self.log.info(f"Creating a DEALER socket for server {self.uid}")
 
@@ -97,7 +95,7 @@ class Server:
         self.log.debug(f"Connecting DEALER socket [{self.uid}] to orchestrator at ({url})")
         socket.connect(url)
 
-        return {"orchestrator": Transport(self.uid, socket), "context": context}
+        return {"orchestrator": Transport(socket), "context": context}
 
     def allocate_storage(self, request: StorageRequest):
         """Allocate storage space on disks and update request with connection details"""
@@ -106,6 +104,9 @@ class Server:
         request.nqn = "nqn.2014-08.com.vendor:nvme:nvm-subsystem-sn-d78432"
         request.alloc_type = "nvme"
         request.state = ReqState.ALLOCATED
+        self.transports["orchestrator"].send_multipart(
+            Message(MsgCat.REQUEST, self.schema.dump(request))
+        )
 
     def deallocate_storage(self, request: StorageRequest):
         """Free space previously allocated to given request"""
@@ -134,13 +135,12 @@ class Server:
             identities, message = self.transports["orchestrator"].recv_multipart()
 
             if message.category == MsgCat.REQUEST:
-                self.log.info(f"New request received from {','.join(identities)}")
-                request = self.schema.load(message)
+                self.log.info(f"New request received from orchestrator {','.join(identities)}")
+                request = self.schema.load(message.content)
 
                 if request.state == ReqState.GRANTED:
                     self.log.info("New request in GRANTED state, processing now...")
                     self.allocate_storage(request)
-                    self.transports["orchestrator"].send_multipart(Message(MsgCat.REQUEST, request))
                 elif request.state == ReqState.ENDED:
                     self.log.info("New request in ENDED state, processing now...")
                     self.deallocate_storage(request)
@@ -148,10 +148,12 @@ class Server:
                     self.log.warning(f"New request has undesired state {request.state} ; skipping.")
                     continue
             elif message.category == MsgCat.NOTIFICATION:
-                self.log.info(f"?otification received [{message.content}]")
+                self.log.info(f"Notification received [{message.content}]")
             elif message.category == MsgCat.ERROR:
                 self.log.error(f"Error received [{message.content}]")
                 break
             elif message.category == MsgCat.SHUTDOWN:
                 self.log.warning("The orchestrator has asked to close the connection")
                 break
+
+        self.transports["context"].destroy()

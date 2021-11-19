@@ -167,7 +167,7 @@ class ResourceCatalog:
         """Pretty print list of currently registered resources"""
 
         for node in self.storage_resources:
-            print(f"# Node {node.hostname} at index/uid {node.uid}")
+            print(f"# Node {node.hostname} at index/uid {node.uid} from server {node.identity}")
             print(f"  - IPv4 {node.ipv4}")
             print(f"  - Has {len(node.disks)} disks")
             for disk in node.disks:
@@ -204,7 +204,7 @@ class ResourceCatalog:
             return True
         return False
 
-    def append_resources(self, src_identity: int, resources: list[Node]):
+    def append_resources(self, src_identity: str, resources: list[Node]):
         """Append the given resources received from a server to the catalog."""
 
         for node in resources:

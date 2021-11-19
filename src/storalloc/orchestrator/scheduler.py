@@ -6,11 +6,15 @@ from multiprocessing import Process
 
 import zmq
 
+from storalloc.utils.logging import get_storalloc_logger
 from storalloc.strategies.base import StrategyInterface
-from storalloc.resources import ResourceCatalog
+from storalloc.resources import ResourceCatalog, Node
 from storalloc.utils.transport import Transport
 from storalloc.utils.message import Message, MsgCat
-from storalloc.request import RequestSchema, ReqState
+from storalloc.request import RequestSchema, ReqState, StorageRequest
+
+
+# pylint: disable=logging-not-lazy
 
 
 class Scheduler(Process):
@@ -21,51 +25,52 @@ class Scheduler(Process):
     """
 
     def __init__(
-        self, uid: str, strategy: StrategyInterface = None, resource_catalog: ResourceCatalog = None
+        self,
+        uid: str,
+        strategy: StrategyInterface = None,
+        resource_catalog: ResourceCatalog = None,
+        verbose: bool = False,
     ):
         """Init process"""
         super().__init__()
         self.uid = uid
         self.strategy = strategy
         self.resource_catalog = resource_catalog
+        self.schema = RequestSchema()
+        self.transport = None  # waiting for context init to run when process is started
+        self.log = None  # same
+        self.verbose = verbose
 
-    def process_allocation_request(self, request):
+    def process_allocation_request(self, request: StorageRequest):
         """Run scheduling algo and attempt to find an optimal allocation for a given request"""
 
-        self.log.debug(
-            f"[{job.uid:05}] Add {job.request} on node {target_node}, disk {target_disk}"
-        )
+        self.log.debug(f"Processing PENDING allocation request : {request}")
 
-        alloc_request = {
-            "job_id": job.uid,
-            "disk": target_disk,
-            "capacity": job.request.capacity,
-            "duration": job.request.duration,
-        }
-        identities = [
-            self.rcatalog.identity_of_node(target_node),
-            job.client_identity,
-        ]
-        notification = Message(MsgCat.ALLOCATION, alloc_request)
-        self.server_socket.send_multipart(identities + [notification.pack()])
-        # notification.send(self.server_socket, identities)
+        target_node, target_disk = self.strategy.compute(self.resource_catalog, request)
 
-        job.status = JobStatus.ALLOCATED
-        self.running_jobs.add(job)
-        self.pending_jobs.remove(job)
+        if target_node != -1:
+            request.node_id = target_node
+            request.disk_id = target_disk
+            request.server_id = self.resource_catalog.get_node(target_node).identity
+            request.state = ReqState.GRANTED
+            self.log.debug(
+                f"Request [GRANTED] on disk {target_node}:{target_disk} "
+                + f"from server {request.server_id}"
+            )
+            self.resource_catalog.add_allocation(target_node, target_disk, request)
+        else:
+            request.state = ReqState.REFUSED
+            request.reason = "Could not fit request onto current resources"
 
-        self.rcatalog.add_allocation(target_node, target_disk, job)
-        self.rcatalog.print_status(target_node, target_disk)
-
-        notification = Message(MsgCat.NOTIFICATION, f"Granted job allocation {job.uid}")
-        self.client_socket.send_multipart([job.client_identity, notification.pack()])
-        # notification.send(self.client_socket, job.client_identit
+        # Send back the allocated request to the orchestrator
+        self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
 
     def process_deallocation_request(self, request):
         """Acknowledge the release of some storage resource in the resource catalog
         (request in ENDED state)"""
+        self.log.debug(f"Processing ENDED request : {request}")
 
-    def process_node_registration(self, node_id: str, node_data: dict):
+    def process_node_registration(self, server_id: str, node_data: dict):
         """Update resource catalog according to a new registration"""
         self.resource_catalog.append_resources(
             server_id, [Node.from_dict(data) for data in node_data]
@@ -73,6 +78,8 @@ class Scheduler(Process):
 
     def run(self):
         """Run loop"""
+
+        self.log = get_storalloc_logger(self.verbose)
 
         context = zmq.Context()
         socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
@@ -86,27 +93,22 @@ class Scheduler(Process):
         while True:
 
             identities, message = self.transport.recv_multipart()
-            print("Message received in scheduler")
             if message.category is MsgCat.REQUEST:
-                print("Message is a request")
                 request = self.schema.load(message.content)
                 if request.state is ReqState.PENDING:
-                    print("Message is a pending request")
                     self.process_allocation_request(request)
                 elif request.state is ReqState.ENDED:
-                    print("Message is an ended request")
                     self.process_deallocation_request(request)
                 else:
-                    # self.log.error(
-                    #    f"Received undesired Request with state {request.state}"
-                    #    + "Should have been either one of GRANTED or ENDED"
-                    # )
+                    self.log.error(
+                        f"Received undesired Request with state {request.state}"
+                        + "Should have been either one of GRANTED or ENDED"
+                    )
                     continue
             elif message.category is MsgCat.REGISTRATION:
-                print("Message is a registration")
+                self.log.debug(f"Registration from server id : {identities}")
                 self.process_node_registration(identities[0], message.content)
             elif message.category is MsgCat.NOTIFICATION:
-                print("Scheduler process received a notification")
                 # Answer to keep alive messages from router
                 notification = Message.notification("keep-alive")
                 self.transport.send_multipart(notification)

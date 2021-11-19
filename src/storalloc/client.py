@@ -85,7 +85,7 @@ class Client:
             if message.category == MsgCat.NOTIFICATION:
                 self.log.debug(f"New notification received [{message.content}]")
             elif message.category == MsgCat.ERROR:
-                self.log.error("Error from orchestrator : [{message.content}]")
+                self.log.error(f"Error from orchestrator : [{message.content}]")
                 break
             elif message.category == MsgCat.REQUEST:
                 request = self.schema.load(message.content)
@@ -95,6 +95,8 @@ class Client:
             else:
                 self.log.error("Unexpected message category, exiting client")
                 break
+
+        self.transports["context"].destroy()
 
     def send_eos(self):
         """Send End Of Simulation flag to orchestrator"""

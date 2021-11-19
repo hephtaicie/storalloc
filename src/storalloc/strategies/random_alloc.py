@@ -17,6 +17,11 @@ class RandomAlloc(StrategyInterface):
         #      by # of nodes in catalog / # number of disk in chosen node
         # TODO : Why do we need 'job' here ?
 
+        resource_catalog.pretty_print()
+
+        if resource_catalog.node_count() == 0:
+            return (-1, -1)
+
         random.seed()
         target_node = random.randint(0, resource_catalog.node_count() - 1)
         target_disk = random.randint(0, resource_catalog.disk_count(target_node) - 1)

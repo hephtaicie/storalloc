@@ -28,6 +28,8 @@ class RequestSchema(Schema):
     capacity = fields.Int()
     duration = fields.TimeDelta()
     start_time = fields.DateTime()
+    client_id = fields.Str()
+    server_id = fields.Str()
     job_id = fields.Str()
     node_id = fields.Str()
     disk_id = fields.Str()
@@ -59,11 +61,13 @@ class StorageRequest:
     start_time: datetime.datetime = None
 
     # Set for PENDING
+    client_id: str = 0
     job_id: str = ""
 
     # Set for GRANTED
     node_id: str = ""
     disk_id: str = ""
+    server_id: str= ""
 
     # Set for ALLOCATED
     alloc_type: str = ""
@@ -87,7 +91,7 @@ class StorageRequest:
         if self.state is ReqState.OPENED:
             desc = f"Request [OPENED] : {self.capacity} GB, {self.duration}, {self.start_time}"
         elif self.state is ReqState.PENDING:
-            desc = f"Request [PENDING] : {self.capacity} GB, {self.duration}, {self.start_time}"
+            desc = f"Request [PENDING] : given job_id {self.job_id} / from client {self.client_id}"
         elif self.state is ReqState.GRANTED:
             desc = (
                 f"Request [GRANTED] : {self.capacity} GB, for {self.duration}, "
