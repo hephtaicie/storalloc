@@ -67,7 +67,7 @@ class StorageRequest:
     # Set for GRANTED
     node_id: str = ""
     disk_id: str = ""
-    server_id: str= ""
+    server_id: str = ""
 
     # Set for ALLOCATED
     alloc_type: str = ""

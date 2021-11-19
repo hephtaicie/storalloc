@@ -108,7 +108,9 @@ class WorstCase(StrategyInterface):
                     + " GB): %.2f GBps" % disk_bw
                 )
 
-            node_bw = node_bw / ((request.end_time() - request.start_time()).seconds) / len(node.disks)
+            node_bw = (
+                node_bw / ((request.end_time() - request.start_time()).seconds) / len(node.disks)
+            )
 
             resources_status[n].bw = node_bw
             logging.debug(
