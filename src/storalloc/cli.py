@@ -9,7 +9,7 @@
 import datetime
 import click
 
-from storalloc import client, server
+from storalloc import client, server, log_server
 from storalloc.orchestrator import router
 
 
@@ -23,7 +23,7 @@ def cli(ctx, verbose):
     ctx.obj["verbose"] = verbose
 
 
-# SERVER
+# STORAGE SERVER
 @cli.command("server")
 @click.pass_context
 @click.option(
@@ -53,7 +53,7 @@ def cli(ctx, verbose):
 )
 def run_server(ctx, config, system, reset, simulate):
     """Server command"""
-    click.secho("[~] Starting server...", fg="green")
+    click.secho("[~] Starting server...", fg="white", bg="cyan")
     cli_server = server.Server(config, system, simulate, verbose=ctx.obj["verbose"])
     cli_server.run(reset)
 
@@ -75,8 +75,8 @@ def run_server(ctx, config, system, reset, simulate):
 )
 def run_orchestrator(ctx, config, simulate):
     """Orchestrator command"""
-    click.secho("[~] Starting orchestrator...", fg="green")
-    orchestrator = router.Router(config)
+    click.secho("[~] Starting orchestrator...", fg="yellow")
+    orchestrator = router.Router(config, ctx.obj["verbose"])
     orchestrator.run()
 
 
@@ -119,7 +119,7 @@ def run_orchestrator(ctx, config, simulate):
 def run_client(ctx, config, size, time, start_time, eos):
     """Start a Storalloc client (an orchestrator need to be already running)"""
 
-    click.secho("[~] Starting client...", fg="green")
+    click.secho("[~] Starting client...", fg="cyan")
     # Convert duration of requested storage allocation to seconds
     time_delta = datetime.timedelta(hours=time.hour, minutes=time.minute, seconds=time.second)
     if start_time is None:
@@ -130,6 +130,24 @@ def run_client(ctx, config, size, time, start_time, eos):
         client_endpoint.run(size, time_delta, start_time)
     else:
         click.secho("[!] Not implemented", fg="red")
+
+
+# LOG-SERVER
+@cli.command("log-server")
+@click.pass_context
+@click.option(
+    "-c",
+    "--config",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to the StorAlloc configuration file",
+)
+def logging(ctx, config):
+    """Start a StorAlloc log server, which collects and display logs from the other components."""
+
+    click.secho("[~] Starting log-server.", fg="green")
+    logs = log_server.LogServer(config, verbose=ctx.obj["verbose"])
+    logs.run()
 
 
 if __name__ == "__main__":

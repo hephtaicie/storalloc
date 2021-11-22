@@ -4,7 +4,9 @@ orchestrator_fe_ipc: client_ipc
 orchestrator_be_ipc: server_ipc
 client_port: 35010
 server_port: 35020
+log_server_addr: 127.0.0.1
 log_server_port: 35030
+log_server_sync_port: 35031
 simulation_port: 35040
 visualisation_port: 35050
 transport: tcp

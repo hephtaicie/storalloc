@@ -3,8 +3,12 @@
 """
 import sys
 import logging
+
 from logging import StreamHandler, Formatter
 from logging.handlers import RotatingFileHandler
+
+import zmq
+from zmq.log.handlers import PUBHandler
 
 LOGGER_NAME = "storalloc"
 
@@ -40,3 +44,28 @@ def get_storalloc_logger(verbose: bool = True, stderr_log: bool = True):
     logger.addHandler(rotating_file_hdl)
 
     return logger
+
+
+def add_remote_handler(
+    logger: logging.Logger, topic: str, context: zmq.Context, url: str, sync_url: str
+):
+    """Configure an existing logger with additional remote handler using PyZMQ"""
+
+    # Prepare handler
+    log_publisher = context.socket(zmq.PUB)  # pylint: disable=no-member
+    log_publisher.connect(url)
+    handler = PUBHandler(log_publisher)
+    handler.root_topic = topic.encode("utf-8")
+
+    # Synchronisation -> we expect the log-server to be already up and running
+    sync_socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
+    sync_socket.connect(sync_url)
+    sync_socket.send_multipart([topic.encode("utf-8")])
+    res = sync_socket.poll(timeout=1000)
+    if not res:
+        logger.debug("Unable tor each log-server, remote logging deactivated")
+        return False
+
+    logger.addHandler(handler)  # pylint: disable=no-member
+    logger.debug("Remote logging configured")
+    return True
