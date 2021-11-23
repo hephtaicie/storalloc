@@ -13,10 +13,14 @@ from zmq.log.handlers import PUBHandler
 LOGGER_NAME = "storalloc"
 
 
-def get_storalloc_logger(verbose: bool = True, stderr_log: bool = True):
+def get_storalloc_logger(verbose: bool = True, stderr_log: bool = True, logger_name: str = ""):
     """Return a storalloc logger with proper configuration for local logging"""
 
-    logger = logging.getLogger(LOGGER_NAME)
+    if not logger_name:
+        logger = logging.getLogger(LOGGER_NAME)
+    else:
+        logger = logging.getLogger(logger_name)
+
     if logger.hasHandlers():
         # We can assume it has already been configured
         return logger

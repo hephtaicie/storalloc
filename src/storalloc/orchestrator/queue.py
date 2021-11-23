@@ -6,7 +6,7 @@ from collections import deque
 
 import zmq
 
-from storalloc.utils.logging import get_storalloc_logger
+from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
 from storalloc.utils.transport import Transport
 from storalloc.utils.message import Message, MsgCat
 from storalloc.request import RequestSchema, ReqState
@@ -15,11 +15,13 @@ from storalloc.request import RequestSchema, ReqState
 class AllocationQueue(Process):
     """Class responsible for interacting with a request deque"""
 
-    def __init__(self, uid: str, verbose: bool = True):
+    def __init__(self, uid: str, verbose: bool = True, remote_logging: tuple = None):
         """Init"""
         super().__init__()
         self.uid = uid
-        self.log = get_storalloc_logger(verbose)
+        self.verbose = verbose
+        self.log = None
+        self.remote_logging = remote_logging
 
     def _store_request(self, new):
         """Store a request ordered by storage allocation walltime inside the inner deque"""
@@ -60,12 +62,18 @@ class AllocationQueue(Process):
         """
 
         self.request_deque = deque()
-        self.context = zmq.Context()
-        socket = self.context.socket(zmq.DEALER)  # pylint: disable=no-member
+        context = zmq.Context()
+        socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
         socket.setsockopt(zmq.IDENTITY, self.uid.encode("utf-8"))  # pylint: disable=no-member
         socket.connect("ipc://queue_manager.ipc")
         self.transport = Transport(socket)
         self.schema = RequestSchema()
+
+        self.log = get_storalloc_logger(self.verbose, True, self.uid)
+        if self.remote_logging:
+            add_remote_handler(
+                self.log, self.uid, context, self.remote_logging[0], self.remote_logging[1]
+            )
 
         self.transport.send_multipart(Message.notification("queue_manager-alive"))
 

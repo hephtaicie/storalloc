@@ -5,13 +5,12 @@
 import datetime
 import uuid
 import zmq
-from zmq.log.handlers import PUBHandler
 
 from storalloc.request import StorageRequest, RequestSchema
 from storalloc.utils.message import Message, MsgCat
 from storalloc.utils.transport import Transport
 from storalloc.utils.config import config_from_yaml
-from storalloc.utils.logging import get_storalloc_logger
+from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
 
 
 class Client:
@@ -42,11 +41,13 @@ class Client:
 
         # Logging PUBLISHER and associated handler ######################################
         if remote_logging:
-            log_publisher = context.socket(zmq.PUB)  # pylint: disable=no-member
-            log_publisher.connect(
-                f"tcp://{self.conf['orchestrator_addr']}:{self.conf['log_server_port']}"
+            add_remote_handler(
+                self.log,
+                self.uid,
+                context,
+                f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_port']}",
+                f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_sync_port']}",
             )
-            self.log.addHandler(PUBHandler(log_publisher))  # pylint: disable=no-member
 
         self.log.info(f"Creating DEALER socket for client {self.uid}")
         socket = context.socket(zmq.DEALER)  # pylint: disable=no-member

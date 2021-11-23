@@ -6,9 +6,7 @@ import yaml
 
 import cerberus
 
-from storalloc.utils.logging import get_storalloc_logger
-
-# Cerberus
+from storalloc.utils.logging import get_storalloc_logger # Cerberus
 
 CONFIG_SCHEMA = {
     "orchestrator_hostname": {"type": "string"},

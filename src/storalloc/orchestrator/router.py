@@ -68,10 +68,20 @@ class Router:
             make_strategy(self.conf["sched_strategy"]),
             make_resource_catalog(self.conf["res_catalog"]),
             verbose,
+            (
+                f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_port']}",
+                f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_sync_port']}",
+            ),
         )
 
         # Init allocation queue manager
-        self.queue_manager = AllocationQueue(f"{self.uid}-QM", verbose)
+        self.queue_manager = AllocationQueue(f"{self.uid}-QM", verbose,
+(
+                f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_port']}",
+                f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_sync_port']}",
+            ),
+
+                )
 
         self.schema = RequestSchema()
 
@@ -209,8 +219,11 @@ class Router:
             self.transports["scheduler"].send_multipart(message, [f"{self.uid}-SC"] + identities)
 
             # Forward registration to the simulation and visualisation
+            self.log.debug("Transmitting registration message to sim / visu")
             self.transports["simulation"].send_multipart(message)
             self.transports["visualisation"].send_multipart(message)
+
+            self.log.debug("Done handling registration message")
 
         elif message.category == MsgCat.REQUEST:
             request = self.schema.load(message.content)

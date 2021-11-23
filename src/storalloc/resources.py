@@ -207,9 +207,11 @@ class ResourceCatalog:
     def append_resources(self, src_identity: str, resources: list[Node]):
         """Append the given resources received from a server to the catalog."""
 
+        print("Appending new resources")
         for node in resources:
             node.identity = src_identity
             self.storage_resources.append(node)
+        print("New resources appended")
 
     def print_status(self, target_node_id, target_disk_id):
         """ASCII-based output of the given scheduling."""

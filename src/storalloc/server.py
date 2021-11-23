@@ -5,7 +5,6 @@
 import uuid
 import os
 import zmq
-from zmq.log.handlers import PUBHandler
 
 # from storalloc.nvmet import nvme
 
@@ -14,7 +13,7 @@ from storalloc.resources import ResourceCatalog
 from storalloc.utils.config import config_from_yaml
 from storalloc.utils.message import Message, MsgCat
 from storalloc.utils.transport import Transport
-from storalloc.utils.logging import get_storalloc_logger
+from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
 
 # def reset_resources(storage_resources):
 #    """Reset storage configurations
@@ -76,11 +75,13 @@ class Server:
 
         # Logging PUBLISHER and associated handler ######################################
         if remote_logging:
-            log_publisher = context.socket(zmq.PUB)  # pylint: disable=no-member
-            log_publisher.connect(
-                f"tcp://{self.conf['orchestrator_addr']}:{self.conf['log_server_port']}"
+            add_remote_handler(
+                self.log,
+                self.uid,
+                context,
+                f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_port']}",
+                f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_sync_port']}",
             )
-            self.log.addHandler(PUBHandler(log_publisher))  # pylint: disable=no-member
 
         self.log.info(f"Creating a DEALER socket for server {self.uid}")
 
