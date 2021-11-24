@@ -13,17 +13,14 @@ class RandomAlloc(StrategyInterface):
     def compute(self, resource_catalog, request):
         """Make random allocation choice"""
 
-        # TODO change random values so that they are actually bounded
-        #      by # of nodes in catalog / # number of disk in chosen node
-        # TODO : Why do we need 'job' here ?
-
         resource_catalog.pretty_print()
 
         if resource_catalog.node_count() == 0:
             return (-1, -1)
 
         random.seed()
-        target_node = random.randint(0, resource_catalog.node_count() - 1)
-        target_disk = random.randint(0, resource_catalog.disk_count(target_node) - 1)
+        server = random.choice(list(resource_catalog.storage_resources.keys()))
+        target_node = random.randint(0, resource_catalog.node_count(server) - 1)
+        target_disk = random.randint(0, resource_catalog.disk_count(server, target_node) - 1)
 
-        return (target_node, target_disk)
+        return (server, target_node, target_disk)

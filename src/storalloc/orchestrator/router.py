@@ -75,13 +75,14 @@ class Router:
         )
 
         # Init allocation queue manager
-        self.queue_manager = AllocationQueue(f"{self.uid}-QM", verbose,
-(
+        self.queue_manager = AllocationQueue(
+            f"{self.uid}-QM",
+            verbose,
+            (
                 f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_port']}",
                 f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_sync_port']}",
             ),
-
-                )
+        )
 
         self.schema = RequestSchema()
 
@@ -132,8 +133,19 @@ class Router:
         self.log.info("Binding socket for publishing simulation updates")
         simulation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
         simulation_socket.bind(
-            f"tcp://{self.conf['orchestrator_addr']}:{self.conf['simulation_port']}"
+            f"tcp://{self.conf['simulation_addr']}:{self.conf['simulation_port']}"
         )
+        # Synchronisation -> we expect the log-server to be already up and running
+        sync_socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
+        sync_socket.connect(
+            f"tcp://{self.conf['simulation_addr']}:{self.conf['simulation_sync_port']}"
+        )
+        Transport(sync_socket).send_sync()
+        res = sync_socket.poll(timeout=1000)
+        if not res:
+            self.log.warning("Unable tor reach simulation server, is it up ?")
+        else:
+            self.log.debug("Simulation server is UP and reachable")
 
         # Visualisation PUBLISHER #################################################################
         self.log.info("Binding socket for publishing visualisation updates")
@@ -203,7 +215,7 @@ class Router:
         elif message.category == MsgCat.EOS:
             self.log.debug("Processing EoS from client {client_id}")
             # Propagate the end of simulation flag to the simulation socket
-            self.transports["simulation"].send_multipart(message)
+            self.transports["simulation"].send_multipart(message, "sim")
         else:
             self.log.warning("Undesired message ({message.category}) received from a client")
 
@@ -220,8 +232,8 @@ class Router:
 
             # Forward registration to the simulation and visualisation
             self.log.debug("Transmitting registration message to sim / visu")
-            self.transports["simulation"].send_multipart(message)
-            self.transports["visualisation"].send_multipart(message)
+            self.transports["simulation"].send_multipart(message, ["sim"] + identities)
+            self.transports["visualisation"].send_multipart(message, "vis")
 
             self.log.debug("Done handling registration message")
 
@@ -234,8 +246,8 @@ class Router:
                 self.transports["queue"].send_multipart(message)
 
                 # Forward registration to the simulation and visualisation
-                self.transports["simulation"].send_multipart(message)
-                self.transports["visualisation"].send_multipart(message)
+                self.transports["simulation"].send_multipart(message, "sim")
+                self.transports["visualisation"].send_multipart(message, "vis")
             elif request.state == ReqState.FAILED:
                 error = Message.error(f"Requested allocation failed : {request.reason}")
                 self.transports["client"].send_multipart(error, request.client_id)
@@ -258,7 +270,7 @@ class Router:
         if request.state == ReqState.GRANTED:
             # Forward to server for actual allocation
             self.log.debug(
-                f"Request [GRANTED], forwarding allocation request to server {request.node_id}"
+                f"Request [GRANTED], forwarding allocation request to server {request.server_id}"
             )
             self.transports["server"].send_multipart(message, request.server_id)
         elif request.state == ReqState.REFUSED:
@@ -276,7 +288,7 @@ class Router:
         """Process incoming messages from queue_manager. Those messages will always be
         REQUEST with the status ENDED, destined to the scheduler."""
 
-        identities, message = self.transports["queue"].recv_multipart()
+        _, message = self.transports["queue"].recv_multipart()
 
         if message.category != MsgCat.REQUEST:
             self.log.warning("Undesired message ({message.category}) received from a queue manager")

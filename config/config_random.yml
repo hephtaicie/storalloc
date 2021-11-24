@@ -7,7 +7,9 @@ server_port: 35020
 log_server_addr: 127.0.0.1
 log_server_port: 35030
 log_server_sync_port: 35031
+simulation_addr: 127.0.0.1
 simulation_port: 35040
+simulation_sync_port: 35041
 visualisation_port: 35050
 transport: tcp
 sched_strategy: random_alloc

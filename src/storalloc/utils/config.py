@@ -6,7 +6,7 @@ import yaml
 
 import cerberus
 
-from storalloc.utils.logging import get_storalloc_logger # Cerberus
+from storalloc.utils.logging import get_storalloc_logger  # Cerberus
 
 CONFIG_SCHEMA = {
     "orchestrator_hostname": {"type": "string"},
@@ -18,7 +18,9 @@ CONFIG_SCHEMA = {
     "log_server_addr": {"type": "string"},
     "log_server_port": {"type": "integer", "min": 1025, "max": 65535},
     "log_server_sync_port": {"type": "integer", "min": 1025, "max": 65535},
+    "simulation_addr": {"type": "string"},
     "simulation_port": {"type": "integer", "min": 1025, "max": 65535},
+    "simulation_sync_port": {"type": "integer", "min": 1025, "max": 65535},
     "visualisation_port": {"type": "integer", "min": 1025, "max": 65535},
     "transport": {"type": "string", "allowed": ["tcp", "ipc"]},
     "sched_strategy": {"type": "string", "allowed": ["random_alloc", "worst_case"]},

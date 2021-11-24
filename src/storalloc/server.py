@@ -65,7 +65,7 @@ class Server:
 
         self.transports = self.zmq_init()
 
-        self.rcatalog = ResourceCatalog(system_path)
+        self.rcatalog = ResourceCatalog(self.uid, system_path)
         self.schema = RequestSchema()
 
     def zmq_init(self, remote_logging: bool = True):
@@ -123,7 +123,8 @@ class Server:
         #   reset_resources(storage_resources)
 
         message = Message(
-            MsgCat.REGISTRATION, [node.to_dict() for node in self.rcatalog.storage_resources]
+            MsgCat.REGISTRATION,
+            [node.to_dict() for node in self.rcatalog.storage_resources[self.uid]],
         )
         self.log.debug(
             f"Sending registration message for server {self.uid}"

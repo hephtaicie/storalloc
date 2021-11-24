@@ -31,8 +31,8 @@ class RequestSchema(Schema):
     client_id = fields.Str()
     server_id = fields.Str()
     job_id = fields.Str()
-    node_id = fields.Str()
-    disk_id = fields.Str()
+    node_id = fields.Int()
+    disk_id = fields.Int()
     alloc_type = fields.Str()
     nqn = fields.Str()
     state = EnumField(ReqState, by_value=True)
@@ -40,6 +40,7 @@ class RequestSchema(Schema):
 
     @post_load
     def make_request(self, data, **kwargs):
+        """Deserialise into a StorageRequest object rather than a validated dict"""
         return StorageRequest(**data)
 
 
@@ -65,8 +66,8 @@ class StorageRequest:
     job_id: str = ""
 
     # Set for GRANTED
-    node_id: str = ""
-    disk_id: str = ""
+    node_id: int = 0
+    disk_id: int = 0
     server_id: str = ""
 
     # Set for ALLOCATED

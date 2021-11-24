@@ -73,7 +73,6 @@ class Node:
     ipv4: str = ""
     bandwidth: float = 0
     disks: list[Disk] = field(default_factory=list, init=False, repr=False)
-    identity: str = field(default="", init=False)
 
     def to_dict(self):
         """Dictionnary representation for serialisation"""
@@ -82,7 +81,6 @@ class Node:
             "hostname": self.hostname,
             "ipv4": self.ipv4,
             "bandwidth": self.bandwidth,
-            "identidy": self.identity,
             "disks": [disk.to_dict() for disk in self.disks],
         }
 
@@ -90,7 +88,6 @@ class Node:
     def from_dict(cls, data: dict):
         """Create Node object from dict, for deserialisation"""
         node = cls(data["uid"], data["hostname"], data["ipv4"], data["bandwidth"])
-        node.identity = data["identity"] if data.get("identity") else ""
         node.disks = [Disk.from_dict(disk) for disk in data["disks"]]
         return node
 
@@ -128,15 +125,17 @@ class ResourceCatalog:
     This list can evolve accoding to subscribed storage servers
     """
 
-    def __init__(self, yaml_file: str = None):
-        """Init ResourceCatalog (with an empty list)"""
+    def __init__(self, server_uid: str = None, yaml_file: str = None):
+        """Init ResourceCatalog. Internal node storage is a dictionnary whose keys are server_id
+        and values are list of nodes registered by this server.
+        """
 
         self.log = get_storalloc_logger()
-        self.storage_resources = []
-        if yaml_file:
-            self.populate_from_yaml(yaml_file)
+        self.storage_resources = {}
+        if server_uid and yaml_file:
+            self.nodes_from_yaml(server_uid, yaml_file)
 
-    def populate_from_yaml(self, yaml_file):
+    def nodes_from_yaml(self, server_uid, yaml_file):
         """Translate a system configuration file (YAML) into a set of storage resources."""
 
         self.log.info("Populating resource catalog from yaml file...")
@@ -159,44 +158,49 @@ class ResourceCatalog:
                     print(new_disk)
                     new_node.disks.append(new_disk)
 
-                self.storage_resources.append(new_node)
+                # Use defaultdict ??
+                if not self.storage_resources.get(server_uid):
+                    self.storage_resources[server_uid] = []
+                self.storage_resources[server_uid].append(new_node)
 
         self.log.info(f"storage_resources catalog now contains {len(self.storage_resources)} nodes")
 
     def pretty_print(self):
         """Pretty print list of currently registered resources"""
 
-        for node in self.storage_resources:
-            print(f"# Node {node.hostname} at index/uid {node.uid} from server {node.identity}")
-            print(f"  - IPv4 {node.ipv4}")
-            print(f"  - Has {len(node.disks)} disks")
-            for disk in node.disks:
-                print(disk)
+        for server_id, nodes in self.storage_resources.items():
+            for node in nodes:
+                print(f"# Node {node.hostname} at index/uid {node.uid} from server {server_id}")
+                print(f"  - IPv4 {node.ipv4}")
+                print(f"  - Has {len(node.disks)} disks")
+                for disk in node.disks:
+                    print(disk)
 
-    def add_allocation(self, node_id: int, disk_id: int, job):
+    def add_allocation(self, server_id: str, node_id: int, disk_id: int, job):
         """Add allocation in a given disk of a given node, for a specific job"""
-        self.storage_resources[node_id].disks[disk_id].allocations.append(job)
+        self.storage_resources[server_id][node_id].disks[disk_id].allocations.append(job)
 
-    def get_node(self, node_id: int):
+    def get_node(self, server_id: str, node_id: int):
         """Get a specific node from list of resources"""
-        return self.storage_resources[node_id]
+        return self.storage_resources[server_id][node_id]
 
-    def node_count(self):
+    def node_count(self, server_id: str = None):
         """Return node count from resource list"""
-        return len(self.storage_resources)
+        if server_id:
+            return len(self.storage_resources.get(server_id))
 
-    def disk_count(self, node_id: int):
+        total_nodes = 0
+        for nodes in self.storage_resources.values():
+            total_nodes += len(nodes)
+        return total_nodes
+
+    def disk_count(self, server_id: str, node_id: int):
         """Return disk count for a specific node"""
-        return len(self.storage_resources[node_id].disks)
+        return len(self.storage_resources[server_id][node_id].disks)
 
-    def disk_capacity(self, node_id: int, disk_id: int):
+    def disk_capacity(self, server_id: str, node_id: int, disk_id: int):
         """Return disk capacity for a specific disk in a specific node"""
-        return self.storage_resources[node_id].disks[disk_id].capacity
-
-    def identity_of_node(self, node_id: int):
-        """Get node ID"""
-        self.log.debug(f"Querying identity of node : {node_id}")
-        return self.storage_resources[node_id].identity
+        return self.storage_resources[server_id][node_id].disks[disk_id].capacity
 
     def is_empty(self):
         """Check whether any storage resources are populated or not"""
@@ -204,14 +208,13 @@ class ResourceCatalog:
             return True
         return False
 
-    def append_resources(self, src_identity: str, resources: list[Node]):
+    def append_resources(self, server_id: str, resources: list[Node]):
         """Append the given resources received from a server to the catalog."""
 
-        print("Appending new resources")
-        for node in resources:
-            node.identity = src_identity
-            self.storage_resources.append(node)
-        print("New resources appended")
+        if self.storage_resources.get(server_id):
+            self.storage_resources[server_id].extend(resources)
+        else:
+            self.storage_resources[server_id] = resources
 
     def print_status(self, target_node_id, target_disk_id):
         """ASCII-based output of the given scheduling."""

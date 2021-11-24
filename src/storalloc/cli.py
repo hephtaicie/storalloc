@@ -9,7 +9,7 @@
 import datetime
 import click
 
-from storalloc import client, server, log_server
+from storalloc import client, server, log_server, simulator
 from storalloc.orchestrator import router
 
 
@@ -148,6 +148,24 @@ def logging(ctx, config):
     click.secho("[~] Starting log-server.", fg="green")
     logs = log_server.LogServer(config, verbose=ctx.obj["verbose"])
     logs.run()
+
+
+# Simulation
+@cli.command("sim-server")
+@click.pass_context
+@click.option(
+    "-c",
+    "--config",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to the StorAlloc configuration file",
+)
+def sim(ctx, config):
+    """Start a StorAlloc log server, which collects and display logs from the other components."""
+
+    click.secho("[~] Starting simulation-server.", fg="green")
+    simulation = simulator.Simulator(config, verbose=ctx.obj["verbose"])
+    simulation.run()
 
 
 if __name__ == "__main__":

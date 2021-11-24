@@ -48,18 +48,15 @@ class Scheduler(Process):
 
         self.log.debug(f"Processing PENDING allocation request : {request}")
 
-        target_node, target_disk = self.strategy.compute(self.resource_catalog, request)
+        server_id, target_node, target_disk = self.strategy.compute(self.resource_catalog, request)
 
-        if target_node != -1:
+        if server_id:
             request.node_id = target_node
             request.disk_id = target_disk
-            request.server_id = self.resource_catalog.get_node(target_node).identity
+            request.server_id = server_id
             request.state = ReqState.GRANTED
-            self.log.debug(
-                f"Request [GRANTED] on disk {target_node}:{target_disk} "
-                + f"from server {request.server_id}"
-            )
-            self.resource_catalog.add_allocation(target_node, target_disk, request)
+            self.log.debug(f"Request [GRANTED] on disk {server_id}:{target_node}:{target_disk}")
+            self.resource_catalog.add_allocation(server_id, target_node, target_disk, request)
         else:
             request.state = ReqState.REFUSED
             request.reason = "Could not fit request onto current resources"
