@@ -3,28 +3,27 @@
 """
 
 import uuid
-import simpy
 import zmq
+import simpy
 
 from storalloc.request import RequestSchema, ReqState, StorageRequest
 from storalloc.resources import ResourceCatalog, Node
-from storalloc.utils.message import MsgCat
+from storalloc.utils.message import Message, MsgCat
 from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
 from storalloc.utils.config import config_from_yaml
 from storalloc.utils.transport import Transport
 
 
-# pylint: disable=no-member
+# pylint: disable=no-member,logging-not-lazy
 
 
-class Simulator:
+class Simulation:
     """basic simulator"""
 
     def __init__(self, config_path: str, uid: str = None, verbose: bool = True):
         """Init simulation with new simpy env"""
 
         self.uid = uid or f"SIM-{str(uuid.uuid4().hex)[:6]}"
-        self.verbose = verbose
         self.conf = config_from_yaml(config_path)
         self.log = get_storalloc_logger(verbose)
 
@@ -53,85 +52,32 @@ class Simulator:
         # Simulation SUBSCRIBER ####################################################################
         self.log.info("Connecting socket for subscribing to simulation updates")
         simulation_socket = context.socket(zmq.SUB)  # pylint: disable=no-member
-        simulation_socket.setsockopt(zmq.SUBSCRIBE, b"sim")
+        simulation_socket.setsockopt(zmq.SUBSCRIBE, b"sim")  # pylint: disable=no-member
         simulation_socket.connect(
-            f"tcp://{self.conf['simulation_addr']}:{self.conf['simulation_port']}"
+            f"tcp://{self.conf['orchestrator_addr']}:{self.conf['simulation_port']}"
         )
 
-        # Synchronisation ROUTER
-        self.log.info("Binding socket for simulation sync")
-        sync_signal = context.socket(zmq.ROUTER)
-        sync_signal.bind(
-            f"tcp://{self.conf['simulation_addr']}:{self.conf['simulation_sync_port']}"
+        # Visualisation PUBLISHER #################################################################
+        self.log.info("Binding socket for publishing visualisation updates")
+        visualisation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
+        visualisation_socket.bind(
+            f"tcp://{self.conf['simulation_addr']}:{self.conf['s_visualisation_port']}"
         )
 
         # POLLER ##################################################################################
         self.log.info("Creating poller for simulation and sync sockets")
         poller = zmq.Poller()
         poller.register(simulation_socket, zmq.POLLIN)
-        poller.register(sync_signal, zmq.POLLIN)
+        #       poller.register(sync_signal, zmq.POLLIN)
 
         transports = {
             "simulation": Transport(simulation_socket),
-            "sync": Transport(sync_signal),
+            "visualisation": Transport(visualisation_socket),
             "poller": poller,
             "context": context,
         }
 
         return transports
-
-    """
-    def simulate_scheduling(self, job, earliest_start_time):
-
-        yield self.env.timeout(job.sim_start_time(earliest_start_time))
-
-        target_node, target_disk = self.scheduling_strategy.compute(self.rcatalog, job)
-
-        # If a disk on a node has been found, we allocate the request
-        if target_node >= 0 and target_disk >= 0:
-            self.grant_allocation(job, target_node, target_disk)
-        else:
-            self.log.warning(f"Job<{job.uid:05}> - Unable to allocate request. Exiting...")
-
-        # Duration + Fix seconds VS minutes
-        yield self.env.timeout(job.sim_start_time())
-
-    def process_queue(self, simulate: bool):
-
-        if simulate:
-            if end_of_simulation:
-
-                earliest_start_time = datetime.datetime.now()
-                latest_end_time = datetime.datetime(1970, 1, 1)
-
-                self.pending_jobs.sort_asc_start_time()
-
-                for job in self.pending_jobs:
-                    if job.start_time() < earliest_start_time:
-                        earliest_start_time = job.start_time()
-                    if job.end_time() > latest_end_time:
-                        latest_end_time = job.end_time()
-
-                sim_duration = (latest_end_time - earliest_start_time).total_seconds() + 1
-
-                for job in self.pending_jobs:
-                    self.env.process(self.simulate_scheduling)
-
-                self.env.run(until=sim_duration)
-        else:
-            for job in self.pending_jobs:
-                target_node, target_disk = self.scheduling_strategy.compute(self.rcatalog, job)
-
-                # If a disk on a node has been found, we allocate the request
-                if target_node >= 0 and target_disk >= 0:
-                    self.grant_allocation(job, target_node, target_disk)
-                else:
-                    if not job.is_pending():
-                        self.log.debug(
-                            f"Job<{job.uid:05}> - Currently unable to allocate incoming request"
-                        )
-                        job.status = JobStatus.PENDING
-    """
 
     def update_disk(self, server_id, node_id, disk_id, allocation):
         """Update used capacity for disk"""
@@ -146,6 +92,10 @@ class Simulator:
                     + " will have to be postponned as capacity is not sufficient"
                 )
             container.put(allocation)
+            self.transports["visualisation"].send_multipart(
+                Message.datapoint("alloc", self.env.now, allocation), "sim"
+            )
+
         # free some disk space
         else:
             if container.level - allocation < 0:
@@ -154,6 +104,9 @@ class Simulator:
                     + "causes level to get below 0. Something bad is happening"
                 )
             container.get(-allocation)
+            self.transports["visualisation"].send_multipart(
+                Message.datapoint("alloc", self.env.now, allocation), "sim"
+            )
 
     def allocate(self, request: StorageRequest):
         """Simulate allocation"""
@@ -237,10 +190,6 @@ class Simulator:
                             "Undesired message category received "
                             + f"({message.category}, silently discarding"
                         )
-
-                if events.get(self.transports["sync"].socket) == zmq.POLLIN:
-                    identity = self.transports["sync"].recv_sync_router()
-                    self.transports["sync"].send_sync(identity)
 
             except zmq.ZMQError as err:
                 if err.errno == zmq.ETERM:

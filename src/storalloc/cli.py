@@ -9,7 +9,7 @@
 import datetime
 import click
 
-from storalloc import client, server, log_server, simulator
+from storalloc import client, server, log_server, simulation, visualisation
 from storalloc.orchestrator import router
 
 
@@ -160,12 +160,37 @@ def logging(ctx, config):
     type=click.Path(exists=True, dir_okay=False),
     help="Path to the StorAlloc configuration file",
 )
-def sim(ctx, config):
-    """Start a StorAlloc log server, which collects and display logs from the other components."""
+def run_sim(ctx, config):
+    """Start a StorAlloc simulation serer, based on Simpy"""
 
     click.secho("[~] Starting simulation-server.", fg="green")
-    simulation = simulator.Simulator(config, verbose=ctx.obj["verbose"])
-    simulation.run()
+    sim = simulation.Simulation(config, verbose=ctx.obj["verbose"])
+    sim.run()
+
+
+# Visualisation
+@cli.command("visualisation")
+@click.pass_context
+@click.option(
+    "-c",
+    "--config",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to the StorAlloc configuration file",
+)
+@click.option(
+    "-s",
+    "--sim",
+    is_flag=True,
+    help="Instruct visualitation to connect to simulation server instead of orchestrator²",
+)
+def run_visualisation(ctx, config, sim):
+    """Start a StorAlloc visualisation server (based on Bokeh), which traces events
+    from either orchestrator (live) or simulation server (when simulation run is triggered)"""
+
+    click.secho("[~] Starting simulation-server.", fg="green")
+    vis = visualisation.Visualisation(config, verbose=ctx.obj["verbose"], simulation=sim)
+    vis.run()
 
 
 if __name__ == "__main__":

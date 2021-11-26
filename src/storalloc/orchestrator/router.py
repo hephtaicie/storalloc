@@ -133,25 +133,14 @@ class Router:
         self.log.info("Binding socket for publishing simulation updates")
         simulation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
         simulation_socket.bind(
-            f"tcp://{self.conf['simulation_addr']}:{self.conf['simulation_port']}"
+            f"tcp://{self.conf['orchestrator_addr']}:{self.conf['simulation_port']}"
         )
-        # Synchronisation -> we expect the log-server to be already up and running
-        sync_socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
-        sync_socket.connect(
-            f"tcp://{self.conf['simulation_addr']}:{self.conf['simulation_sync_port']}"
-        )
-        Transport(sync_socket).send_sync()
-        res = sync_socket.poll(timeout=1000)
-        if not res:
-            self.log.warning("Unable tor reach simulation server, is it up ?")
-        else:
-            self.log.debug("Simulation server is UP and reachable")
 
         # Visualisation PUBLISHER #################################################################
         self.log.info("Binding socket for publishing visualisation updates")
         visualisation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
         visualisation_socket.bind(
-            f"tcp://{self.conf['orchestrator_addr']}:{self.conf['visualisation_port']}"
+            f"tcp://{self.conf['orchestrator_addr']}:{self.conf['o_visualisation_port']}"
         )
 
         # POLLER ##################################################################################
@@ -159,6 +148,7 @@ class Router:
         poller = zmq.Poller()
         poller.register(client_socket, zmq.POLLIN)
         poller.register(server_socket, zmq.POLLIN)
+        # poller.register(sim_sync_socket, zmq.POLLIN)
 
         # IPC POLLER ##############################################################################
         self.log.info("Creating poller for scheduler and queue manager sockets")

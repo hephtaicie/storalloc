@@ -38,6 +38,8 @@ class MsgCat(Enum):
     REQUEST = 3
     REGISTRATION = 4
     EOS = 10
+    DATAPOINT = 11
+    DATALIST = 12
     SHUTDOWN = 16
 
 
@@ -79,3 +81,19 @@ class Message:
         if pack:
             return cls(MsgCat.ERROR, content).pack()
         return cls(MsgCat.ERROR, content)
+
+    @classmethod
+    def datapoint(cls, source_name: str, x_data: float, y_data: float, pack: bool = False):
+        """Create a basic datapoint message"""
+        if pack:
+            return cls(MsgCat.DATAPOINT, (source_name, x_data, y_data)).pack()
+        return cls(MsgCat.DATAPOINT, (source_name, x_data, y_data))
+
+    @classmethod
+    def datalist(
+        cls, source_name: str, x_data: list[float], y_data: list[float], pack: bool = False
+    ):
+        """Create a basic datapoint message"""
+        if pack:
+            return cls(MsgCat.DATALIST, (source_name, x_data, y_data)).pack()
+        return cls(MsgCat.DATALIST, (source_name, x_data, y_data))
