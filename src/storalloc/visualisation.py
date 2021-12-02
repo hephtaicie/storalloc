@@ -4,12 +4,12 @@
 import threading
 from functools import partial
 import uuid
+import datetime
 
 import zmq
 
-import bokeh
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, DatetimeTickFormatter
 from bokeh.server.server import Server
 
 from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
@@ -71,10 +71,6 @@ class Visualisation:
     def simulation_vis(self, doc):
         """Start a Bokeh app for simulation events"""
 
-        # Common
-        tick = [16 * n for n in range(128)]
-        y_axis_range = bokeh.models.DataRange1d(start=0)
-
         # Sources
         sources = {}
         sources["alloc"] = ColumnDataSource(data={"time": [], "value": []})
@@ -83,11 +79,11 @@ class Visualisation:
         sim_plot = figure(
             y_axis_label="Allocated GB",
             x_axis_label="Simulation Time",
+            x_axis_type="datetime",
             title="Used GBs across all disks - Simulation",
-            y_range=y_axis_range,
             sizing_mode="stretch_both",
         )
-        sim_plot.ygrid.ticker = tick
+        sim_plot.xaxis[0].formatter = DatetimeTickFormatter(months="%H:%M:%S %d-%m-%Y")
         sim_plot.line(x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen")
 
         # doc.add_root(bokeh.layouts.column(sim_plot, sizing_mode="stretch_both"))
@@ -117,8 +113,9 @@ class Visualisation:
                     if msg.category is MsgCat.DATAPOINT and msg.content[0] == "alloc":
                         print(f"New simulation point : {msg.content}")
                         total_used_storage_sim += msg.content[2]
+                        time = datetime.datetime.fromtimestamp(msg.content[1])
                         doc.add_next_tick_callback(
-                            partial(update_sim, time=msg.content[1], value=total_used_storage_sim)
+                            partial(update_sim, time=time, value=total_used_storage_sim)
                         )
 
                 else:
