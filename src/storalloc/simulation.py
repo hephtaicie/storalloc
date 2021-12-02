@@ -14,13 +14,38 @@ from storalloc.utils.config import config_from_yaml
 from storalloc.utils.transport import Transport
 
 
-# pylint: disable=no-member,logging-not-lazy
+# pylint: disable=no-member,logging-not-lazy,too-many-instance-attributes
+
+
+def summarise_ressource_catalog(resource_catalog: ResourceCatalog):
+    """Compile a few stats about current state of the resource catalog"""
+
+    res = {
+        "total_allocated": 0,
+        "max_concurrent_alloc_disk": 0,
+        "max_concurrent_alloc_node": 0,
+    }
+
+    for _, nodes in resource_catalog.storage_resources.items():
+        for node in nodes:
+            res["max_concurrent_alloc_node"] = max(
+                res["max_concurrent_alloc_node"], node.sim_nb_alloc
+            )
+            for disk in node.disks:
+                res["total_allocated"] += disk.sim_container.level
+                res["max_concurrent_alloc_disk"] = max(
+                    res["max_concurrent_alloc_disk"], disk.sim_nb_alloc
+                )
+
+    return res
 
 
 class Simulation:
     """basic simulator"""
 
-    def __init__(self, config_path: str, uid: str = None, verbose: bool = True):
+    def __init__(
+        self, config_path: str, uid: str = None, verbose: bool = True, visualisation: bool = True
+    ):
         """Init simulation with new simpy env"""
 
         self.uid = uid or f"SIM-{str(uuid.uuid4().hex)[:6]}"
@@ -33,6 +58,8 @@ class Simulation:
 
         self.transports = self.zmq_init()
         self.env = simpy.Environment()
+        self.events_nb = 0
+        self.visualisation = visualisation
 
     def zmq_init(self, remote_logging: bool = True):
         """Init ZMQ in order to be ready for connections"""
@@ -83,7 +110,9 @@ class Simulation:
         """Update used capacity for disk"""
 
         node = self.resource_catalog.get_node(server_id, node_id)
-        container = node.disks[disk_id].sim_container
+        disk = node.disks[disk_id]
+        container = disk.sim_container
+
         # reserve some disk space
         if allocation > 0:
             if container.level + allocation > container.capacity:
@@ -92,6 +121,9 @@ class Simulation:
                     + " will have to be postponned as capacity is not sufficient"
                 )
             container.put(allocation)
+            disk.sim_nb_alloc += 1
+            node.sim_nb_alloc += 1
+            print(summarise_ressource_catalog(self.resource_catalog))
             self.transports["visualisation"].send_multipart(
                 Message.datapoint("alloc", self.env.now, allocation), "sim"
             )
@@ -104,6 +136,9 @@ class Simulation:
                     + "causes level to get below 0. Something bad is happening"
                 )
             container.get(-allocation)
+            disk.sim_nb_alloc -= 1
+            node.sim_nb_alloc -= 1
+            print(summarise_ressource_catalog(self.resource_catalog))
             self.transports["visualisation"].send_multipart(
                 Message.datapoint("alloc", self.env.now, allocation), "sim"
             )
@@ -141,6 +176,7 @@ class Simulation:
         elif request.state is ReqState.ALLOCATED:
             self.log.debug("Request is in ALLOCATED state")
             self.env.process(self.allocate(request))
+            self.events_nb += 1
         elif request.state is ReqState.FAILED:
             self.log.debug("Request is in FAILED state")
         elif request.state is ReqState.ENDED:
@@ -156,6 +192,7 @@ class Simulation:
         for data in node_data:
             node = Node.from_dict(data)
             self.log.info(f"Processing new node registration for node {node.hostname}")
+            setattr(node, "sim_nb_alloc", 0)
 
             for disk in node.disks:
                 # Colocate a simulation container with each disk of a node.
@@ -165,11 +202,49 @@ class Simulation:
                 setattr(
                     disk, "sim_container", simpy.Container(self.env, init=0, capacity=disk.capacity)
                 )
+                setattr(disk, "sim_nb_alloc", 0)
 
             self.resource_catalog.append_resources(identity, [node])
 
+    def pre_sim_summary(self):
+        """Simulation preliminary summary. Displays informations about
+        the resources considered during the simulation, the number of events, etc
+        """
+
+        print("## Availaible resources:")
+        total_capacity = 0
+
+        for server_id, nodes in self.resource_catalog.storage_resources.items():
+            total_server_capacity = 0
+
+            for node in nodes:
+                total_node_capacity = 0
+                for disk in node.disks:
+                    total_node_capacity += disk.capacity
+                total_server_capacity += total_node_capacity
+
+                print(
+                    f" - Server {server_id} provisionned Node {node.hostname}"
+                    + f" with {len(node.disks)} disks."
+                )
+                print(f"   Total node capacity is {total_node_capacity}")
+
+            print(f"   Total server capacity is {total_server_capacity}")
+
+            total_capacity += total_server_capacity
+        print(f"   Total platform capacity is {total_capacity}")
+
+        print(f"## Number of events in simulation: {self.events_nb}")
+
     def simulation(self):
         """Run the simulation"""
+
+        if self.visualisation:
+            # Init a visualisation app
+            pass
+
+        self.pre_sim_summary()
+
         self.env.run()
 
     def run(self):

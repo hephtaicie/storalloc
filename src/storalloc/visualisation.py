@@ -25,15 +25,18 @@ class Visualisation:
     """
 
     def __init__(
-        self, config_path: str, uid: str = None, simulation: bool = True, verbose: bool = True
+        self,
+        config_path: str,
+        uid: str = None,
+        verbose: bool = True,
+        context: zmq.Context = None,
     ):
         """Init zmq comm"""
 
         self.uid = uid or f"SIM-{str(uuid.uuid4().hex)[:6]}"
-        self.simulation = simulation
         self.conf = config_from_yaml(config_path)
         self.log = get_storalloc_logger(verbose)
-        self.context = zmq.Context()
+        self.context = context if context else zmq.Context()
 
         # Don't ever use self.logger inside a bokeh thread, as this would mean
         # using the same zmq Socket from differents threads, which has und. behaviour
@@ -46,13 +49,13 @@ class Visualisation:
                 f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_sync_port']}",
             )
 
-    def zmq_init_subscriber(self):
+    def zmq_init_subscriber(self, simulation: bool):
         """Init subscriber for either simulation or orchestration events"""
 
         # Visualisation SUBSCRIBER (receive events from simulation OR orchestrator) ################
         visualisation_socket = self.context.socket(zmq.SUB)  # pylint: disable=no-member
         visualisation_socket.setsockopt(zmq.SUBSCRIBE, b"sim")  # pylint: disable=no-member
-        if self.simulation:
+        if simulation:
             self.log.info("Connecting visualisation socket to simulation server...")
             visualisation_socket.connect(
                 f"tcp://{self.conf['simulation_addr']}:{self.conf['s_visualisation_port']}"
@@ -85,7 +88,9 @@ class Visualisation:
             sizing_mode="stretch_both",
         )
         sim_plot.ygrid.ticker = tick
-        sim_plot.vbar(x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen")
+        sim_plot.vbar(
+            x="time", top="value", source=sources["alloc"], line_width=1, color="darkgreen"
+        )
 
         # doc.add_root(bokeh.layouts.column(sim_plot, sizing_mode="stretch_both"))
         doc.add_root(sim_plot)
@@ -95,10 +100,9 @@ class Visualisation:
 
         def blocking_task():
 
-            vis_sub = self.zmq_init_subscriber()
+            vis_sub = self.zmq_init_subscriber(simulation=True)
 
             total_used_storage_sim = 0
-            total_capa = 0
 
             while threading.main_thread().is_alive():
 
@@ -125,10 +129,10 @@ class Visualisation:
         thread = threading.Thread(target=blocking_task)
         thread.start()
 
-    def run(self):
+    def run(self, simulation: bool = True):
         """Run simulation or orchestration visualisation"""
 
-        if self.simulation:
+        if simulation:
             bkserver = Server({"/": self.simulation_vis}, num_procs=1)
         else:
             raise NotImplementedError("Visualisation can only be used with simulation so far.")

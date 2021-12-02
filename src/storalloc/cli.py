@@ -188,8 +188,8 @@ def run_visualisation(ctx, config, sim):
     """Start a StorAlloc visualisation server (based on Bokeh), which traces events
     from either orchestrator (live) or simulation server (when simulation run is triggered)"""
 
-    click.secho("[~] Starting simulation-server.", fg="green")
-    vis = visualisation.Visualisation(config, verbose=ctx.obj["verbose"], simulation=sim)
+    click.secho("[~] Starting visualisation server.", fg="green")
+    vis = visualisation.Visualisation(config, verbose=ctx.obj["verbose"])
     vis.run()
 
 
