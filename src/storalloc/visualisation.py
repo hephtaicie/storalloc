@@ -88,9 +88,7 @@ class Visualisation:
             sizing_mode="stretch_both",
         )
         sim_plot.ygrid.ticker = tick
-        sim_plot.vbar(
-            x="time", top="value", source=sources["alloc"], line_width=1, color="darkgreen"
-        )
+        sim_plot.line(x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen")
 
         # doc.add_root(bokeh.layouts.column(sim_plot, sizing_mode="stretch_both"))
         doc.add_root(sim_plot)

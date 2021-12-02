@@ -9,7 +9,7 @@
 import datetime
 import click
 
-from storalloc import client, server, log_server, simulation, visualisation
+from storalloc import client, server, log_server, simulation, visualisation, sim_client
 from storalloc.orchestrator import router
 
 
@@ -68,12 +68,7 @@ def run_server(ctx, config, system, reset, simulate):
     type=click.Path(exists=True, dir_okay=False),
     help="Path to the StorAlloc configuration file",
 )
-@click.option(
-    "--simulate",
-    is_flag=True,
-    help="Simulation mode for replaying traces",
-)
-def run_orchestrator(ctx, config, simulate):
+def run_orchestrator(ctx, config):
     """Orchestrator command"""
     click.secho("[~] Starting orchestrator...", fg="yellow")
     orchestrator = router.Router(config, ctx.obj["verbose"])
@@ -130,6 +125,31 @@ def run_client(ctx, config, size, time, start_time, eos):
         client_endpoint.run(size, time_delta, start_time)
     else:
         click.secho("[!] Not implemented", fg="red")
+
+
+# SIMULATION CLIENT
+@cli.command("sim-client")
+@click.pass_context
+@click.option(
+    "-c",
+    "--config",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to the StorAlloc configuration file",
+)
+@click.option(
+    "-j",
+    "--jobs",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to a Yaml file containing the list of jos to simulate",
+)
+def run_sim_client(ctx, config, jobs):
+    """Run a simulation client, using a predetermined list of jobs"""
+
+    click.secho("[~] Starting SIMULATION client...", fg="cyan")
+    client_endpoint = sim_client.SimulationClient(config, jobs, verbose=ctx.obj["verbose"])
+    client_endpoint.run()
 
 
 # LOG-SERVER

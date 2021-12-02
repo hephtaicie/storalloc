@@ -261,7 +261,7 @@ class Simulation:
                     elif message.category is MsgCat.REGISTRATION:
                         self.process_registration(identity[1], message.content)
                     else:
-                        self.log(
+                        self.log.warning(
                             "Undesired message category received "
                             + f"({message.category}, silently discarding"
                         )
