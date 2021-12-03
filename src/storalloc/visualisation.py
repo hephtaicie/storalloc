@@ -9,7 +9,7 @@ import datetime
 import zmq
 
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, DatetimeTickFormatter
+from bokeh.models import ColumnDataSource, DatetimeTickFormatter, HoverTool
 from bokeh.server.server import Server
 
 from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
@@ -83,8 +83,21 @@ class Visualisation:
             title="Used GBs across all disks - Simulation",
             sizing_mode="stretch_both",
         )
-        sim_plot.xaxis[0].formatter = DatetimeTickFormatter(months="%H:%M:%S %d-%m-%Y")
-        sim_plot.line(x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen")
+        sim_plot.xaxis[0].formatter = DatetimeTickFormatter()
+        sim_plot.step(x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen")
+        hv_tool = HoverTool(
+            tooltips=[
+                ("time", "@time{%F}"),
+                ("value", "@value"),  # use @{ } for field names with spaces
+            ],
+            formatters={
+                "@time": "datetime",  # use 'datetime' formatter for '@date' field
+            },
+            # display a tooltip whenever the cursor is vertically in line with a glyph
+            mode="vline",
+        )
+
+        sim_plot.add_tools(hv_tool)
 
         # doc.add_root(bokeh.layouts.column(sim_plot, sizing_mode="stretch_both"))
         doc.add_root(sim_plot)
@@ -111,7 +124,7 @@ class Visualisation:
 
                 if topic == "sim":
                     if msg.category is MsgCat.DATAPOINT and msg.content[0] == "alloc":
-                        print(f"New simulation point : {msg.content}")
+                        # print(f"New simulation point : {msg.content}")
                         total_used_storage_sim += msg.content[2]
                         time = datetime.datetime.fromtimestamp(msg.content[1])
                         doc.add_next_tick_callback(

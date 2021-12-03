@@ -180,11 +180,20 @@ def logging(ctx, config):
     type=click.Path(exists=True, dir_okay=False),
     help="Path to the StorAlloc configuration file",
 )
-def run_sim(ctx, config):
+@click.option(
+    "-r",
+    "--real-time",
+    required=False,
+    type=float,
+    default=1.0,
+    help="Real Time factor. If < 1, will make the simulation server use"
+    + "simpy.rt.RealtimeEnvironment, with given factor. Default is 1.",
+)
+def run_sim(ctx, config, real_time):
     """Start a StorAlloc simulation serer, based on Simpy"""
 
     click.secho("[~] Starting simulation-server.", fg="green")
-    sim = simulation.Simulation(config, verbose=ctx.obj["verbose"])
+    sim = simulation.Simulation(config, verbose=ctx.obj["verbose"], rt_factor=real_time)
     sim.run()
 
 
