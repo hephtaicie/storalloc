@@ -1,120 +1,102 @@
-#!/usr/bin/env python3
+"""Storalloc
+   "Worst case" scheduler
+"""
 
-import sys
-import logging
-
-from storalloc.resources import NodeStatus, DiskStatus
 from storalloc.strategies.base import StrategyInterface
 
 
 class WorstCase(StrategyInterface):
-    def __init__(self):
-        super().__init__()
+    """Worst Case scheduler"""
 
     def compute(self, resource_catalog, request):
-        resources_status = self._compute_status(resource_catalog, request)
-        req_allocated = False
-        resources_status.sort(key=lambda x: x.bw, reverse=True)
+        """Compute worst case allocation"""
 
-        target_disk = None
-        target_node = None
-        for b in range(0, resource_catalog.node_count()):
-            current_node = resources_status[b]
+        self._compute_status(resource_catalog, request)
+        # resources_status.sort(key=lambda x: x.bw, reverse=True)
 
-            current_node.disk_status.sort(key=lambda x: x.bw, reverse=True)
-            for disk in current_node.disk_status:
-                if (disk.capacity - request.request.capacity()) < 0:
-                    logging.debug(
-                        "Not enough remaining space on node "
-                        + str(current_node.get_idx())
-                        + ", disk "
-                        + str(disk.get_idx())
-                        + " (req: "
-                        + str(request.request.capacity())
-                        + " GB, "
-                        + "avail: "
-                        + str(disk.capacity)
-                        + " GB)"
-                    )
-                else:
-                    if (
-                        target_disk is None or disk.bw > target_disk.bw
-                    ) and current_node.bw >= disk.bw:
-                        target_node = current_node
-                        target_disk = disk
-                        break
+        for server_id, nodes in resource_catalog.storage_resources.items():
 
-        return target_node.get_idx(), target_disk.get_idx()
+            for node in nodes:
 
-    ###############################
-    # Compute achievable bandwidth
-    ###############################
+                self.log.debug(f"[WCc] Disks before filtering: {len(node.disks)}")
+                filtered_disks = [
+                    disk for disk in node.disks if disk.disk_status.capacity > request.capacity
+                ]
+                self.log.debug(f"[WCc] Disks after filtering: {len(filtered_disks)}")
+                sorted_disks = sorted(filtered_disks, key=lambda d: d.disk_status.bandwidth)
+                self.log.debug(f"[WCc] Disks after sorting: {len(sorted_disks)}")
+                return (server_id, node.uid, sorted_disks[0].uid)
+
+        self.log.error("Not enough space on any of the disks")
+        return (None, None, None)
+
     def _compute_status(self, resource_catalog, request):
-        # Initialiaze structures for achievable bandwidths (worst-case scenario)
-        resources_status = list()
+        """Compute achievable bandwidth"""
 
-        for n in range(0, resource_catalog.node_count()):
-            node_status = NodeStatus(n)
-            for d in range(0, resource_catalog.disk_count(n)):
-                disk_status = DiskStatus(d, resource_catalog.disk_capacity(n, d))
-                node_status.disk_status.append(disk_status)
-            resources_status.append(node_status)
+        self.log.debug("[WC] Entering _compute_status")
 
         # Main loop computing allocation cost per box and per disk
-        for n in range(0, resource_catalog.node_count()):
-            node = resource_catalog.get_node(n)
-            node_idx = node.get_idx()
-            node_bw = 0.0
-            for d in range(0, resource_catalog.disk_count(n)):
-                start_time_chunk = request.start_time()
-                disk = node.disks[d]
-                disk_idx = disk.get_idx()
-                disk_bw = 0.0
-                disk_capacity = disk.get_capacity()
-                disk_allocs = disk.allocs
+        for server_id, nodes in resource_catalog.storage_resources.items():
 
-                if disk_allocs:
-                    num_allocs = len(disk_allocs)
-                    disk_allocs.sort(key=lambda x: x.end_time())
+            for node in nodes:
 
-                    for a in range(0, num_allocs):
-                        alloc = disk_allocs[a]
-                        if alloc.end_time() > start_time_chunk:
-                            overlap_time = min(
-                                alloc.end_time() - start_time_chunk,
-                                request.end_time() - start_time_chunk,
+                node_bw = 0.0
+
+                for disk in node.disks:
+
+                    self.log.debug(f"[WC] Analysing disk {server_id}:{node.uid}:{disk.uid}")
+
+                    start_time_chunk = (
+                        request.start_time.timestamp()
+                    )  # datetime to seconds timestamp
+                    num_allocations = len(disk.allocations)
+                    disk_capacity = disk.capacity
+                    disk_bw = 0.0
+                    self.log.debug(
+                        f"[WC] This request expects allocation at {start_time_chunk} s (timestamp)"
+                    )
+
+                    self.log.debug(f"[WC] .. This disk currently has {num_allocations} allocs")
+
+                    for idx, allocation in enumerate(disk.allocations):
+
+                        if allocation.end_time < request.start_time:
+                            self.log.debug(
+                                f"[WC] .. Alloc {idx} ends before our request's allocation starts, skipping"
                             )
-                            overlap_reqs = num_allocs - a + 1
+                            break
 
-                            start_time_chunk += overlap_time
+                        overlap = request.overlaps(allocation)  # time in "seconds.microseconds"
+                        if overlap != 0.0:
+                            self.log.debug(
+                                f"[WC] .. Alloc {idx} and our request's alloc overlap for {overlap} seconds."
+                            )
+                            overlap_reqs = num_allocations - idx + 1
+                            start_time_chunk += overlap
 
-                            node_bw += overlap_time.seconds * node.get_bw() / overlap_reqs
-                            disk_bw += overlap_time.seconds * disk.get_bw() / overlap_reqs
-                            disk_capacity -= alloc.request.capacity()
+                            node_bw += overlap * node.bandwidth / overlap_reqs
+                            disk_bw += overlap * disk.write_bandwidth / overlap_reqs
+                            disk_capacity -= allocation.capacity
+                            self.log.debug(f"[WC] .. A/Current node_bw: {node_bw}")
+                            self.log.debug(f"[WC] .. A/Current disk_bw: {disk_bw}")
+                            self.log.debug(f"[WC] .. A/Current disk_capa: {disk_capacity}")
 
-                node_bw += (request.end_time() - start_time_chunk).seconds * node.get_bw()
-                disk_bw += (request.end_time() - start_time_chunk).seconds * disk.get_bw()
-                disk_bw = disk_bw / ((request.end_time() - request.start_time()).seconds)
+                    node_bw += (request.end_time.timestamp() - start_time_chunk) * node.bandwidth
+                    disk_bw += (
+                        request.end_time.timestamp() - start_time_chunk
+                    ) * disk.write_bandwidth
+                    disk_bw = disk_bw / ((request.end_time - request.start_time).seconds)
+                    self.log.debug(f"[WC] .. Disk/Current node_bw: {node_bw}")
+                    self.log.debug(f"[WC] .. Disk/Current disk_bw: {disk_bw}")
 
-                resources_status[n].disk_status[d].bw = disk_bw
-                resources_status[n].disk_status[d].capacity = disk_capacity
-                logging.debug(
-                    "Access bandwidth for disk "
-                    + str(disk_idx)
-                    + " (node "
-                    + str(node_idx)
-                    + ", "
-                    + str(disk_capacity)
-                    + " GB): %.2f GBps" % disk_bw
+                    disk.disk_status.bandwidth = disk_bw
+                    disk.disk_status.capacity = disk_capacity
+                    self.log.info(
+                        f"[WC] Access bandwidth for disk {server_id}:{node.uid}:{disk.uid}"
+                        + f" => {disk_capacity} GB / {disk_bw} GB/s"
+                    )
+
+                node.node_status.bandwidth = (
+                    node_bw / (request.end_time - request.start_time).seconds / len(node.disks)
                 )
-
-            node_bw = (
-                node_bw / ((request.end_time() - request.start_time()).seconds) / len(node.disks)
-            )
-
-            resources_status[n].bw = node_bw
-            logging.debug(
-                "Access bandwidth for box " + str(n) + ": %.2f GBps" % resources_status[n].bw
-            )
-
-        return resources_status
+                self.log.info(f"[WC] Access bandwidth for {server_id}:{node.uid} = {node_bw} GB/s")

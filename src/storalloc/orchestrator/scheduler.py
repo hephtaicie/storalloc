@@ -58,6 +58,7 @@ class Scheduler(Process):
             self.log.debug(f"Request [GRANTED] on disk {server_id}:{target_node}:{target_disk}")
             self.resource_catalog.add_allocation(server_id, target_node, target_disk, request)
         else:
+            self.log.error(f"Unable to fulfill request : {server_id}:{target_node}:{target_disk}")
             request.state = ReqState.REFUSED
             request.reason = "Could not fit request onto current resources"
 
@@ -93,6 +94,7 @@ class Scheduler(Process):
             add_remote_handler(
                 self.log, self.uid, context, self.remote_logging[0], self.remote_logging[1]
             )
+            self.strategy.set_logger(self.log)
 
         while True:
 

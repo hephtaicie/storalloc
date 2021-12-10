@@ -3,7 +3,7 @@
 """
 
 import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 from marshmallow import Schema, fields, post_load
@@ -39,7 +39,7 @@ class RequestSchema(Schema):
     reason = fields.Str()
 
     @post_load
-    def make_request(self, data, **kwargs):
+    def make_request(self, data, **kwargs):  # pylint: disable=no-self-use
         """Deserialise into a StorageRequest object rather than a validated dict"""
         return StorageRequest(**data)
 
@@ -123,6 +123,29 @@ class StorageRequest:
         if now < (self.start_time + self.duration):
             return True
         return False
+
+    def overlaps(self, other) -> float:
+        """Overlap time as a timedelta between this request and the one given as parameter"""
+
+        # No overlap
+        if other.start_time >= self.end_time or other.end_time <= self.start_time:
+            return 0.0
+
+        # Full overlap (self is in other)
+        if other.start_time <= self.start_time and other.end_time >= self.end_time:
+            return self.duration.total_seconds()
+        # Full overlap (other is in self)
+        if other.start_time >= self.start_time and other.end_time <= self.end_time:
+            return other.duration.total_seconds()
+
+        # Partial overlap
+        if other.start_time > self.start_time and other.end_time > self.end_time:
+            return (self.end_time - other.start_time).total_seconds()
+
+        if other.start_time < self.start_time and other.end_time < self.end_time:
+            return (other.end_time - self.start_time).total_seconds()
+
+        raise ValueError  # Never expecting this to happen
 
     def __eq__(self, other):
         """If end_time for both request are equal, we consider the request to be equal

@@ -77,12 +77,12 @@ class SimulationClient:
         jobs = None
         with open(self.jobs_file, "r", encoding="utf-8") as jobs_stream:
             jobs = deque(yaml.load(jobs_stream, Loader=yaml.CSafeLoader)["jobs"])
-            print("Retrieved {len(jobs)} jobs from file")
+            print(f"Retrieved {len(jobs)} jobs from file")
 
         while True:
 
             # If we received any answer from orchestrator, treat it first
-            received = self.transports["orchestrator"].poll()
+            received = self.transports["orchestrator"].poll(10)
             if received:
 
                 identities, message = self.transports["orchestrator"].recv_multipart()
@@ -107,6 +107,7 @@ class SimulationClient:
                 except IndexError:
                     self.send_eos()
                     stop = True
+                    self.log.info("SENT ALL REQUESTS")
 
                 if job["writtenBytes"]:
                     start_time = datetime.datetime.fromisoformat(job["startTime"])
@@ -124,9 +125,6 @@ class SimulationClient:
                     message = Message(MsgCat.REQUEST, self.schema.dump(request))
                     self.log.debug(f"Sending request for job : {job['id']}")
                     self.transports["orchestrator"].send_multipart(message)
-
-        self.transports["orchestrator"].socket.close(linger=0)
-        self.transports["context"].term()
 
     def send_eos(self):
         """Send End Of Simulation flag to orchestrator"""

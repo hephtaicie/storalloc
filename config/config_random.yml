@@ -1,3 +1,4 @@
+---
 orchestrator_hostname: localhost
 orchestrator_addr: 127.0.0.1
 orchestrator_fe_ipc: client_ipc
@@ -17,3 +18,4 @@ res_catalog: inmemory
 simulation:
   nb_clients: 1
   nb_servers: 1
+...
