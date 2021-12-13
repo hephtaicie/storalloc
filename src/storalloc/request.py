@@ -28,6 +28,7 @@ class RequestSchema(Schema):
     capacity = fields.Int()
     duration = fields.TimeDelta()
     start_time = fields.DateTime()
+    end_time = fields.DateTime()
     client_id = fields.Str()
     server_id = fields.Str()
     job_id = fields.Str()
@@ -57,9 +58,10 @@ class StorageRequest:
     """
 
     # Set for OPENED
-    capacity: int = 0
-    duration: datetime.timedelta = None
-    start_time: datetime.datetime = None
+    capacity: int
+    duration: datetime.timedelta
+    start_time: datetime.datetime
+    end_time: datetime.datetime = None
 
     # Set for PENDING
     client_id: str = 0
@@ -82,7 +84,8 @@ class StorageRequest:
 
     def __post_init__(self):
         """Add a few computed fields"""
-        self.end_time = self.start_time + self.duration
+        if self.end_time == None:
+            self.end_time = self.start_time + self.duration
 
     def __str__(self):
         """Representation of request depending on the current state"""

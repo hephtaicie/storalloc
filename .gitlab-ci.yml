@@ -4,6 +4,7 @@ before_script:
 
 stages:
   - lint
+  - test
 
 black:
   stage: lint
@@ -11,5 +12,14 @@ black:
   script:
     - pip install tox
     - tox -e black
+  tags:
+    - storalloc
+
+pytest:
+  stage: test
+  image: python:3.9.7
+  script:
+    - pip install tox
+    - tox -e pytest
   tags:
     - storalloc
