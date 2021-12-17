@@ -64,7 +64,7 @@ class StorageRequest:
     end_time: datetime.datetime = None
 
     # Set for PENDING
-    client_id: str = 0
+    client_id: str = ""
     job_id: str = ""
 
     # Set for GRANTED
@@ -84,8 +84,14 @@ class StorageRequest:
 
     def __post_init__(self):
         """Add a few computed fields"""
-        if self.end_time == None:
+        if self.end_time is None:
             self.end_time = self.start_time + self.duration
+
+        if self.capacity <= 0:
+            raise ValueError("Capacity must be strictly positive")
+
+        if self.duration.total_seconds() <= 0:
+            raise ValueError("Duration must be strictly positive")
 
     def __str__(self):
         """Representation of request depending on the current state"""
@@ -123,9 +129,9 @@ class StorageRequest:
         on its start_time and duration"""
 
         now = current_time if current_time else datetime.datetime.now()
-        if now < (self.start_time + self.duration):
-            return True
-        return False
+        if (self.start_time + self.duration) > now:
+            return False
+        return True
 
     def overlaps(self, other) -> float:
         """Overlap time as a timedelta between this request and the one given as parameter"""
@@ -149,25 +155,3 @@ class StorageRequest:
             return (other.end_time - self.start_time).total_seconds()
 
         raise ValueError  # Never expecting this to happen
-
-    def __eq__(self, other):
-        """If end_time for both request are equal, we consider the request to be equal
-        (those operators are used for ordering request in queue)"""
-
-        if self.end_time == other.end_time:
-            return True
-        return False
-
-    def __gt__(self, other):
-        """Compare two request by end_time (A > B means A's storage allocation
-        will be over after B's storage allocation)"""
-        return self.end_time > other.end_time
-
-    def __lt__(self, other):
-        return not self > other
-
-    def __ge__(self, other):
-        return self.end_time >= other.end_time
-
-    def __le__(self, other):
-        return not self >= other
