@@ -1,7 +1,6 @@
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![pipeline status](https://gitlab.inria.fr/Kerdata/kerdata-projects/storalloc/badges/bug-worst-case-strat/pipeline.svg)](https://gitlab.inria.fr/Kerdata/kerdata-projects/storalloc/-/commits/bug-worst-case-strat)
 [![coverage report](https://gitlab.inria.fr/Kerdata/kerdata-projects/storalloc/badges/bug-worst-case-strat/coverage.svg)](https://gitlab.inria.fr/Kerdata/kerdata-projects/storalloc/-/commits/bug-worst-case-strat)
-
-
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # Storalloc - A Scheduler for Storage Resources
 

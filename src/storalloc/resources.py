@@ -102,7 +102,7 @@ class Node:
     uid: int
     hostname: str = ""
     ipv4: str = ""
-    bandwidth: float = 0
+    bandwidth: float = 0.0
     node_status: NodeStatus = field(default_factory=NodeStatus, init=False, repr=False)
     disks: list[Disk] = field(default_factory=list, init=False, repr=False)
 
@@ -165,7 +165,7 @@ class ResourceCatalog:
                     new_node.disks.append(new_disk)
 
                 # Use defaultdict ??
-                if not self.storage_resources.get(server_uid):
+                if self.storage_resources.get(server_uid) is None:
                     self.storage_resources[server_uid] = []
                 self.storage_resources[server_uid].append(new_node)
 

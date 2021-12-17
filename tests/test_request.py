@@ -8,6 +8,9 @@ import pytest
 from storalloc import request as rq
 
 
+# pylint: disable=no-value-for-parameter
+
+
 def test_request_creation():
     """Test the creation of a new requests and validate initial state"""
 
@@ -133,8 +136,40 @@ def test_request_overlap():
     )
 
     assert req_a.overlaps(req_d) == req_d.duration.total_seconds()
+    assert req_d.overlaps(req_a) == req_d.duration.total_seconds()
     assert req_a.overlaps(req_c) == (req_c.end_time - req_a.start_time).total_seconds()
     assert req_a.overlaps(req_c) == req_c.overlaps(req_a)
     assert req_a.overlaps(req_e) == (req_a.end_time - req_e.start_time).total_seconds()
     assert req_a.overlaps(req_b) == 0.0
     assert req_b.overlaps(req_c) == 0.0
+
+
+def test_str():
+    """Test various possible outputs for str(request)"""
+
+    req = rq.StorageRequest(
+        capacity=20, duration=dt.timedelta(minutes=20), start_time=dt.datetime.now()
+    )
+
+    assert "Request [OPENED]" in str(req)
+
+    req.state = rq.ReqState.PENDING
+    assert "Request [PENDING]" in str(req)
+
+    req.state = rq.ReqState.GRANTED
+    assert "Request [GRANTED]" in str(req)
+
+    req.state = rq.ReqState.REFUSED
+    assert "Request [REFUSED]" in str(req)
+
+    req.state = rq.ReqState.ALLOCATED
+    assert "Request [ALLOCATED]" in str(req)
+
+    req.state = rq.ReqState.FAILED
+    assert "Request [FAILED]" in str(req)
+
+    req.state = rq.ReqState.ENDED
+    assert "Request [ENDED]" in str(req)
+
+    req.state = 34
+    assert "[ERROR]" in str(req)
