@@ -20,6 +20,10 @@ pytest:
   image: python:3.9.7
   script:
     - pip install tox
-    - tox -e pytest
+    - tox -e pytest-cov
+    - tox -e report
   tags:
     - storalloc
+  artifacts:
+    reports:
+      cobertura: coverage.xml
