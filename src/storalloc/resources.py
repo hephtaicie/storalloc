@@ -9,6 +9,8 @@ import yaml
 from storalloc.utils.logging import get_storalloc_logger
 from storalloc.request import StorageRequest
 
+# pylint: disable=logging-fstring-interpolation
+
 
 @dataclass
 class DiskStatus:
@@ -161,12 +163,11 @@ class ResourceCatalog:
                 for dindex, disk in enumerate(node["disks"]):
                     disk["uid"] = dindex
                     new_disk = Disk.from_dict(disk)
-                    print(new_disk)
                     new_node.disks.append(new_disk)
 
-                # Use defaultdict ??
-                if self.storage_resources.get(server_uid) is None:
+                if not self.storage_resources.get(server_uid):
                     self.storage_resources[server_uid] = []
+
                 self.storage_resources[server_uid].append(new_node)
 
         self.log.info(f"storage_resources catalog now contains {len(self.storage_resources)} nodes")
@@ -226,3 +227,11 @@ class ResourceCatalog:
             self.storage_resources[server_id].extend(resources)
         else:
             self.storage_resources[server_id] = resources
+
+    def list_resources(self):
+        """Generator exposing every disks of every node registered in every server"""
+
+        for server_id, nodes in self.storage_resources.items():
+            for node in nodes:
+                for disk in node.disks:
+                    yield (server_id, node, disk)

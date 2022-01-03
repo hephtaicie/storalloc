@@ -138,6 +138,8 @@ def test_resource_catalog_from_yaml():
 
     rc = rs.ResourceCatalog("S-15362", "tests/dummy_system.yml")
     assert "S-15362" in rc.storage_resources
+    assert isinstance(rc.storage_resources["S-15362"], list)
+    assert len(rc.storage_resources["S-15362"]) == 2
 
 
 def test_resource_catalog_node_access(resource_catalog):
@@ -148,10 +150,10 @@ def test_resource_catalog_node_access(resource_catalog):
     assert rc.get_node(server_id, 0).hostname == "test_system"
     assert rc.get_node(server_id, 0).ipv4 == "148.42.123.85"
     assert rc.get_node(server_id, 0).bandwidth == 12.5
-    assert rc.node_count(server_id) == 1
+    assert rc.node_count(server_id) == 2
 
     with pytest.raises(IndexError):
-        rc.get_node(server_id, 1)
+        rc.get_node(server_id, 2)
 
     with pytest.raises(KeyError):
         rc.get_node("myserver", 0)
@@ -241,3 +243,40 @@ def test_pretty_print(resource_catalog, capsys):
     rc.pretty_print()
     captured = capsys.readouterr()
     assert f"# Node test_system at index/uid 0 from server {server_id}" in captured.out
+
+
+def test_list_generator(resource_catalog):
+    """Test listing of every resource through generator"""
+
+    server_id, rc = resource_catalog
+
+    test_values = [
+        (
+            server_id,
+            rc.storage_resources[server_id][0],
+            rc.storage_resources[server_id][0].disks[0],
+        ),
+        (
+            server_id,
+            rc.storage_resources[server_id][0],
+            rc.storage_resources[server_id][0].disks[1],
+        ),
+        (
+            server_id,
+            rc.storage_resources[server_id][1],
+            rc.storage_resources[server_id][1].disks[0],
+        ),
+        (
+            server_id,
+            rc.storage_resources[server_id][1],
+            rc.storage_resources[server_id][1].disks[1],
+        ),
+        (
+            server_id,
+            rc.storage_resources[server_id][1],
+            rc.storage_resources[server_id][1].disks[2],
+        ),
+    ]
+
+    for test_value, res_tuple in zip(rc.list_resources(), test_values):
+        assert test_value == res_tuple
