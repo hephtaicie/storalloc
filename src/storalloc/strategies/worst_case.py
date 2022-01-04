@@ -4,7 +4,7 @@
 
 from storalloc.strategies.base import StrategyInterface
 
-# pylint: disable=logging-fstring-interpolation
+# pylint: disable=logging-fstring-interpolation,logging-not-lazy
 
 
 class WorstCase(StrategyInterface):
@@ -39,7 +39,12 @@ class WorstCase(StrategyInterface):
     def _compute_status(self, resource_catalog, request):
         """Compute achievable bandwidth"""
 
-        self.log.debug("[WC] Entering _compute_status")
+        start_time_chunk = request.start_time.timestamp()  # datetime to seconds timestamp
+        end_time_chunk = request.end_time.timestamp()
+        self.log.debug(
+            "[WC] Entering _compute_status."
+            + f"Request expects allocation between ts {start_time_chunk} AND {end_time_chunk}"
+        )
 
         current_node = None
         for server_id, node, disk in resource_catalog.list_resources():
@@ -48,18 +53,18 @@ class WorstCase(StrategyInterface):
 
             if current_node != node:
                 node_bw = 0.0
+                # node.node_status.bandwidth = (
+                #     node_bw / (request.end_time - request.start_time).seconds / len(node.disks)
+                # )
+                # self.log.info(f"[WC] Access bandwidth for {server_id}:{node.uid} = {node_bw} GB/s")
                 current_node = node
 
-            start_time_chunk = request.start_time.timestamp()  # datetime to seconds timestamp
+            # Update worst case bandwidth for current disk based on possibly concurrent allocations
             disk_bw = 0.0
-            self.log.debug(
-                f"[WC] This request expects allocation at {start_time_chunk} s (timestamp)"
-            )
+            self._compute_allocation_overlap(disk, node, request, node_bw, disk_bw)
 
-            self._compute_allocation(disk, node, request, node_bw, disk_bw)
-
-            node_bw += (request.end_time.timestamp() - start_time_chunk) * node.bandwidth
-            disk_bw += (request.end_time.timestamp() - start_time_chunk) * disk.write_bandwidth
+            node_bw += (end_time_chunk - start_time_chunk) * node.bandwidth
+            disk_bw += (end_time_chunk - start_time_chunk) * disk.write_bandwidth
             disk_bw = disk_bw / ((request.end_time - request.start_time).seconds)
             self.log.debug(f"[WC] .. Disk/Current node_bw: {node_bw}")
             self.log.debug(f"[WC] .. Disk/Current disk_bw: {disk_bw}")
@@ -71,42 +76,44 @@ class WorstCase(StrategyInterface):
                 + f" => {disk.capacity} GB / {disk_bw} GB/s"
             )
 
-            # node.node_status.bandwidth = (
-            #     node_bw / (request.end_time - request.start_time).seconds / len(node.disks)
-            # )
-            # self.log.info(f"[WC] Access bandwidth for {server_id}:{node.uid} = {node_bw} GB/s")
-
-    def _compute_allocation(self, disk, node, request, node_bw, disk_bw):
+    def _compute_allocation_overlap(self, disk, node, request, node_bw, disk_bw):
         """For a given disk, check for overlapping allocations and resulting worst case bandwidth"""
 
         num_allocations = len(disk.allocations)
         self.log.debug(f"[WC] .. This disk currently has {num_allocations} allocs")
-        updated = False
+        overlapping_allocations = 0
 
         for idx, allocation in enumerate(disk.allocations):
 
-            # Should, in time, allow to skip a whole lot of unrelevant allocations
+            # Allocations are sorted on a per-disk basis upon insertion.
             if allocation.end_time < request.start_time:
                 self.log.debug(
-                    f"[WC] .. Alloc {idx} ends before our request's allocation starts, skipping"
+                    f"[WC] .. Alloc {idx} ends at {allocation.end_time}."
+                    + " That's before our request's allocation starts."
+                    + " Skipping following allocations"
                 )
-                self.log.debug(f"[WC] --> Alloc {idx} ends at {allocation.end_time}")
-                continue  # will be replaced by a break after some tests
+                break
 
-            # Allocations that may overlap
+            # Allocations that may overlap with current request
             overlap = request.overlaps(allocation)  # time in "seconds.microseconds"
             if overlap != 0.0:
-                updated = True
+                overlapping_allocations += 1
                 self.log.debug(
                     f"[WC] .. Alloc {idx} and our request's alloc overlap for {overlap}s"
                 )
 
-                overlap_reqs = num_allocations - idx + 1
-                start_time_chunk += overlap
+                # New avail bandwidth is previously known bandwidth (for the same request)
+                # Worst case considers that any overlap means allocation and request overlap
+                # for the entire duration of the request
+                disk.status.bandwidth = (
+                    (end_time_chunk - start_time_chunk) * disk.bandwidth
+                ) / overlapping_allocations
 
                 node_bw += overlap * node.bandwidth / overlap_reqs
                 disk_bw += overlap * disk.write_bandwidth / overlap_reqs
-                disk_capacity -= allocation.capacity
+                disk.status.capacity -= allocation.capacity
                 self.log.debug(f"[WC] .. A/Current node_bw: {node_bw}")
                 self.log.debug(f"[WC] .. A/Current disk_bw: {disk_bw}")
                 self.log.debug(f"[WC] .. A/Current disk_capa: {disk_capacity}")
+
+        return True if overlapping_allocations else False
