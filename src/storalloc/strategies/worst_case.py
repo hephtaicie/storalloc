@@ -30,7 +30,7 @@ class WorstCase(StrategyInterface):
             if not filtered_disks:
                 continue
             sorted_disks = sorted(filtered_disks, key=lambda d: d.disk_status.bandwidth)
-            best_bandwidth = sorted_disk[0].disk_status.bandwidth
+            best_bandwidth = sorted_disks[0].disk_status.bandwidth
             for disk in sorted_disks:
                 if disk.disk_status.bandwidth < best_bandwidth:
                     break
@@ -40,9 +40,9 @@ class WorstCase(StrategyInterface):
         if nb_candidates:
             self.log.info(f"There are {nb_candidates} to choose from")
             return random.choice(candidates)
-        else:
-            self.log.error("Not enough space on any of the disks")
-            return ("", -1, -1)
+
+        self.log.error("Not enough space on any of the disks")
+        return ("", -1, -1)
 
     def _compute_status(self, resource_catalog, request):
         """Compute achievable bandwidth"""
@@ -55,6 +55,7 @@ class WorstCase(StrategyInterface):
         )
 
         current_node = None
+        node_bw = 0.0
         for server_id, node, disk in resource_catalog.list_resources():
 
             self.log.debug(f"[WC] Analysing disk {server_id}:{node.uid}:{disk.uid}")

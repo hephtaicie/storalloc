@@ -228,12 +228,12 @@ def test_add_allocation(resource_catalog):
     req2 = rq.StorageRequest(capacity=20, duration=dt.timedelta(hours=5), start_time=start_time)
     req2.state = rq.ReqState.ALLOCATED
     rc.add_allocation(server_id, 0, 1, req2)
-    assert rc.get_node(server_id, 0).disks[1].allocations == [req2, req1]
+    assert rc.get_node(server_id, 0).disks[1].allocations == [req1, req2]
 
     req3 = rq.StorageRequest(capacity=20, duration=dt.timedelta(hours=4), start_time=start_time)
     req3.state = rq.ReqState.ALLOCATED
     rc.add_allocation(server_id, 0, 1, req3)
-    assert rc.get_node(server_id, 0).disks[1].allocations == [req2, req3, req1]
+    assert rc.get_node(server_id, 0).disks[1].allocations == [req1, req3, req2]
 
 
 def test_pretty_print(resource_catalog, capsys):
