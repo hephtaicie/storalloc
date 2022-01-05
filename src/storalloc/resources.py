@@ -186,10 +186,9 @@ class ResourceCatalog:
     def add_allocation(self, server_id: str, node_id: int, disk_id: int, request: StorageRequest):
         """Add allocation in a given disk of a given node, for a specific request"""
         self.storage_resources[server_id][node_id].disks[disk_id].allocations.append(request)
-        # After each insertion, ensure that allocations for disk are ordered such that
-        # the end_time comes last
+        # After each insertion, ensure that allocations for disk are ordered by increasing end_time
         self.storage_resources[server_id][node_id].disks[disk_id].allocations.sort(
-            key=lambda x: -x.end_time.timestamp()
+            key=lambda x: x.end_time.timestamp()
         )
 
     def get_node(self, server_id: str, node_id: int):
@@ -227,6 +226,12 @@ class ResourceCatalog:
             self.storage_resources[server_id].extend(resources)
         else:
             self.storage_resources[server_id] = resources
+
+    def list_nodes(self):
+        """Generator exposing evert node registered in every server"""
+        for server_id, nodes in self.storage_resources.items():
+            for node in nodes:
+                yield (server_id, node)
 
     def list_resources(self):
         """Generator exposing every disks of every node registered in every server"""

@@ -2,6 +2,8 @@
    "Worst case" scheduler
 """
 
+import random
+
 from storalloc.strategies.base import StrategyInterface
 
 # pylint: disable=logging-fstring-interpolation,logging-not-lazy
@@ -16,25 +18,31 @@ class WorstCase(StrategyInterface):
         self._compute_status(resource_catalog, request)
         # resources_status.sort(key=lambda x: x.bw, reverse=True)
 
-        for server_id, nodes in resource_catalog.storage_resources.items():
+        candidates = []
 
-            for node in nodes:
+        for server_id, node in resource_catalog.list_nodes():
 
-                self.log.debug(f"[WCc] Disks before filtering: {len(node.disks)}")
-                filtered_disks = [
-                    disk for disk in node.disks if disk.disk_status.capacity > request.capacity
-                ]
-                self.log.debug(f"[WCc] Disks after filtering: {len(filtered_disks)}")
-                if not filtered_disks:
-                    continue
-                sorted_disks = sorted(filtered_disks, key=lambda d: d.disk_status.bandwidth)
-                self.log.debug(f"[WCc] Disks after sorting: {len(sorted_disks)}")
-                if not sorted_disks:
-                    continue
-                return (server_id, node.uid, sorted_disks[0].uid)
+            self.log.debug(f"[WCc] Disks before filtering: {len(node.disks)} candidates")
+            filtered_disks = [
+                disk for disk in node.disks if disk.disk_status.capacity > request.capacity
+            ]
+            self.log.debug(f"[WCc] Disks after filtering: {len(filtered_disks)} candidates")
+            if not filtered_disks:
+                continue
+            sorted_disks = sorted(filtered_disks, key=lambda d: d.disk_status.bandwidth)
+            best_bandwidth = sorted_disk[0].disk_status.bandwidth
+            for disk in sorted_disks:
+                if disk.disk_status.bandwidth < best_bandwidth:
+                    break
+                candidates.append((server_id, node.uid, disk.uid))
 
-        self.log.error("Not enough space on any of the disks")
-        return ("", -1, -1)
+        nb_candidates = len(candidates)
+        if nb_candidates:
+            self.log.info(f"There are {nb_candidates} to choose from")
+            return random.choice(candidates)
+        else:
+            self.log.error("Not enough space on any of the disks")
+            return ("", -1, -1)
 
     def _compute_status(self, resource_catalog, request):
         """Compute achievable bandwidth"""
@@ -52,19 +60,19 @@ class WorstCase(StrategyInterface):
             self.log.debug(f"[WC] Analysing disk {server_id}:{node.uid}:{disk.uid}")
 
             if current_node != node:
+                node.node_status.bandwidth = (
+                    node_bw / (request.end_time - request.start_time).seconds / len(node.disks)
+                )
+                self.log.info(f"[WC] Access bandwidth for {server_id}:{node.uid} = {node_bw} GB/s")
                 node_bw = 0.0
-                # node.node_status.bandwidth = (
-                #     node_bw / (request.end_time - request.start_time).seconds / len(node.disks)
-                # )
-                # self.log.info(f"[WC] Access bandwidth for {server_id}:{node.uid} = {node_bw} GB/s")
                 current_node = node
 
             # Update worst case bandwidth for current disk based on possibly concurrent allocations
             disk_bw = 0.0
-            self._compute_allocation_overlap(disk, node, request, node_bw, disk_bw)
+            overlap_offset = self._compute_allocation_overlap(disk, node, request, node_bw, disk_bw)
 
-            node_bw += (end_time_chunk - start_time_chunk) * node.bandwidth
-            disk_bw += (end_time_chunk - start_time_chunk) * disk.write_bandwidth
+            node_bw += (end_time_chunk - start_time_chunk + overlap_offset) * node.bandwidth
+            disk_bw += (end_time_chunk - start_time_chunk + overlap_offset) * disk.write_bandwidth
             disk_bw = disk_bw / ((request.end_time - request.start_time).seconds)
             self.log.debug(f"[WC] .. Disk/Current node_bw: {node_bw}")
             self.log.debug(f"[WC] .. Disk/Current disk_bw: {disk_bw}")
@@ -81,7 +89,7 @@ class WorstCase(StrategyInterface):
 
         num_allocations = len(disk.allocations)
         self.log.debug(f"[WC] .. This disk currently has {num_allocations} allocs")
-        overlapping_allocations = 0
+        overlap_offset = 0
 
         for idx, allocation in enumerate(disk.allocations):
 
@@ -90,30 +98,27 @@ class WorstCase(StrategyInterface):
                 self.log.debug(
                     f"[WC] .. Alloc {idx} ends at {allocation.end_time}."
                     + " That's before our request's allocation starts."
-                    + " Skipping following allocations"
+                    + " Skipping this allocation"
                 )
-                break
+                continue
 
             # Allocations that may overlap with current request
-            overlap = request.overlaps(allocation)  # time in "seconds.microseconds"
-            if overlap != 0.0:
-                overlapping_allocations += 1
+            overlap_duration = request.overlaps(allocation)  # time in "seconds.microseconds"
+            if overlap_duration != 0.0:
+                # overlapping_allocations += 1
                 self.log.debug(
-                    f"[WC] .. Alloc {idx} and our request's alloc overlap for {overlap}s"
+                    f"[WC] .. Alloc {idx} and our request's alloc overlap for {overlap_duration}s"
+                )
+                overlap_requests = num_allocations - idx + 1
+                self.log.debug(
+                    f"[WC] .. Worst case, there are {overlap_requests} allocations "
+                    + "overlapping with our request"
                 )
 
-                # New avail bandwidth is previously known bandwidth (for the same request)
-                # Worst case considers that any overlap means allocation and request overlap
-                # for the entire duration of the request
-                disk.status.bandwidth = (
-                    (end_time_chunk - start_time_chunk) * disk.bandwidth
-                ) / overlapping_allocations
+                overlap_offset += overlap_duration  # formerly an update to start_time_chunk
 
-                node_bw += overlap * node.bandwidth / overlap_reqs
-                disk_bw += overlap * disk.write_bandwidth / overlap_reqs
+                node_bw += (overlap_duration * node.bandwidth) / overlap_requests
+                disk_bw += (overlap_duration * node.bandwidth) / overlap_requests
                 disk.status.capacity -= allocation.capacity
-                self.log.debug(f"[WC] .. A/Current node_bw: {node_bw}")
-                self.log.debug(f"[WC] .. A/Current disk_bw: {disk_bw}")
-                self.log.debug(f"[WC] .. A/Current disk_capa: {disk_capacity}")
 
-        return True if overlapping_allocations else False
+        return overlap_offset
