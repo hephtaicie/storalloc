@@ -70,7 +70,9 @@ class WorstCase(StrategyInterface):
 
             # Update worst case bandwidth for current disk based on possibly concurrent allocations
             disk_bw = 0.0
-            overlap_offset = self._compute_allocation_overlap(disk, node, request, node_bw, disk_bw)
+            overlap_offset = self.__compute_allocation_overlap(
+                disk, node, request, node_bw, disk_bw
+            )
 
             node_bw += (end_time_chunk - start_time_chunk + overlap_offset) * node.bandwidth
             disk_bw += (end_time_chunk - start_time_chunk + overlap_offset) * disk.write_bandwidth
@@ -85,7 +87,7 @@ class WorstCase(StrategyInterface):
                 + f" => {disk.capacity} GB / {disk_bw} GB/s"
             )
 
-    def _compute_allocation_overlap(self, disk, node, request, node_bw, disk_bw):
+    def __compute_allocation_overlap(self, disk, node, request, node_bw, disk_bw):
         """For a given disk, check for overlapping allocations and resulting worst case bandwidth"""
 
         num_allocations = len(disk.allocations)
