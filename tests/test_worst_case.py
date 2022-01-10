@@ -52,7 +52,11 @@ def test_big_allocation(resource_catalog):
 def test_compute_allocation_overlap(resource_catalog):
     """Test the private function _compute_allocation_overlap, in charge of taking
     into account previous allocations on a disk and update a model of the disk/node
-    bandwitdh accordingly if they overlap with new request"""
+    bandwitdh accordingly if they overlap with new request
+
+    This is a very badly written test, but we need to check how the algo react when adding
+    more and more allocations on the disk prior to running it.
+    """
 
     server, catalog = resource_catalog
     scheduler = wcase.WorstCase()
@@ -61,16 +65,135 @@ def test_compute_allocation_overlap(resource_catalog):
         capacity=500, duration=dt.timedelta(hours=3), start_time=start_time
     )
 
-    node_bw = 0
-    disk_bw = 0
-
-    # No previous allocation on disk :
-    offset = scheduler._WorstCase__compute_allocation_overlap(  # pylint: disable=no-member
-        catalog.get_node(server, 0).disks[0], catalog.get_node(server, 0), req, node_bw, disk_bw
+    # No previous allocation on disk:
+    (
+        offset,
+        node_bw,
+        disk_bw,
+    ) = scheduler._WorstCase__compute_allocation_overlap(  # pylint: disable=no-member
+        catalog.get_node(server, 0).disks[0], catalog.get_node(server, 0), req
     )
 
     assert offset == 0
     assert node_bw == 0
     assert disk_bw == 0
-    # assert node_bw == 3 * 60 * 60 * catalog.get_node(server, 0).bandwidth
-    # assert node_bw == 3 * 60 * 60 * catalog.get_node(server, 0).disks[0].write_bandwidth
+
+    # Existing (non conflicting) allocation, starting AFTER our new request):
+    alloc_1 = request.StorageRequest(
+        capacity=500,
+        duration=dt.timedelta(hours=3),
+        start_time=start_time + dt.timedelta(hours=3, minutes=30),
+    )
+    catalog.add_allocation(server, 0, 0, alloc_1)
+
+    (
+        offset,
+        node_bw,
+        disk_bw,
+    ) = scheduler._WorstCase__compute_allocation_overlap(  # pylint: disable=no-member
+        catalog.get_node(server, 0).disks[0], catalog.get_node(server, 0), req
+    )
+
+    assert offset == 0
+    assert node_bw == 0
+    assert disk_bw == 0
+
+    # Existing (non conflicting) allocation, starting BEFORE our new request):
+    alloc_2 = request.StorageRequest(
+        capacity=500,
+        duration=dt.timedelta(hours=3),
+        start_time=start_time - dt.timedelta(hours=3, minutes=30),
+    )
+    catalog.add_allocation(server, 0, 0, alloc_2)
+
+    (
+        offset,
+        node_bw,
+        disk_bw,
+    ) = scheduler._WorstCase__compute_allocation_overlap(  # pylint: disable=no-member
+        catalog.get_node(server, 0).disks[0], catalog.get_node(server, 0), req
+    )
+
+    assert offset == 0
+    assert node_bw == 0
+    assert disk_bw == 0
+
+    # Existing (conflicting) allocation, starting AFTER our new request):
+    # overlap time is 2 hours
+    alloc_3 = request.StorageRequest(
+        capacity=100,
+        duration=dt.timedelta(hours=3),
+        start_time=start_time + dt.timedelta(hours=1),
+    )
+    catalog.add_allocation(server, 0, 0, alloc_3)
+
+    (
+        offset,
+        node_bw,
+        disk_bw,
+    ) = scheduler._WorstCase__compute_allocation_overlap(  # pylint: disable=no-member
+        catalog.get_node(server, 0).disks[0], catalog.get_node(server, 0), req
+    )
+    assert offset == 2 * 60 * 60
+    assert node_bw == 2 * 60 * 60 * catalog.get_node(server, 0).bandwidth / 3
+    assert disk_bw == 2 * 60 * 60 * catalog.get_node(server, 0).disks[0].write_bandwidth / 3
+
+    # Existing (conflicting) allocation, starting AFTER our new request and ending BEFORE:
+    # overlap time is 1 hours
+    alloc_4 = request.StorageRequest(
+        capacity=100,
+        duration=dt.timedelta(hours=1),
+        start_time=start_time + dt.timedelta(hours=1, minutes=30),
+    )
+    catalog.add_allocation(server, 0, 0, alloc_4)
+
+    (
+        offset,
+        node_bw,
+        disk_bw,
+    ) = scheduler._WorstCase__compute_allocation_overlap(  # pylint: disable=no-member
+        catalog.get_node(server, 0).disks[0], catalog.get_node(server, 0), req
+    )
+
+    assert offset == 2 * 60 * 60 + 1 * 60 * 60
+    assert (
+        node_bw
+        == 1 * 60 * 60 * catalog.get_node(server, 0).bandwidth / 4
+        + 2 * 60 * 60 * catalog.get_node(server, 0).bandwidth / 3
+    )
+    assert (
+        disk_bw
+        == 1 * 60 * 60 * catalog.get_node(server, 0).disks[0].write_bandwidth / 4
+        + 2 * 60 * 60 * catalog.get_node(server, 0).disks[0].write_bandwidth / 3
+    )
+
+    # Existing (conflicting) allocation, starting AFTER our new request and ending AFTER:
+    # overlap time is 30 minutes
+    alloc_5 = request.StorageRequest(
+        capacity=100,
+        duration=dt.timedelta(hours=1),
+        start_time=start_time + dt.timedelta(hours=2, minutes=30),
+    )
+    catalog.add_allocation(server, 0, 0, alloc_5)
+
+    (
+        offset,
+        node_bw,
+        disk_bw,
+    ) = scheduler._WorstCase__compute_allocation_overlap(  # pylint: disable=no-member
+        catalog.get_node(server, 0).disks[0], catalog.get_node(server, 0), req
+    )
+
+    assert offset == 2 * 60 * 60 + 1 * 60 * 60 + 0.5 * 60 * 60
+    assert (
+        node_bw
+        == 1 * 60 * 60 * catalog.get_node(server, 0).bandwidth / 5
+        + 0.5 * 60 * 60 * catalog.get_node(server, 0).bandwidth / 4
+        + 2 * 60 * 60 * catalog.get_node(server, 0).bandwidth / 3
+    )
+    assert (
+        disk_bw
+        == 1 * 60 * 60 * catalog.get_node(server, 0).disks[0].write_bandwidth / 5
+        + 0.5 * 60 * 60 * catalog.get_node(server, 0).disks[0].write_bandwidth / 4
+        + 2 * 60 * 60 * catalog.get_node(server, 0).disks[0].write_bandwidth / 3
+    )
