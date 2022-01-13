@@ -15,7 +15,7 @@ class WorstCase(StrategyInterface):
     def compute(self, resource_catalog, request):
         """Compute worst case allocation"""
 
-        self._compute_status(resource_catalog, request)
+        self.__compute_status(resource_catalog, request)
         # resources_status.sort(key=lambda x: x.bw, reverse=True)
 
         candidates = []
@@ -44,29 +44,34 @@ class WorstCase(StrategyInterface):
         self.log.error("Not enough space on any of the disks")
         return ("", -1, -1)
 
-    def _compute_status(self, resource_catalog, request):
+    def __compute_status(self, resource_catalog, request):
         """Compute achievable bandwidth"""
 
         start_time_chunk = request.start_time.timestamp()  # datetime to seconds timestamp
         end_time_chunk = request.end_time.timestamp()
         self.log.debug(
             "[WC] Entering _compute_status."
-            + f"Request expects allocation between ts {start_time_chunk} AND {end_time_chunk}"
+            + f"Request expects allocation between ts {start_time_chunk} and {end_time_chunk}"
         )
 
         current_node = None
-        node_bw = 0.0
         for server_id, node, disk in resource_catalog.list_resources():
 
-            self.log.debug(f"[WC] Analysing disk {server_id}:{node.uid}:{disk.uid}")
-
             if current_node != node:
-                node.node_status.bandwidth = (
-                    node_bw / (request.end_time - request.start_time).seconds / len(node.disks)
-                )
-                self.log.info(f"[WC] Access bandwidth for {server_id}:{node.uid} = {node_bw} GB/s")
+                if current_node is not None:
+                    current_node.node_status.bandwidth = (
+                        node_bw
+                        / (request.end_time - request.start_time).seconds
+                        / len(current_node.disks)
+                    )
+                    self.log.info(
+                        f"[WC] .. Access bandwidth for {server_id}:{current_node.uid}"
+                        + f"= {current_node.node_status.bandwidth} GB/s"
+                    )
                 node_bw = 0.0
                 current_node = node
+
+            self.log.debug(f"[WC] Analysing disk {server_id}:{node.uid}:{disk.uid}")
 
             # Update worst case bandwidth for current disk based on possibly concurrent allocations
             overlap_offset, tmp_node_bw, disk_bw = self.__compute_allocation_overlap(
@@ -83,9 +88,18 @@ class WorstCase(StrategyInterface):
             disk.disk_status.bandwidth = disk_bw
             disk.disk_status.capacity = disk.capacity
             self.log.info(
-                f"[WC] Access bandwidth for disk {server_id}:{node.uid}:{disk.uid}"
+                f"[WC] Access bandwidth and avail. capacity for disk {server_id}:{node.uid}:{disk.uid}"
                 + f" => {disk.capacity} GB / {disk_bw} GB/s"
             )
+
+        # Update last node's bandwidth
+        current_node.node_status.bandwidth = (
+            node_bw / (request.end_time - request.start_time).seconds / len(current_node.disks)
+        )
+        self.log.info(
+            f"[WC] .. Access bandwidth for {server_id}:{current_node.uid}"
+            + f"= {current_node.node_status.bandwidth} GB/s"
+        )
 
     def __compute_allocation_overlap(self, disk, node, request):
         """For a given disk, check for overlapping allocations and resulting worst case bandwidth"""
