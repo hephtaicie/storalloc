@@ -15,7 +15,7 @@ from storalloc.request import RequestSchema, ReqState
 class AllocationQueue(Process):
     """Class responsible for interacting with a request deque"""
 
-    def __init__(self, uid: str, verbose: bool = True, remote_logging: tuple = None):
+    def __init__(self, uid: str, verbose: bool = False, remote_logging: tuple = None):
         """Init"""
         super().__init__()
         self.uid = uid

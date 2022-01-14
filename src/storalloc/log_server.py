@@ -64,7 +64,7 @@ class LogServer:
                     dtopic = topic.decode("utf-8")
                     if dtopic not in self.colors:
                         self.colors[dtopic] = fg(
-                            randint(50, 255), randint(50, 255), randint(50, 255)
+                            randint(70, 255), randint(70, 255), randint(70, 255)
                         )
                     self.sync_signal.send_multipart([identity, b""])
 

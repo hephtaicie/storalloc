@@ -54,6 +54,9 @@ setup(
         "cerberus>=1.3.4",
         "msgpack>=1.0.2",
         "bokeh>=2.4.2",
+        "marshmallow>=3.14",
+        "marshmallow-enum>=1.5",
+        "sty"
     ],
     extras_require={  # Optional
         "dev": ["black>=21.9b0"],

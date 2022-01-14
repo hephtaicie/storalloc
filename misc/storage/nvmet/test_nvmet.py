@@ -1,9 +1,12 @@
+""" NVMe storage module test
+"""
+
 import os
 import random
 import stat
 import string
 import unittest
-import nvmet.nvme as nvme
+from storalloc.storage.nvmet import nvme
 
 # Default test devices are ram disks, but allow user to specify different
 # block devices or files.

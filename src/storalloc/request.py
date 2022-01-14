@@ -3,7 +3,7 @@
 """
 
 import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 from marshmallow import Schema, fields, post_load
@@ -25,9 +25,10 @@ class ReqState(Enum):
 class RequestSchema(Schema):
     """Marshmallow schema for Request class"""
 
-    capacity = fields.Int()
+    capacity = fields.Float()
     duration = fields.TimeDelta()
     start_time = fields.DateTime()
+    end_time = fields.DateTime()
     client_id = fields.Str()
     server_id = fields.Str()
     job_id = fields.Str()
@@ -39,7 +40,7 @@ class RequestSchema(Schema):
     reason = fields.Str()
 
     @post_load
-    def make_request(self, data, **kwargs):
+    def make_request(self, data, **kwargs):  # pylint: disable=no-self-use
         """Deserialise into a StorageRequest object rather than a validated dict"""
         return StorageRequest(**data)
 
@@ -57,12 +58,13 @@ class StorageRequest:
     """
 
     # Set for OPENED
-    capacity: int = 0
-    duration: datetime.timedelta = None
-    start_time: datetime.datetime = None
+    capacity: float
+    duration: datetime.timedelta
+    start_time: datetime.datetime
+    end_time: datetime.datetime = None
 
     # Set for PENDING
-    client_id: str = 0
+    client_id: str = ""
     job_id: str = ""
 
     # Set for GRANTED
@@ -82,7 +84,14 @@ class StorageRequest:
 
     def __post_init__(self):
         """Add a few computed fields"""
-        self.end_time = self.start_time + self.duration
+        if self.end_time is None:
+            self.end_time = self.start_time + self.duration
+
+        if self.capacity <= 0:
+            raise ValueError("Capacity must be strictly positive")
+
+        if self.duration.total_seconds() <= 0:
+            raise ValueError("Duration must be strictly positive")
 
     def __str__(self):
         """Representation of request depending on the current state"""
@@ -120,28 +129,29 @@ class StorageRequest:
         on its start_time and duration"""
 
         now = current_time if current_time else datetime.datetime.now()
-        if now < (self.start_time + self.duration):
-            return True
-        return False
+        if (self.start_time + self.duration) > now:
+            return False
+        return True
 
-    def __eq__(self, other):
-        """If end_time for both request are equal, we consider the request to be equal
-        (those operators are used for ordering request in queue)"""
+    def overlaps(self, other) -> float:
+        """Overlap time as a timedelta between this request and the one given as parameter"""
 
-        if self.end_time == other.end_time:
-            return True
-        return False
+        # No overlap
+        if other.start_time >= self.end_time or other.end_time <= self.start_time:
+            return 0.0
 
-    def __gt__(self, other):
-        """Compare two request by end_time (A > B means A's storage allocation
-        will be over after B's storage allocation)"""
-        return self.end_time > other.end_time
+        # Full overlap (self is in other)
+        if other.start_time <= self.start_time and other.end_time >= self.end_time:
+            return self.duration.total_seconds()
+        # Full overlap (other is in self)
+        if other.start_time >= self.start_time and other.end_time <= self.end_time:
+            return other.duration.total_seconds()
 
-    def __lt__(self, other):
-        return not self > other
+        # Partial overlap
+        if other.start_time > self.start_time and other.end_time > self.end_time:
+            return (self.end_time - other.start_time).total_seconds()
 
-    def __ge__(self, other):
-        return self.end_time >= other.end_time
+        if other.start_time < self.start_time and other.end_time < self.end_time:
+            return (other.end_time - self.start_time).total_seconds()
 
-    def __le__(self, other):
-        return not self >= other
+        raise ValueError  # Never expecting this to happen

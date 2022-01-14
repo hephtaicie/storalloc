@@ -13,10 +13,10 @@ class RandomAlloc(StrategyInterface):
     def compute(self, resource_catalog, request):
         """Make random allocation choice"""
 
-        resource_catalog.pretty_print()
+        # resource_catalog.pretty_print()
 
         if resource_catalog.node_count() == 0:
-            return (-1, -1)
+            return ("", -1, -1)
 
         random.seed()
         server = random.choice(list(resource_catalog.storage_resources.keys()))
