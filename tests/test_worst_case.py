@@ -4,6 +4,7 @@
 import datetime as dt
 import pytest
 
+
 from storalloc import resources
 from storalloc import request
 from storalloc.strategies import worst_case as wcase
@@ -222,7 +223,7 @@ def test_compute_status(resource_catalog):
         duration=dt.timedelta(hours=1),
         start_time=start_time,
     )
-    alloc_3 = request.StorageRequest(  # Already over
+    alloc_3 = request.StorageRequest(  # Already over (shouldn't appear in real cases)
         capacity=100,
         duration=dt.timedelta(minutes=15),
         start_time=start_time,
@@ -265,7 +266,94 @@ def test_compute_status(resource_catalog):
     scheduler._WorstCase__compute_status(catalog, req)  # pylint: disable=no-member
 
     # And now for some asserts:
+    # First, every calculated bandwidth should be positive, and inferior or equal to the maximum
+    # hardware bandwidth.
     for _, node in catalog.list_nodes():
         assert 0 < node.node_status.bandwidth <= node.bandwidth
-        # for disk in node.disks:
-        #    assert 0 < disk.disk_status.bandwidth <= disk.write_bandwith
+        for disk in node.disks:
+            assert 0 < disk.disk_status.bandwidth <= disk.write_bandwidth
+
+    # Then, we want to ensure correct values are computed for specific allocations
+    # (with values from a supposed working state as baseline)
+
+    # Same node status bandwidth for both nodes as there are the same max number of concurrent allocations for each
+    # (N1 has 3 disks, but one of them as no active allocations)
+    assert round(catalog.get_node(server, 0).node_status.bandwidth, 3) == 8.796
+    assert round(catalog.get_node(server, 1).node_status.bandwidth, 3) == 8.796
+    # No currently active allocation on Disk 0 from node 1, our request shall have the entire disk bandwidth.
+    assert round(catalog.get_node(server, 1).disks[0].disk_status.bandwidth, 3) == 2.93
+    # no other disk could have a computed bandwidth of 2.93 (max)
+    for _, node, disk in catalog.list_resources():
+        if node.uid != 1 and disk.uid != 0:
+            assert disk.disk_status.bandwidth != 2.93
+    # On node 1, disk 1 has more allocations than disk 2, so it's bandwidth should be reduced
+    assert (
+        catalog.get_node(server, 1).disks[1].disk_status.bandwidth
+        < catalog.get_node(server, 1).disks[2].disk_status.bandwidth
+    )
+
+
+def test_compute(resource_catalog):
+    """Testing the correct choice of disk, once bandwidth are computed"""
+
+    # Same setup as previous test
+    server, catalog = resource_catalog
+    scheduler = wcase.WorstCase()
+    # All allocations will, by default, have already started in our test
+    start_time = dt.datetime.now() - dt.timedelta(minutes=20)
+
+    # Add a few allocations in our resource catalog
+    alloc_1 = request.StorageRequest(
+        capacity=100,
+        duration=dt.timedelta(hours=2),
+        start_time=start_time,
+    )
+    alloc_2 = request.StorageRequest(
+        capacity=100,
+        duration=dt.timedelta(hours=1),
+        start_time=start_time,
+    )
+    alloc_3 = request.StorageRequest(  # Already over (shouldn't appear in real cases)
+        capacity=100,
+        duration=dt.timedelta(minutes=15),
+        start_time=start_time,
+    )
+    alloc_4 = request.StorageRequest(
+        capacity=100,
+        duration=dt.timedelta(hours=2),
+        start_time=start_time + dt.timedelta(minutes=40),
+    )
+    alloc_5 = request.StorageRequest(
+        capacity=100,
+        duration=dt.timedelta(hours=2),
+        start_time=start_time + dt.timedelta(minutes=40),
+    )
+    alloc_6 = request.StorageRequest(
+        capacity=100,
+        duration=dt.timedelta(hours=1),
+        start_time=start_time + dt.timedelta(minutes=45),
+    )
+    alloc_7 = request.StorageRequest(
+        capacity=100,
+        duration=dt.timedelta(hours=1),
+        start_time=start_time + dt.timedelta(minutes=20),
+    )
+    catalog.add_allocation(server, 0, 0, alloc_1)  # Node 0, Disk 0, -0:20 -> 1:40
+    catalog.add_allocation(server, 0, 1, alloc_2)  # Node 0, Disk 1, -0:20 -> 0:40
+    catalog.add_allocation(server, 1, 0, alloc_3)  # Node 1, Disk 0  -0:20 -> -0:15
+    catalog.add_allocation(server, 1, 1, alloc_4)  # Node 1, Disk 1   0:20 -> 2:20
+    catalog.add_allocation(server, 1, 2, alloc_5)  # Node 1, Disk 1   0:20 -> 2:20
+    catalog.add_allocation(server, 0, 1, alloc_6)  # Node 0, Disk 1 (again) 0:45 -> 1:45
+    catalog.add_allocation(server, 1, 1, alloc_7)  # Node 1, Disk 1 (again) 0:00 -> 1:00
+
+    # Storage requests that overlaps at some point with every existing allocation, except alloc_3
+    req = request.StorageRequest(
+        capacity=500,
+        duration=dt.timedelta(hours=3),
+        start_time=start_time + dt.timedelta(minutes=20),
+    )
+
+    (server_r, node_r, disk_r) = scheduler.compute(catalog, req)
+    assert server_r == server  # Not much of a choice
+    assert node_r == 1
+    assert disk_r == 0
