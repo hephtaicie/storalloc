@@ -56,6 +56,7 @@ setup(
         "bokeh>=2.4.2",
         "marshmallow>=3.14",
         "marshmallow-enum>=1.5",
+        "sty"
     ],
     extras_require={  # Optional
         "dev": ["black>=21.9b0"],

@@ -50,7 +50,7 @@ def make_resource_catalog(catalog_name: str):
 class Router:
     """Default router between components"""
 
-    def __init__(self, config_path: str, uid: str = None, verbose: bool = True):
+    def __init__(self, config_path: str, uid: str = None, verbose: bool = False):
         """Init router"""
 
         self.uid = uid or f"R-{str(uuid.uuid4().hex)[:6]}"
@@ -231,9 +231,11 @@ class Router:
             request = self.schema.load(message.content)
             if request.state == ReqState.ALLOCATED:
                 # Relay request from server to client and ask queue manager to keep track of it
-                self.log.debug(f"Transmitting request back to client {request.client_id}")
                 self.transports["client"].send_multipart(message, request.client_id)
                 self.transports["queue"].send_multipart(message)
+                self.log.debug(
+                    f"Request [ALLOCATED] ({request.job_id}) and transmitted back to client."
+                )
 
                 # Forward registration to the simulation and visualisation
                 self.transports["simulation"].send_multipart(message, "sim")
@@ -331,7 +333,7 @@ class Router:
         while True:
 
             # Handle outside events from clients and servers
-            events = dict(self.transports["poller"].poll(100))
+            events = dict(self.transports["poller"].poll(10))
 
             if events.get(self.transports["client"].socket) == zmq.POLLIN:
                 self.log.debug("New client message")
@@ -342,7 +344,7 @@ class Router:
                 self.process_server_message()
 
             # Handle IPC events from scheduler and queue manager
-            ipc_events = dict(self.transports["ipc_poller"].poll(100))
+            ipc_events = dict(self.transports["ipc_poller"].poll(10))
 
             if ipc_events.get(self.transports["scheduler"].socket) == zmq.POLLIN:
                 self.log.debug("New scheduler message")

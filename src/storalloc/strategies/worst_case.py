@@ -30,10 +30,12 @@ class WorstCase(StrategyInterface):
                 disk for disk in node.disks if disk.disk_status.capacity > request.capacity
             ]
             self.log.debug(f"[WCc] Disks after filtering: {len(filtered_disks)} candidates")
-            if not filtered_disks:
-                continue
             # Add every not filtered out disk to the candidates
             candidates.extend([(server_id, node, disk) for disk in filtered_disks])
+
+        if not candidates:
+            self.log.error("Not enough space on any of the disks")
+            return ("", -1, -1)
 
         sorted_disks = sorted(candidates, key=lambda t: -t[2].disk_status.bandwidth)
         best_bandwidth = sorted_disks[0][2].disk_status.bandwidth
@@ -44,14 +46,9 @@ class WorstCase(StrategyInterface):
                 break
             final_choices.append((server_id, node, disk))
 
-        nb_choices = len(final_choices)
-        if nb_choices:
-            self.log.info(f"There are {nb_choices} final candidate(s) to choose from")
-            choice = random.choice(final_choices)
-            return (choice[0], choice[1].uid, choice[2].uid)
-
-        self.log.error("Not enough space on any of the disks")
-        return ("", -1, -1)
+        self.log.debug(f"There are {len(final_choices)} final candidate(s) to choose from")
+        choice = random.choice(final_choices)
+        return (choice[0], choice[1].uid, choice[2].uid)
 
     def __compute_status(self, resource_catalog, request):
         """Compute achievable bandwidth"""
@@ -87,8 +84,7 @@ class WorstCase(StrategyInterface):
                 self.log.debug(f"[WC] .. Disk/Current disk_bw: {disk_bw}")
 
                 disk.disk_status.bandwidth = disk_bw
-                disk.disk_status.capacity = disk.capacity
-                self.log.info(
+                self.log.debug(
                     "[WC] .. Access bandwidth and max avail. capacity for disk "
                     + f"{server_id}:{node.uid}:{disk.uid}"
                     + f" => {disk.capacity} GB / {disk_bw} GB/s"
@@ -97,7 +93,7 @@ class WorstCase(StrategyInterface):
             node.node_status.bandwidth = (
                 node_bw / (request.end_time - request.start_time).seconds / len(node.disks)
             )
-            self.log.info(
+            self.log.debug(
                 f"[WC] .. Access bandwidth for {server_id}:{node.uid}"
                 + f"= {node.node_status.bandwidth} GB/s"
             )

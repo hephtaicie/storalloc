@@ -12,7 +12,7 @@ class StrategyInterface(ABC):
     def __init__(self):
         """Define a custom local logger, just in case none is provided later on"""
         self.log = logging.getLogger(__name__)
-        self.log.setLevel(logging.DEBUG)
+        self.log.setLevel(logging.INFO)
 
     def set_logger(self, logger):
         """Set local logger to an externally provided one

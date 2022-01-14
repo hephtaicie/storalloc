@@ -109,7 +109,7 @@ class SimulationClient:
                     stop = True
                     self.log.info("SENT ALL REQUESTS")
 
-                if job["writtenBytes"]:
+                if job["writtenBytes"] > 0:
                     start_time = datetime.datetime.fromisoformat(job["startTime"])
                     end_time = datetime.datetime.fromisoformat(job["endTime"])
 
@@ -118,7 +118,7 @@ class SimulationClient:
                     # )
 
                     request = StorageRequest(
-                        capacity=int(job["writtenBytes"] / 1000000000),
+                        capacity=job["writtenBytes"] / 1000000000,
                         duration=end_time - start_time,
                         start_time=start_time,
                     )

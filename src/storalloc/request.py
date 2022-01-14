@@ -25,7 +25,7 @@ class ReqState(Enum):
 class RequestSchema(Schema):
     """Marshmallow schema for Request class"""
 
-    capacity = fields.Int()
+    capacity = fields.Float()
     duration = fields.TimeDelta()
     start_time = fields.DateTime()
     end_time = fields.DateTime()
@@ -58,7 +58,7 @@ class StorageRequest:
     """
 
     # Set for OPENED
-    capacity: int
+    capacity: float
     duration: datetime.timedelta
     start_time: datetime.datetime
     end_time: datetime.datetime = None

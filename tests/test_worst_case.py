@@ -357,3 +357,44 @@ def test_compute(resource_catalog):
     assert server_r == server  # Not much of a choice
     assert node_r == 1
     assert disk_r == 0
+
+    # Now suppose we do add this allocation on the correct node:
+    catalog.add_allocation(server, 1, 0, req)
+
+    next_req = request.StorageRequest(
+        capacity=500,
+        duration=dt.timedelta(hours=1),
+        start_time=start_time + dt.timedelta(hours=1, minutes=20),
+    )  # From now + 1:00 to now + 2:00
+
+    # Next request should go to N0:D0, which has the request with the smallest overlap
+    (server_r, node_r, disk_r) = scheduler.compute(catalog, req)
+    assert server_r == server
+    assert node_r == 0
+    assert disk_r == 0
+
+
+def test_compute_no_space(resource_catalog):
+    """Test compute() return value when all the disks are full and the request
+    cannot be possibly placed anywhere"""
+
+    # Same setup as previous test
+    server, catalog = resource_catalog
+    scheduler = wcase.WorstCase()
+    start_time = dt.datetime.now() - dt.timedelta(minutes=20)
+
+    big_alloc = request.StorageRequest(
+        capacity=4000,
+        duration=dt.timedelta(hours=2),
+        start_time=start_time,
+    )
+    catalog.add_allocation(server, 0, 0, big_alloc)
+    catalog.add_allocation(server, 0, 1, big_alloc)
+    catalog.add_allocation(server, 1, 0, big_alloc)
+    catalog.add_allocation(server, 1, 1, big_alloc)
+    catalog.add_allocation(server, 1, 2, big_alloc)
+
+    (server_r, node_r, disk_r) = scheduler.compute(catalog, big_alloc)
+    assert server_r == ""
+    assert node_r == -1
+    assert disk_r == -1
