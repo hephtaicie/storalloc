@@ -20,10 +20,10 @@ class AllocationQueue(Process):
         super().__init__()
         self.uid = uid
         self.verbose = verbose
-        self.log = None
+        self.log = None  # Has to be set up on process start in run()
         self.remote_logging = remote_logging
 
-    def _store_request(self, new):
+    def __store_request(self, new):
         """Store a request ordered by storage allocation walltime inside the inner deque"""
 
         insert_idx = 0
@@ -41,7 +41,7 @@ class AllocationQueue(Process):
         else:
             self.request_deque.append(new)
 
-    def _prune_requests(self):
+    def __prune_requests(self):
         """Prune request from deque if their end_time is overdue
         Request are inserted by end_time ordering, so once we reach a non-overdue
         request, all following requests are still valid as well.
@@ -82,13 +82,13 @@ class AllocationQueue(Process):
             event = self.transport.socket.poll(timeout=5000)
 
             # Start by pruning old requests.
-            self._prune_requests()
+            self.__prune_requests()
 
             if event:
                 _, message = self.transport.recv_multipart()
                 if message.category == MsgCat.REQUEST:
                     request = self.schema.load(message.content)
-                    self._store_request(request)
+                    self.__store_request(request)
                 elif message.category == MsgCat.NOTIFICATION:
                     # Answer to keep alive messages from router
                     notification = Message.notification("keep-alive")

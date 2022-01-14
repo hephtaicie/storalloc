@@ -18,7 +18,7 @@ from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
 # def reset_resources(storage_resources):
 #    """Reset storage configurations
 #
-#    TODO: To move to a Storage class
+#    TODO: Move to a Storage class
 #    """
 #
 #    confirm = ""
@@ -55,7 +55,7 @@ class Server:
 
         self.uid = uid or f"S-{str(uuid.uuid4().hex)[:6]}"
         self.conf = config_from_yaml(config_path)
-        self.log = get_storalloc_logger(verbose)
+        self.log = get_storalloc_logger(verbose, stderr_log=True)
 
         if not simulate and os.getuid() != 0:
             self.log.error("This script must be run with root privileges in a non-simulated mode!")
@@ -67,6 +67,8 @@ class Server:
 
         self.rcatalog = ResourceCatalog(self.uid, system_path)
         self.schema = RequestSchema()
+
+        self.log.info(f"Server {self.uid} ready")
 
     def zmq_init(self, remote_logging: bool = True):
         """Connect to orchestrator with ZeroMQ"""
@@ -132,6 +134,9 @@ class Server:
         )
         self.transports["orchestrator"].send_multipart(message)
 
+        allocated = 0
+        deallocated = 0
+
         while True:
 
             identities, message = self.transports["orchestrator"].recv_multipart()
@@ -143,9 +148,11 @@ class Server:
                 if request.state == ReqState.GRANTED:
                     self.log.info("New request in GRANTED state, processing now...")
                     self.allocate_storage(request)
+                    allocated += 1
                 elif request.state == ReqState.ENDED:
                     self.log.info("New request in ENDED state, processing now...")
                     self.deallocate_storage(request)
+                    deallocated += 1
                 else:
                     self.log.warning(f"New request has undesired state {request.state} ; skipping.")
                     continue
@@ -157,5 +164,10 @@ class Server:
             elif message.category == MsgCat.SHUTDOWN:
                 self.log.warning("The orchestrator has asked to close the connection")
                 break
+
+            if allocated % 1000 == 0 or deallocated % 1000 == 0:
+                self.log.info(
+                    f"# Quick stats : {allocated} req. allocated / {deallocated} req. deallocated"
+                )
 
         self.transports["context"].destroy()

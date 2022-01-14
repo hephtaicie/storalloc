@@ -13,7 +13,7 @@ from zmq.log.handlers import PUBHandler
 LOGGER_NAME = "storalloc"
 
 
-def get_storalloc_logger(verbose: bool = True, stderr_log: bool = True, logger_name: str = ""):
+def get_storalloc_logger(verbose: bool = False, stderr_log: bool = False, logger_name: str = ""):
     """Return a storalloc logger with proper configuration for local logging"""
 
     if not logger_name:
@@ -41,7 +41,7 @@ def get_storalloc_logger(verbose: bool = True, stderr_log: bool = True, logger_n
 
     # Log to file
     rotating_file_hdl = RotatingFileHandler(
-        "storalloc.log", maxBytes=1000000, encoding="utf-8", backupCount=4
+        "storalloc.log", maxBytes=5000000, encoding="utf-8", backupCount=4
     )
     rotating_file_hdl.setFormatter(formatter)
 
@@ -67,9 +67,9 @@ def add_remote_handler(
     sync_socket.send_multipart([topic.encode("utf-8")])
     res = sync_socket.poll(timeout=1000)
     if not res:
-        logger.debug("Unable tor each log-server, remote logging deactivated")
+        logger.warning("Unable tor each log-server, remote logging deactivated")
         return False
 
     logger.addHandler(handler)  # pylint: disable=no-member
-    logger.debug("Remote logging configured")
+    logger.info("Remote logging configured")
     return True

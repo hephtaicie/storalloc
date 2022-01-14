@@ -24,11 +24,13 @@ class SimulationClient:
 
         self.uid = f"SC-{str(uuid.uuid4().hex)[:6]}"
         self.jobs_file = jobs_file
-        self.log = get_storalloc_logger(verbose)
+        self.log = get_storalloc_logger(verbose, stderr_log=True, logger_name="sim-storalloc")
         self.conf = config_from_yaml(config_path)
         self.transports = self.zmq_init()
 
         self.schema = RequestSchema()
+
+        self.log.info(f"Simulation Client ID : {self.uid}")
 
     def __del__(self):
         """Close socket and terminate context upon exiting (should be done automatically in
@@ -53,7 +55,7 @@ class SimulationClient:
                 f"tcp://{self.conf['log_server_addr']}:{self.conf['log_server_sync_port']}",
             )
 
-        self.log.info(f"Creating DEALER socket for client {self.uid}")
+        self.log.info(f"Creating DEALER socket for sim-client {self.uid}")
         socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
         socket.setsockopt(zmq.IDENTITY, self.uid.encode("utf-8"))  # pylint: disable=no-member
 
@@ -73,11 +75,16 @@ class SimulationClient:
         """Send a storage allocation request and await response"""
 
         stop = False
+        discarded_no_write = 0
+        errors = 0
+        sent = 0
+        processed = 0
 
+        # Adapt to the "one file per month" output ?
         jobs = None
         with open(self.jobs_file, "r", encoding="utf-8") as jobs_stream:
             jobs = deque(yaml.load(jobs_stream, Loader=yaml.CSafeLoader)["jobs"])
-            print(f"Retrieved {len(jobs)} jobs from file")
+            self.log.info(f"Retrieved {len(jobs)} jobs from file")
 
         while True:
 
@@ -92,10 +99,11 @@ class SimulationClient:
                     self.log.debug(f"New notification received [{message.content}]")
                 elif message.category == MsgCat.ERROR:
                     self.log.error(f"Error from orchestrator : [{message.content}]")
+                    errors += 1
                 elif message.category == MsgCat.REQUEST:
                     request = self.schema.load(message.content)
-                    self.log.debug(f"Request got back: {request}")
-                    # Do stuff with connection details...
+                    processed += 1
+                    self.log.info(f"Request got back: {request} - ({processed} requests processed)")
                 else:
                     self.log.error("Unexpected message category, exiting client")
                     break
@@ -107,24 +115,29 @@ class SimulationClient:
                 except IndexError:
                     self.send_eos()
                     stop = True
-                    self.log.info("SENT ALL REQUESTS")
+                    self.log.info("###### ALL REQUESTS SENT ######")
+                    self.log.info(f"# - {sent} sent requests")
+                    self.log.info(f"# - {processed} processed requests (at this point)")
+                    self.log.info(f"# - {errors} errors received from orchestrator")
+                    self.log.info(
+                        f"# - {discarded_no_write} requests not sent because writtenBytes == 0"
+                    )
 
                 if job["writtenBytes"] > 0:
                     start_time = datetime.datetime.fromisoformat(job["startTime"])
                     end_time = datetime.datetime.fromisoformat(job["endTime"])
 
-                    # self.transports["orchestrator"].socket.setsockopt(
-                    #    zmq.IDENTITY, f"SC-{job['id']}".encode("utf-8")  # pylint: disable=no-member
-                    # )
-
                     request = StorageRequest(
-                        capacity=job["writtenBytes"] / 1000000000,
+                        capacity=job["writtenBytes"] / 1000000000,  # COnvert to GB
                         duration=end_time - start_time,
                         start_time=start_time,
                     )
                     message = Message(MsgCat.REQUEST, self.schema.dump(request))
                     self.log.debug(f"Sending request for job : {job['id']}")
                     self.transports["orchestrator"].send_multipart(message)
+                    sent += 1
+                else:
+                    discarded_no_write += 1
 
     def send_eos(self):
         """Send End Of Simulation flag to orchestrator"""

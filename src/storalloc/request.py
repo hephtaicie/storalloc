@@ -40,7 +40,7 @@ class RequestSchema(Schema):
     reason = fields.Str()
 
     @post_load
-    def make_request(self, data, **kwargs):  # pylint: disable=no-self-use
+    def make_request(self, data, **kwargs):  # pylint: disable=no-self-use,unused-argument
         """Deserialise into a StorageRequest object rather than a validated dict"""
         return StorageRequest(**data)
 
@@ -111,7 +111,7 @@ class StorageRequest:
             desc = "Request [REFUSED] by orchestrator"
         elif self.state is ReqState.ALLOCATED:
             desc = (
-                f"Request [ALLOCATED] by {self.node_id} on disk "
+                f"Request [ALLOCATED] by self.server_id on {self.node_id}:"
                 + f"{self.disk_id} for {self.capacity} GB - "
                 + f"Connection detail {self.nqn}, {self.alloc_type}"
             )
