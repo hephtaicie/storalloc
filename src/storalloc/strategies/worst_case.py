@@ -79,8 +79,8 @@ class WorstCase(StrategyInterface):
             )
             node_bw += tmp_node_bw
 
-            node_bw += (end_time_chunk - start_time_chunk + overlap_offset) * node.bandwidth
-            disk_bw += (end_time_chunk - start_time_chunk + overlap_offset) * disk.write_bandwidth
+            node_bw += (end_time_chunk - (start_time_chunk + overlap_offset)) * node.bandwidth
+            disk_bw += (end_time_chunk - (start_time_chunk + overlap_offset)) * disk.write_bandwidth
             disk_bw = disk_bw / ((request.end_time - request.start_time).seconds)
             self.log.debug(f"[WC] .. Disk/Current node_bw: {node_bw}")
             self.log.debug(f"[WC] .. Disk/Current disk_bw: {disk_bw}")
@@ -137,6 +137,7 @@ class WorstCase(StrategyInterface):
                 overlap_offset += overlap_duration  # formerly an update to start_time_chunk
 
                 node_bw += (overlap_duration * node.bandwidth) / overlap_requests
+                self.log.debug(f"[WC] .. Overlap node_bw={node_bw}")
                 disk_bw += (overlap_duration * disk.write_bandwidth) / overlap_requests
                 disk.disk_status.capacity -= allocation.capacity
 
