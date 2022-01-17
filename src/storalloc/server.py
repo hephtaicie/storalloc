@@ -165,7 +165,12 @@ class Server:
                 self.log.warning("The orchestrator has asked to close the connection")
                 break
 
-            if allocated % 1000 == 0 or deallocated % 1000 == 0:
+            if (
+                allocated != 0
+                and deallocated != 0
+                and (allocated % 1000 == 0
+                or deallocated % 1000 == 0)
+            ):
                 self.log.info(
                     f"# Quick stats : {allocated} req. allocated / {deallocated} req. deallocated"
                 )

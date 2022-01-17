@@ -33,7 +33,7 @@ def get_storalloc_logger(verbose: bool = False, stderr_log: bool = False, logger
     # Configure handlers and formatters for logger
     formatter = Formatter("%(asctime)s - [%(levelname)s][%(module)s:%(lineno)d] :: %(message)s")
 
-    if stderr_log is True:
+    if stderr_log:
         # Log to stderr
         stream_hdl = StreamHandler(stream=sys.stderr)
         stream_hdl.setFormatter(formatter)

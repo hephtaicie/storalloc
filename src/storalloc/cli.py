@@ -189,11 +189,31 @@ def logging(ctx, config):
     help="Real Time factor. If < 1, will make the simulation server use"
     + "simpy.rt.RealtimeEnvironment, with given factor. Default is 1.",
 )
-def run_sim(ctx, config, real_time):
+@click.option(
+    "-g",
+    "--graph",
+    required=False,
+    is_flag=True,
+    help="Start a local graphing server (instead of remote visualisation server)",
+)
+@click.option(
+    "-l",
+    "--log-remote",
+    required=False,
+    is_flag=True,
+    help="Use remote logging (along with local logging)",
+)
+def run_sim(ctx, config, real_time, graph, log_remote):
     """Start a StorAlloc simulation serer, based on Simpy"""
 
     click.secho("[~] Starting simulation-server.", fg="green")
-    sim = simulation.Simulation(config, verbose=ctx.obj["verbose"], rt_factor=real_time)
+    sim = simulation.Simulation(
+        config,
+        verbose=ctx.obj["verbose"],
+        rt_factor=real_time,
+        visualisation=graph,
+        remote_logging=log_remote,
+    )
     sim.run()
 
 
