@@ -55,10 +55,26 @@ class Router:
 
         self.uid = uid or f"R-{str(uuid.uuid4().hex)[:6]}"
         self.conf = config_from_yaml(config_path)
-        self.log = get_storalloc_logger(verbose)
+        self.log = get_storalloc_logger(verbose, logger_name=self.uid)
         # Init transports (as soon as possible after logger, as it will
         # possibly append a handler on it)
         self.transports = self.zmq_init()
+        self.stats = {
+            MsgCat.REQUEST: 0,
+            MsgCat.REGISTRATION: 0,
+            MsgCat.ERROR: 0,
+            MsgCat.EOS: 0,
+            ReqState.REFUSED: 0,
+            ReqState.GRANTED: 0,
+            ReqState.ALLOCATED: 0,
+            ReqState.FAILED: 0,
+            ReqState.ENDED: 0,
+            "sent_to_scheduler": 0,
+            "recv_from_scheduler": 0,
+            "sent_to_qm": 0,
+            "recv_from_qm": 0,
+            "events": 0,
+        }
 
         self.req_count = 0
 
@@ -112,26 +128,31 @@ class Router:
         # Bind client socket
         self.log.info(f"Binding socket for client on {client_url}")
         client_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
+        client_socket.set_hwm(50000)
         client_socket.bind(client_url)
 
         # Bind server socket
         self.log.info(f"Binding socket for server on {server_url}")
         server_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
+        server_socket.set_hwm(50000)
         server_socket.bind(server_url)
 
         # Scheduler ROUTER ########################################################################
         self.log.info("Binding socket for scheduler process via IPC")
         scheduler_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
+        scheduler_socket.set_hwm(50000)
         scheduler_socket.bind("ipc://scheduler.ipc")
 
         # Queue manager ROUTER ####################################################################
         self.log.info("Binding socket for queue manager process via IPC")
         queue_manager_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
+        queue_manager_socket.set_hwm(50000)
         queue_manager_socket.bind("ipc://queue_manager.ipc")
 
         # Simulation PUBLISHER ####################################################################
         self.log.info("Binding socket for publishing simulation updates")
         simulation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
+        simulation_socket.set_hwm(50000)
         simulation_socket.bind(
             f"tcp://{self.conf['orchestrator_addr']}:{self.conf['simulation_port']}"
         )
@@ -139,6 +160,7 @@ class Router:
         # Visualisation PUBLISHER #################################################################
         self.log.info("Binding socket for publishing visualisation updates")
         visualisation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
+        visualisation_socket.set_hwm(50000)
         visualisation_socket.bind(
             f"tcp://{self.conf['orchestrator_addr']}:{self.conf['o_visualisation_port']}"
         )
@@ -170,6 +192,10 @@ class Router:
 
         return transports
 
+    def print_stats(self):
+        """Print short stats about current number of processed events"""
+        self.log.info(self.stats)
+
     def process_client_message(self):
         """Process an incoming client message"""
 
@@ -180,6 +206,7 @@ class Router:
             # Acknowledge request and send it on its way
 
             self.log.debug(f"Processing request from client {client_id}")
+            self.stats[message.category] += 1
 
             req = self.schema.load(message.content)
 
@@ -195,6 +222,7 @@ class Router:
             self.transports["scheduler"].send_multipart(
                 Message(MsgCat.REQUEST, pending_req), f"{self.uid}-SC"
             )
+            self.stats["sent_to_scheduler"] += 1
 
             # To client for ack
             notification = Message.notification(
@@ -204,6 +232,7 @@ class Router:
 
         elif message.category == MsgCat.EOS:
             self.log.debug("Processing EoS from client {client_id}")
+            self.stats[message.category] += 1
             # Propagate the end of simulation flag to the simulation socket
             self.transports["simulation"].send_multipart(message, "sim")
         else:
@@ -214,10 +243,10 @@ class Router:
 
         identities, message = self.transports["server"].recv_multipart()
         self.log.debug(f"Incoming message from server {identities}")
-
         if message.category == MsgCat.REGISTRATION:
             # Forward registration to the scheduler
             self.log.debug("Transmitting registration message to scheduler")
+            self.stats[message.category] += 1
             self.transports["scheduler"].send_multipart(message, [f"{self.uid}-SC"] + identities)
 
             # Forward registration to the simulation and visualisation
@@ -230,9 +259,11 @@ class Router:
         elif message.category == MsgCat.REQUEST:
             request = self.schema.load(message.content)
             if request.state == ReqState.ALLOCATED:
+                self.stats[request.state] += 1
                 # Relay request from server to client and ask queue manager to keep track of it
                 self.transports["client"].send_multipart(message, request.client_id)
                 self.transports["queue"].send_multipart(message)
+                self.stats["sent_to_qm"] += 1
                 self.log.debug(
                     f"Request [ALLOCATED] ({request.job_id}) and transmitted back to client."
                 )
@@ -242,6 +273,7 @@ class Router:
                 self.transports["visualisation"].send_multipart(message, "vis")
             elif request.state == ReqState.FAILED:
                 error = Message.error(f"Requested allocation failed : {request.reason}")
+                self.stats[request.state] += 1
                 self.transports["client"].send_multipart(error, request.client_id)
         else:
             self.log.warning("Undesired message ({message.category}) received from a server")
@@ -252,6 +284,7 @@ class Router:
 
         identities, message = self.transports["scheduler"].recv_multipart()
         self.log.debug(f"Received message from scheduler {identities}")
+        self.stats["recv_from_scheduler"] += 1
 
         if message.category != MsgCat.REQUEST:
             self.log.warning(f"Undesired message ({message.category}) received from a scheduler")
@@ -264,16 +297,19 @@ class Router:
             self.log.debug(
                 f"Request [GRANTED], forwarding allocation request to server {request.server_id}"
             )
+            self.stats[request.state] += 1
             self.transports["server"].send_multipart(message, request.server_id)
         elif request.state == ReqState.REFUSED:
             # Send an error to client
             error = Message.error(f"Requested allocation refused : {request.reason}")
+            self.stats[request.state] += 1
             self.transports["client"].send_multipart(error, request.client_id)
         else:
             self.log.error(
                 f"Request transmitted by scheduler has state {request.state},"
                 + " and should be either one of GRANTED / REFUSED instead"
             )
+            self.stats["errors"] += 1
             return
 
     def process_queue_message(self):
@@ -281,6 +317,7 @@ class Router:
         REQUEST with the status ENDED, destined to the scheduler."""
 
         _, message = self.transports["queue"].recv_multipart()
+        self.stats["recv_from_qm"] += 1
 
         if message.category != MsgCat.REQUEST:
             self.log.warning("Undesired message ({message.category}) received from a queue manager")
@@ -288,6 +325,7 @@ class Router:
 
         request = self.schema.load(message)
         if request.state == ReqState.ENDED:
+            self.stats[request.state] += 1
             # Notify server that he can reclaim the storage used by this request
             self.transports["server"].send_multipart(message)
             # Notify scheduler that the storage space used by this request will be available again
@@ -329,27 +367,45 @@ class Router:
         # Start scheduler and queue manager process and ensure they're alive
         self.start_process(self.scheduler, "scheduler")
         self.start_process(self.queue_manager, "queue")
+        event_nb = 0
 
         while True:
+            try:
+                # Handle outside events from clients and servers
+                events = dict(self.transports["poller"].poll(10))
+                event_nb += len(events)
 
-            # Handle outside events from clients and servers
-            events = dict(self.transports["poller"].poll(10))
+                if events.get(self.transports["client"].socket) == zmq.POLLIN:
+                    self.log.debug("New client message")
+                    self.process_client_message()
 
-            if events.get(self.transports["client"].socket) == zmq.POLLIN:
-                self.log.debug("New client message")
-                self.process_client_message()
+                if events.get(self.transports["server"].socket) == zmq.POLLIN:
+                    self.log.debug("New server message")
+                    self.process_server_message()
 
-            if events.get(self.transports["server"].socket) == zmq.POLLIN:
-                self.log.debug("New server message")
-                self.process_server_message()
+                # Handle IPC events from scheduler and queue manager
+                ipc_events = dict(self.transports["ipc_poller"].poll(10))
+                event_nb += len(ipc_events)
 
-            # Handle IPC events from scheduler and queue manager
-            ipc_events = dict(self.transports["ipc_poller"].poll(10))
+                if ipc_events.get(self.transports["scheduler"].socket) == zmq.POLLIN:
+                    self.log.debug("New scheduler message")
+                    self.process_scheduler_message()
 
-            if ipc_events.get(self.transports["scheduler"].socket) == zmq.POLLIN:
-                self.log.debug("New scheduler message")
-                self.process_scheduler_message()
+                if ipc_events.get(self.transports["queue"].socket) == zmq.POLLIN:
+                    self.log.debug("New queue message")
+                    self.process_queue_message()
 
-            if ipc_events.get(self.transports["queue"].socket) == zmq.POLLIN:
-                self.log.debug("New queue message")
-                self.process_queue_message()
+                if event_nb > 1000:
+                    self.stats["events"] += event_nb
+                    self.log.info(f"# {self.stats['events']} events processed so far")
+                    self.print_stats()
+                    event_nb = 0
+
+            except KeyboardInterrupt:
+                self.log.info("[!] Router stopped, not forwarding anymore messaged")
+                self.stats["events"] += event_nb
+                self.log.info(f"# {self.stats['events']} events processed so far")
+                self.print_stats()
+                self.scheduler.terminate()
+                self.queue_manager.terminate()
+                break

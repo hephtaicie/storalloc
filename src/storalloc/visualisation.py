@@ -8,8 +8,9 @@ import datetime
 
 import zmq
 
+import bokeh
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, DatetimeTickFormatter, HoverTool
+from bokeh.models import ColumnDataSource, DatetimeTickFormatter
 from bokeh.server.server import Server
 
 from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
@@ -51,7 +52,6 @@ class Visualisation:
 
     def zmq_init_subscriber(self, simulation: bool):
         """Init subscriber for either simulation or orchestration events"""
-
         # Visualisation SUBSCRIBER (receive events from simulation OR orchestrator) ################
         visualisation_socket = self.context.socket(zmq.SUB)  # pylint: disable=no-member
         visualisation_socket.setsockopt(zmq.SUBSCRIBE, b"sim")  # pylint: disable=no-member
@@ -74,36 +74,39 @@ class Visualisation:
         # Sources
         sources = {}
         sources["alloc"] = ColumnDataSource(data={"time": [], "value": []})
+        sources["calloc"] = ColumnDataSource(data={"time": [], "value": []})
 
-        # Plot - Simulation
-        sim_plot = figure(
+        # Plot Allocated GB - Simulation
+        alloc_plot = figure(
             y_axis_label="Allocated GB",
             x_axis_label="Simulation Time",
             x_axis_type="datetime",
             title="Used GBs across all disks - Simulation",
             sizing_mode="stretch_both",
         )
-        sim_plot.xaxis[0].formatter = DatetimeTickFormatter()
-        sim_plot.step(x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen")
-        hv_tool = HoverTool(
-            tooltips=[
-                ("time", "@time{%F}"),
-                ("value", "@value"),  # use @{ } for field names with spaces
-            ],
-            formatters={
-                "@time": "datetime",  # use 'datetime' formatter for '@date' field
-            },
-            # display a tooltip whenever the cursor is vertically in line with a glyph
-            mode="vline",
+        alloc_plot.xaxis[0].formatter = DatetimeTickFormatter()
+        alloc_plot.step(
+            x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen"
         )
 
-        sim_plot.add_tools(hv_tool)
+        # Plot Concurrent allocations - Simulation
+        calloc_plot = figure(
+            y_axis_label="Concurrent Allocations",
+            x_axis_label="Simulation Time",
+            x_axis_type="datetime",
+            title="Number of concurrent allocations - Simulation",
+            sizing_mode="stretch_both",
+        )
+        calloc_plot.xaxis[0].formatter = DatetimeTickFormatter()
+        calloc_plot.dot(x="time", y="value", source=sources["calloc"], size=6, color="dodgerblue")
 
-        # doc.add_root(bokeh.layouts.column(sim_plot, sizing_mode="stretch_both"))
-        doc.add_root(sim_plot)
+        doc.add_root(bokeh.layouts.column(alloc_plot, calloc_plot, sizing_mode="stretch_both"))
 
-        async def update_sim(time, value):
+        async def update_alloc_sim(time, value):
             sources["alloc"].stream(dict(time=[time], value=[value]))
+
+        async def update_calloc_sim(time, value):
+            sources["calloc"].stream(dict(time=[time], value=[value]))
 
         def blocking_task():
 
@@ -122,17 +125,23 @@ class Visualisation:
                 topic, msg = vis_sub.recv_multipart()
                 topic = topic[0]
 
-                if topic == "sim":
-                    if msg.category is MsgCat.DATAPOINT and msg.content[0] == "alloc":
-                        # print(f"New simulation point : {msg.content}")
-                        total_used_storage_sim += msg.content[2]
-                        time = datetime.datetime.fromtimestamp(msg.content[1])
-                        doc.add_next_tick_callback(
-                            partial(update_sim, time=time, value=total_used_storage_sim)
-                        )
-
-                else:
+                if topic != "sim":
                     print(f"INVALID TOPIC {topic}. How did this message reach the visualisation ?")
+                    continue
+
+                if msg.category is MsgCat.DATAPOINT and msg.content[0] == "alloc":
+                    # print(f"New simulation point : {msg.content}")
+                    total_used_storage_sim += msg.content[2]
+                    time = datetime.datetime.fromtimestamp(msg.content[1])
+                    doc.add_next_tick_callback(
+                        partial(update_alloc_sim, time=time, value=total_used_storage_sim)
+                    )
+                if msg.category is MsgCat.DATAPOINT and msg.content[0] == "calloc":
+                    # print(f"New simulation point : {msg.content}")
+                    time = datetime.datetime.fromtimestamp(msg.content[1])
+                    doc.add_next_tick_callback(
+                        partial(update_calloc_sim, time=time, value=msg.content[2])
+                    )
 
         thread = threading.Thread(target=blocking_task)
         thread.start()

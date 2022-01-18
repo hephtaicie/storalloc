@@ -142,7 +142,7 @@ class Server:
             identities, message = self.transports["orchestrator"].recv_multipart()
 
             if message.category == MsgCat.REQUEST:
-                self.log.info(f"New request received from orchestrator {','.join(identities)}")
+                self.log.debug(f"New request received from orchestrator {','.join(identities)}")
                 request = self.schema.load(message.content)
 
                 if request.state == ReqState.GRANTED:
@@ -157,7 +157,7 @@ class Server:
                     self.log.warning(f"New request has undesired state {request.state} ; skipping.")
                     continue
             elif message.category == MsgCat.NOTIFICATION:
-                self.log.info(f"Notification received [{message.content}]")
+                self.log.debug(f"Notification received [{message.content}]")
             elif message.category == MsgCat.ERROR:
                 self.log.error(f"Error received [{message.content}]")
                 break

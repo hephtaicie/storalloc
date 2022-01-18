@@ -18,7 +18,7 @@ class Transport:
             # If a destination is specified, it will be added as the first frame of the message
             self.socket.send_multipart([prefix.encode("utf-8"), message.pack()])
         if prefix and isinstance(prefix, list):
-            # If a prefix is a list, it wil be appended as suche before the message
+            # If a prefix is a list, it wil be appended as such before the message
             self.socket.send_multipart([dest.encode("utf-8") for dest in prefix] + [message.pack()])
         else:
             # If no logical destination is specified, we suppose the message is sent through a

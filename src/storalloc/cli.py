@@ -207,6 +207,9 @@ def run_sim(ctx, config, real_time, graph, log_remote):
     """Start a StorAlloc simulation serer, based on Simpy"""
 
     click.secho("[~] Starting simulation-server.", fg="green")
+    if ctx.obj["verbose"]:
+        click.secho("[~] Verbose mode")
+
     sim = simulation.Simulation(
         config,
         verbose=ctx.obj["verbose"],

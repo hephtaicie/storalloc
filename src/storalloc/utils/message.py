@@ -93,7 +93,7 @@ class Message:
     def datalist(
         cls, source_name: str, x_data: list[float], y_data: list[float], pack: bool = False
     ):
-        """Create a basic datapoint message"""
+        """Create a multiple datapoints message"""
         if pack:
             return cls(MsgCat.DATALIST, (source_name, x_data, y_data)).pack()
         return cls(MsgCat.DATALIST, (source_name, x_data, y_data))

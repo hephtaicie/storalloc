@@ -3,6 +3,7 @@
 """
 
 import datetime
+from time import sleep
 import uuid
 from collections import deque
 
@@ -136,6 +137,7 @@ class SimulationClient:
                     self.log.debug(f"Sending request for job : {job['id']}")
                     self.transports["orchestrator"].send_multipart(message)
                     sent += 1
+                    sleep(0.01)
                 else:
                     discarded_no_write += 1
 
