@@ -56,6 +56,7 @@ def run_server(ctx, config, system, reset, simulate):
     click.secho("[~] Starting server...", fg="white", bg="cyan")
     cli_server = server.Server(config, system, simulate, verbose=ctx.obj["verbose"])
     cli_server.run(reset)
+    click.secho("[~] Stopping server.", fg="red")
 
 
 # ORCHESTRATOR
@@ -73,6 +74,7 @@ def run_orchestrator(ctx, config):
     click.secho("[~] Starting orchestrator...", fg="yellow")
     orchestrator = router.Router(config, ctx.obj["verbose"])
     orchestrator.run()
+    click.secho("[~] Stopping orchestrator.", fg="red")
 
 
 # CLIENT
@@ -105,13 +107,13 @@ def run_orchestrator(ctx, config):
     default=None,
     help="Timestamp of the allocation's starting time (Simulation only)",
 )
-@click.option(
-    "-e",
-    "--eos",
-    is_flag=True,
-    help="Send EndOfSimulation flag to the orchestrator (Simulation only)",
-)
-def run_client(ctx, config, size, time, start_time, eos):
+# @click.option(
+#    "-e",
+#    "--eos",
+#    is_flag=True,
+#    help="Send EndOfSimulation flag to the orchestrator (Simulation only)",
+# )
+def run_client(ctx, config, size, time, start_time):
     """Start a Storalloc client (an orchestrator need to be already running)"""
 
     click.secho("[~] Starting client...", fg="cyan")
@@ -121,10 +123,9 @@ def run_client(ctx, config, size, time, start_time, eos):
         start_time = datetime.datetime.now()
 
     client_endpoint = client.Client(config, verbose=ctx.obj["verbose"])
-    if not eos:
-        client_endpoint.run(size, time_delta, start_time)
-    else:
-        click.secho("[!] Not implemented", fg="red")
+    client_endpoint.run(size, time_delta, start_time)
+
+    click.secho("[~] Stopping client.", fg="red")
 
 
 # SIMULATION CLIENT
@@ -150,6 +151,7 @@ def run_sim_client(ctx, config, jobs):
     click.secho("[~] Starting SIMULATION client...", fg="cyan")
     client_endpoint = sim_client.SimulationClient(config, jobs, verbose=ctx.obj["verbose"])
     client_endpoint.run()
+    click.secho("[~] Stopping simulation client.", fg="red")
 
 
 # LOG-SERVER
@@ -168,6 +170,7 @@ def logging(ctx, config):
     click.secho("[~] Starting log-server.", fg="green")
     logs = log_server.LogServer(config, verbose=ctx.obj["verbose"])
     logs.run()
+    click.secho("[~] Stopping log server.", fg="red")
 
 
 # Simulation
@@ -218,6 +221,7 @@ def run_sim(ctx, config, real_time, graph, log_remote):
         remote_logging=log_remote,
     )
     sim.run()
+    click.secho("[~] Stopping simulation-server.", fg="red")
 
 
 # Visualisation
@@ -230,19 +234,20 @@ def run_sim(ctx, config, real_time, graph, log_remote):
     type=click.Path(exists=True, dir_okay=False),
     help="Path to the StorAlloc configuration file",
 )
-@click.option(
-    "-s",
-    "--sim",
-    is_flag=True,
-    help="Instruct visualitation to connect to simulation server instead of orchestrator²",
-)
-def run_visualisation(ctx, config, sim):
+# @click.option(
+#    "-s",
+#    "--sim",
+#    is_flag=True,
+#    help="Instruct visualitation to connect to simulation server instead of orchestrator²",
+# )
+def run_visualisation(ctx, config):
     """Start a StorAlloc visualisation server (based on Bokeh), which traces events
     from either orchestrator (live) or simulation server (when simulation run is triggered)"""
 
     click.secho("[~] Starting visualisation server.", fg="green")
     vis = visualisation.Visualisation(config, verbose=ctx.obj["verbose"])
     vis.run()
+    click.secho("[~] Stopping visualisation server.", fg="red")
 
 
 if __name__ == "__main__":

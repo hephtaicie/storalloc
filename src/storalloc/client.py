@@ -20,7 +20,7 @@ class Client:
         """Init a client with a yaml configuration file"""
 
         self.uid = uid or f"C-{str(uuid.uuid4().hex)[:6]}"
-        self.log = get_storalloc_logger(verbose)
+        self.log = get_storalloc_logger(verbose, True)
         self.conf = config_from_yaml(config_path)
         self.transports = self.zmq_init()
 
@@ -90,9 +90,10 @@ class Client:
                 break
             elif message.category == MsgCat.REQUEST:
                 request = self.schema.load(message.content)
-                self.log.debug(f"Request got back: {request}")
                 # Do stuff with connection details...
-                break
+                self.log.info(f"Request answered: {request}")
+                self.log.info(f"Client {self.uid} exiting now.")
+                break # Should actually not break here, but keep listening for deallocation
             else:
                 self.log.error("Unexpected message category, exiting client")
                 break

@@ -26,10 +26,8 @@ setup(
     # author_email="",
     classifiers=[  # Optional
         "Development Status :: 3 - Alpha",
-        "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
@@ -38,7 +36,7 @@ setup(
     keywords="simulation, scheduler, storage",  # Optional
     package_dir={"": "src"},  # Optional
     packages=find_packages(where="src"),  # Required
-    python_requires=">=3.6, <4",
+    python_requires=">=3.7, <4",
     install_requires=[
         "reportlab>=3.5.57",
         "six>=1.15.0",
@@ -56,19 +54,18 @@ setup(
         "bokeh>=2.4.2",
         "marshmallow>=3.14",
         "marshmallow-enum>=1.5",
-        "sty"
+        # It's a barely stable release candidate, but it's for colored outputs to console...
+        "sty>=1.0.0rc2",
+        "simpy>=4.0",
     ],
     extras_require={  # Optional
-        "dev": ["black>=21.9b0"],
-        "test": ["tox", "pylint", "pytest", "pytest-cov"],
+        # Note : only pylint or black are fixed because updates in these packages
+        # can often cause CI to fail.
+        "dev": ["black>=21.9b0", "tox", "pylint==2.12.2", "pytest", "pytest-cov"],
     },
     entry_points={
         "console_scripts": [
             "storalloc=storalloc.cli:cli",
         ],
     },
-    # package_data={
-    #     "sample": ["package_data.dat"],
-    # },
-    # data_files=[("my_data", ["data/data_file"])],
 )
