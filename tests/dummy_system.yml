@@ -1,0 +1,47 @@
+hosts:
+  - hostname: test_system
+    ipv4: 148.42.123.85
+    network_bw: 12.5 #GBps (100Gb Eth)
+    disks:
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ9342009D8P0HGN
+        capacity: 4000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme0n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ93420AFN8P09KA
+        capacity: 6000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme1n1
+  - hostname: test_system_2
+    ipv4: 148.42.123.86
+    network_bw: 12.5 #GBps (100Gb Eth)
+    disks:
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ9342009D8P0DFF
+        capacity: 4000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme0n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ93420AFN8P013D
+        capacity: 8000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme1n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ93420AFN8P0IJD
+        capacity: 4000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme1n1
+
+
+

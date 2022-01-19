@@ -149,3 +149,5 @@ simulation/traces/*.csv
 simulation/traces/*.yml
 # pyenv 
 .python-version
+data
+*.log.*
