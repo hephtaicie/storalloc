@@ -93,7 +93,7 @@ class Client:
                 # Do stuff with connection details...
                 self.log.info(f"Request answered: {request}")
                 self.log.info(f"Client {self.uid} exiting now.")
-                break # Should actually not break here, but keep listening for deallocation
+                break  # Should actually not break here, but keep listening for deallocation
             else:
                 self.log.error("Unexpected message category, exiting client")
                 break

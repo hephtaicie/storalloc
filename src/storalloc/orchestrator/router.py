@@ -3,10 +3,11 @@
 """
 
 import uuid
+import math
 from multiprocessing import Process
 import zmq
 
-from storalloc.request import RequestSchema, ReqState
+from storalloc.request import RequestSchema, ReqState, StorageRequest
 
 # TODO: Use the __init__ in strategies subpackage to import strategy object in a cleaner way
 from storalloc.strategies.random_alloc import RandomAlloc
@@ -196,6 +197,60 @@ class Router:
         """Print short stats about current number of processed events"""
         self.log.info(self.stats)
 
+    def divide_allocation(self, initial_request):
+        """Return a list of request, which holds either only the
+        original request (dividing the allocation was not necessary),
+        or a list of requests generated from the initial request,
+        but having their requested capacity sized-down to adapt to
+        a given block size.
+        """
+
+        requests = []
+
+        if initial_request.capacity > self.conf["block_size_gb"]:
+            allocation_block_nb = math.floor(initial_request.capacity / self.conf["block_size_gb"])
+            allocation_remainder = initial_request.capacity % self.conf["block_size_gb"]
+            for _ in range(allocation_block_nb):
+                requests.append(
+                    StorageRequest(
+                        capacity=self.conf["block_size_gb"],
+                        duration=initial_request.duration,
+                        start_time=initial_request.start_time,
+                    )
+                )
+
+            if allocation_remainder:
+                requests.append(
+                    StorageRequest(
+                        capacity=allocation_remainder,
+                        duration=initial_request.duration,
+                        start_time=initial_request.start_time,
+                    )
+                )
+
+        elif initial_request.divided > 1:
+            # min_block_size_gb: 100
+            new_alloc_size = initial_request.capacity / initial_request.divided
+            if new_alloc_size > self.conf["min_block_size_gb"]:
+                # TODO: instead of continuing without dividing, we may want to notify the client early ?
+                self.log.error(
+                    "Request can't be divided because it would result in block size below threshold"
+                )
+                requests.append(initial_request)
+            else:
+                for _ in range(initial_request.divided):
+                    requests.append(
+                        StorageRequest(
+                            capacity=new_alloc_size,
+                            duration=initial_request.duration,
+                            start_time=initial_request.start_time,
+                        )
+                    )
+        else:
+            requests.append(initial_request)
+
+        return requests
+
     def process_client_message(self):
         """Process an incoming client message"""
 
@@ -210,25 +265,29 @@ class Router:
 
             req = self.schema.load(message.content)
 
-            # Update request state
-            req.job_id = f"{self.uid}-{self.req_count}"
-            req.client_id = client_id
-            req.state = ReqState.PENDING
-            self.req_count += 1
-            self.log.info(req)
+            # Does the request need to be divided into blocks ?
+            requests = self.divide_allocation(req)
 
-            # To scheduler for processing
-            pending_req = self.schema.dump(req)
-            self.transports["scheduler"].send_multipart(
-                Message(MsgCat.REQUEST, pending_req), f"{self.uid}-SC"
-            )
-            self.stats["sent_to_scheduler"] += 1
+            for req in requests:
+                # Update request state
+                req.job_id = f"{self.uid}-{self.req_count}"
+                req.client_id = client_id
+                req.state = ReqState.PENDING
+                self.req_count += 1
+                self.log.info(req)
 
-            # To client for ack
-            notification = Message.notification(
-                f"Request PENDING and sent to scheduler, with ID {req.job_id}"
-            )
-            self.transports["client"].send_multipart(notification, client_id)
+                # To scheduler for processing
+                pending_req = self.schema.dump(req)
+                self.transports["scheduler"].send_multipart(
+                    Message(MsgCat.REQUEST, pending_req), f"{self.uid}-SC"
+                )
+                self.stats["sent_to_scheduler"] += 1
+
+                # To client for ack
+                notification = Message.notification(
+                    f"Request PENDING and sent to scheduler, with ID {req.job_id}"
+                )
+                self.transports["client"].send_multipart(notification, client_id)
 
         elif message.category == MsgCat.EOS:
             self.log.debug("Processing EoS from client {client_id}")

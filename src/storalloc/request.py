@@ -38,6 +38,7 @@ class RequestSchema(Schema):
     nqn = fields.Str()
     state = EnumField(ReqState, by_value=True)
     reason = fields.Str()
+    divided = fields.Int()
 
     @post_load
     def make_request(self, data, **kwargs):  # pylint: disable=no-self-use,unused-argument
@@ -78,6 +79,7 @@ class StorageRequest:
 
     # Always set
     state: ReqState = ReqState.OPENED
+    divided: int = 1  # request not divided in multiple allocations by default
 
     # Set for FAILED or REFUSED
     reason: str = ""
