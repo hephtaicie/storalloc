@@ -12,6 +12,8 @@ import bokeh
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, DatetimeTickFormatter
 from bokeh.server.server import Server
+from bokeh.transform import dodge
+from bokeh.models import FactorRange
 
 from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
 from storalloc.utils.config import config_from_yaml
@@ -34,7 +36,7 @@ class Visualisation:
     ):
         """Init zmq comm"""
 
-        self.uid = uid or f"SIM-{str(uuid.uuid4().hex)[:6]}"
+        self.uid = uid or f"VIS-{str(uuid.uuid4().hex)[:6]}"
         self.conf = config_from_yaml(config_path)
         self.log = get_storalloc_logger(verbose)
         self.context = context if context else zmq.Context()
@@ -75,6 +77,7 @@ class Visualisation:
         sources = {}
         sources["alloc"] = ColumnDataSource(data={"time": [], "value": []})
         sources["calloc"] = ColumnDataSource(data={"time": [], "value": []})
+        sources["disks_ca"] = ColumnDataSource(data={"disk_label": [], "ca": [], "max_ca": []})
 
         # Plot Allocated GB - Simulation
         alloc_plot = figure(
@@ -89,7 +92,7 @@ class Visualisation:
             x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen"
         )
 
-        # Plot Concurrent allocations - Simulation
+        # Plot Concurrent allocations (vbar) - Simulation
         calloc_plot = figure(
             y_axis_label="Concurrent Allocations",
             x_axis_label="Simulation Time",
@@ -98,9 +101,44 @@ class Visualisation:
             sizing_mode="stretch_both",
         )
         calloc_plot.xaxis[0].formatter = DatetimeTickFormatter()
-        calloc_plot.dot(x="time", y="value", source=sources["calloc"], size=6, color="dodgerblue")
+        calloc_plot.dot(x="time", y="value", source=sources["calloc"], size=15, color="dodgerblue")
 
-        doc.add_root(bokeh.layouts.column(alloc_plot, calloc_plot, sizing_mode="stretch_both"))
+        ca_per_disk = figure(
+            y_range=FactorRange(),
+            x_range=(0, 5),
+            title="Concurrent Allocations per disk",
+            width=400,
+            sizing_mode="stretch_height",
+        )
+
+        ca_per_disk.hbar(
+            y=dodge("disk_label", -0.25, range=ca_per_disk.y_range),
+            right="ca",
+            source=sources["disks_ca"],
+            height=0.2,
+            color="#c9d9d3",
+            legend_label="CA",
+        )
+
+        ca_per_disk.hbar(
+            y=dodge("disk_label", 0.25, range=ca_per_disk.y_range),
+            right="max_ca",
+            source=sources["disks_ca"],
+            height=0.2,
+            color="#e84d60",
+            legend_label="Max CA",
+        )
+
+        ca_per_disk.y_range.range_padding = 0.1
+        ca_per_disk.legend.location = "top_left"
+        ca_per_disk.legend.orientation = "horizontal"
+
+        doc.add_root(
+            bokeh.layouts.row(
+                bokeh.layouts.column(alloc_plot, calloc_plot, sizing_mode="stretch_width"),
+                ca_per_disk,
+            )
+        )
 
         async def update_alloc_sim(time, value):
             sources["alloc"].stream(dict(time=[time], value=[value]))
@@ -108,11 +146,17 @@ class Visualisation:
         async def update_calloc_sim(time, value):
             sources["calloc"].stream(dict(time=[time], value=[value]))
 
+        async def update_calloc_disk_sim(disk_labels, ca, max_ca):
+            ca_per_disk.y_range.factors = disk_labels
+            ca_per_disk.x_range.end = max(max_ca) + 2
+            sources["disks_ca"].stream(dict(disk_label=disk_labels, ca=ca, max_ca=max_ca))
+
         def blocking_task():
 
             vis_sub = self.zmq_init_subscriber(simulation=True)
 
             total_used_storage_sim = 0
+            disks = {}
 
             while threading.main_thread().is_alive():
 
@@ -141,6 +185,25 @@ class Visualisation:
                     time = datetime.datetime.fromtimestamp(msg.content[1])
                     doc.add_next_tick_callback(
                         partial(update_calloc_sim, time=time, value=msg.content[2])
+                    )
+                if msg.category is MsgCat.DATAPOINT and msg.content[0] == "calloc_disk":
+                    disk, num_ca = msg.content[1:]
+                    if not disks.get(disk):
+                        disks[disk] = [num_ca, num_ca]
+                    else:
+                        if num_ca > disks[disk][1]:
+                            disks[disk] = [num_ca, num_ca]
+                        else:
+                            disks[disk][0] = num_ca
+
+                    disk_labels = list(disks.keys())
+                    ca = [val[0] for val in disks.values()]
+                    max_ca = [val[1] for val in disks.values()]
+
+                    doc.add_next_tick_callback(
+                        partial(
+                            update_calloc_disk_sim, disk_labels=disk_labels, ca=ca, max_ca=max_ca
+                        )
                     )
 
         thread = threading.Thread(target=blocking_task)
