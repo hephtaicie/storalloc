@@ -117,6 +117,7 @@ class Simulation:
         # Visualisation PUBLISHER #################################################################
         self.log.info("Binding socket for publishing visualisation updates")
         visualisation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
+        visualisation_socket.set_hwm(50000)
         visualisation_socket.bind(
             f"tcp://{self.conf['simulation_addr']}:{self.conf['s_visualisation_port']}"
         )
@@ -155,16 +156,12 @@ class Simulation:
             node.sim_nb_alloc += 1
             self.log.debug(summarise_ressource_catalog(self.resource_catalog))
             self.transports["visualisation"].send_multipart(
-                Message.datapoint("alloc", self.env.now, allocation),
-                "sim",
-            )
-            self.transports["visualisation"].send_multipart(
-                Message.datapoint("calloc", self.env.now, self.stats["concurrent_allocations"]),
-                "sim",
-            )
-            self.transports["visualisation"].send_multipart(
-                Message.datapoint(
-                    "calloc_disk", f"{server_id}:{node_id}:{disk_id}", disk.sim_nb_alloc
+                Message.datalist(
+                    [
+                        ("calloc_disk", f"{server_id}:{node_id}:{disk_id}", disk.sim_nb_alloc),
+                        ("alloc", self.env.now, allocation),
+                        ("calloc", self.env.now, self.stats["concurrent_allocations"]),
+                    ]
                 ),
                 "sim",
             )
@@ -180,13 +177,14 @@ class Simulation:
             disk.sim_nb_alloc -= 1
             node.sim_nb_alloc -= 1
             self.log.debug(summarise_ressource_catalog(self.resource_catalog))
-            # Make that into a single message
             self.transports["visualisation"].send_multipart(
-                Message.datapoint("alloc", self.env.now, allocation),
-                "sim",
-            )
-            self.transports["visualisation"].send_multipart(
-                Message.datapoint("calloc", self.env.now, self.stats["concurrent_allocations"]),
+                Message.datalist(
+                    [
+                        ("calloc_disk", f"{server_id}:{node_id}:{disk_id}", disk.sim_nb_alloc),
+                        ("alloc", self.env.now, allocation),
+                        ("calloc", self.env.now, self.stats["concurrent_allocations"]),
+                    ]
+                ),
                 "sim",
             )
         else:
