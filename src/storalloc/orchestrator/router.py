@@ -75,9 +75,9 @@ class Router:
             "sent_to_qm": 0,
             "recv_from_qm": 0,
             "events": 0,
+            "req_count": 0,
+            "total_req_count": 0,
         }
-
-        self.req_count = 0
 
         # Init scheduler
         self.scheduler = Scheduler(
@@ -264,16 +264,16 @@ class Router:
             self.stats[message.category] += 1
 
             req = self.schema.load(message.content)
+            self.stats["req_count"] += 1
 
             # Does the request need to be divided into blocks ?
             requests = self.divide_allocation(req)
 
-            for req in requests:
+            for sp_idx, req in enumerate(requests):
                 # Update request state
-                req.job_id = f"{self.uid}-{self.req_count}"
+                req.job_id = f"{self.uid}-{self.stats['req_count']}-{sp_idx}"
                 req.client_id = client_id
                 req.state = ReqState.PENDING
-                self.req_count += 1
                 self.log.info(req)
 
                 # To scheduler for processing
@@ -288,6 +288,7 @@ class Router:
                     f"Request PENDING and sent to scheduler, with ID {req.job_id}"
                 )
                 self.transports["client"].send_multipart(notification, client_id)
+                self.stats["total_req_count"] += 1
 
         elif message.category == MsgCat.EOS:
             self.log.debug("Processing EoS from client {client_id}")
@@ -321,7 +322,7 @@ class Router:
                 self.stats[request.state] += 1
                 # Relay request from server to client and ask queue manager to keep track of it
                 self.transports["client"].send_multipart(message, request.client_id)
-                self.transports["queue"].send_multipart(message)
+                self.transports["queue"].send_multipart(message, [f"{self.uid}-QM"] + identities)
                 self.stats["sent_to_qm"] += 1
                 self.log.debug(
                     f"Request [ALLOCATED] ({request.job_id}) and transmitted back to client."
@@ -382,13 +383,16 @@ class Router:
             self.log.warning("Undesired message ({message.category}) received from a queue manager")
             return
 
-        request = self.schema.load(message)
+        request = self.schema.load(message.content)
         if request.state == ReqState.ENDED:
             self.stats[request.state] += 1
             # Notify server that he can reclaim the storage used by this request
             self.transports["server"].send_multipart(message)
             # Notify scheduler that the storage space used by this request will be available again
             self.transports["scheduler"].send_multipart(message)
+            # Notify client (if still connected ?) that storage space has been reclaimed
+            self.transports["client"].send_multipart(message, request.client_id)
+            self.log.debug(f"All components notified of deallocation of request {request.job_id}")
         else:
             self.log.error(
                 f"Request transmitted by queue manager has state {request.state},"

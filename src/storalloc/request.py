@@ -113,14 +113,14 @@ class StorageRequest:
             desc = "Request [REFUSED] by orchestrator"
         elif self.state is ReqState.ALLOCATED:
             desc = (
-                f"Request [ALLOCATED] by self.server_id on {self.node_id}:"
+                f"Request [ALLOCATED] by {self.server_id} on {self.node_id}:"
                 + f"{self.disk_id} for {self.capacity} GB - "
                 + f"Connection detail {self.nqn}, {self.alloc_type}"
             )
         elif self.state is ReqState.FAILED:
             desc = f"Request [FAILED] on {self.node_id}, reason : {self.reason}"
         elif self.state is ReqState.ENDED:
-            desc = f"Request [ENDED] at {self.end_time} ({self.node_id}"
+            desc = f"Request [ENDED] at {self.end_time} (was on {self.server_id}:{self.node_id}:{self.disk_id})"
         else:
             desc = "[ERROR] Somehow the current state of this request is unknown"
 
