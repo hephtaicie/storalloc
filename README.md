@@ -72,7 +72,7 @@ $ storalloc sim-server -c config/config_random.yml -l
 `-l` must be added for remote logging, which is not the default for this component.
 
 ```shell
-$ storalloc visualisation -c confic/config_random.yml
+$ storalloc visualisation -c config/config_random.yml
 ```
 
 When a Ctrl-C is issued on the simulation server, it will stop collecting events and start running the simulation.
@@ -87,16 +87,16 @@ The bare minimum components required for Storalloc execution are the orchestrato
 We start them in this order.
 
 ```shell
-$ storalloc orchestrator -c confic/config_random.yml
+$ storalloc orchestrator -c config/config_random.yml
 ```
 
 ```shell
-$ storalloc server -c confic/config_random.yml -s config/systems/ault14.yml
+$ storalloc server -c config/config_random.yml -s config/systems/ault14.yml
 ```
 (use as many as needed, started in separate shells)
 
 ```shell
-$ storalloc client -c confic/config_random.yml -s 200 -t 1:00:00
+$ storalloc client -c config/config_random.yml -s 200 -t 1:00:00
 ```
 (request for 200GB, for one hour, starting now)
 
@@ -124,16 +124,16 @@ The bare minimum components required for Storalloc execution are the orchestrato
 We start them in this order.
 
 ```shell
-$ storalloc orchestrator -c confic/config_random.yml
+$ storalloc orchestrator -c config/config_random.yml
 ```
 
 ```shell
-$ storalloc server -c confic/config_random.yml -s config/systems/ault14.yml
+$ storalloc server -c config/config_random.yml -s config/systems/ault14.yml
 ```
 (use as many as needed, started in separate shells)
 
 ```shell
-$ storalloc sim-client -c confic/config_random.yml -j data/IOJobs.yml
+$ storalloc sim-client -c config/config_random.yml -j data/IOJobs.yml
 ```
 (data path is an example, but you should use your own locally-generated `IOJobs.yml` file)
 
