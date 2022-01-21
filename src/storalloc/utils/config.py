@@ -13,6 +13,8 @@ CONFIG_SCHEMA = {
     "orchestrator_addr": {"type": "string"},
     "orchestrator_fe_ipc": {"type": "string"},
     "orchestrator_be_ipc": {"type": "string"},
+    "block_size_gb": {"type": "integer", "min": 0},
+    "min_block_size_gb": {"type": "integer", "min": 0},
     "client_port": {"type": "integer", "min": 1025, "max": 65535},
     "server_port": {"type": "integer", "min": 1025, "max": 65535},
     "log_server_addr": {"type": "string"},
