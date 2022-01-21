@@ -72,7 +72,7 @@ $ storalloc sim-server -c config/config_random.yml -l
 `-l` must be added for remote logging, which is not the default for this component.
 
 ```shell
-$ storalloc visualisation -c confic/config_random.yml
+$ storalloc visualisation -c config/config_random.yml
 ```
 
 When a Ctrl-C is issued on the simulation server, it will stop collecting events and start running the simulation.
