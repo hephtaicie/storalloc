@@ -1,0 +1,70 @@
+hosts:
+  - hostname: test_system_3
+    ipv4: 148.42.123.88
+    network_bw: 12.5 #GBps (100Gb Eth)
+    disks:
+      - vendor: INTEL
+        model: SSDPE2KX080T1
+        serial: BTLJ9342009DUI0DZN
+        capacity: 4000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme0n1
+      - vendor: INTEL
+        model: SSDPE2K1280T9
+        serial: BTLJ93120AFN8P09KA
+        capacity: 6000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme1n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ93420AFN898AKA
+        capacity: 4000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme2n1
+  - hostname: test_system_4
+    ipv4: 148.42.123.90
+    network_bw: 12.5 #GBps (100Gb Eth)
+    disks:
+      - vendor: INTEL
+        model: SSDPE2HG080T1
+        serial: BTLJ91420013130DFF
+        capacity: 4000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme0n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ93420JKI8P011D
+        capacity: 8000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme1n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ93420AFN8981JD
+        capacity: 4000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme2n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ93489AFN898DJD
+        capacity: 4000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme3n1
+  - hostname: test_system_5
+    ipv4: 148.42.123.12
+    network_bw: 12.5 #GBps (100Gb Eth)
+    disks:
+      - vendor: INTEL
+        model: SSDPE2KX080T1
+        serial: BTLJ9342021DUI0DZN
+        capacity: 4000 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme0n1
+
