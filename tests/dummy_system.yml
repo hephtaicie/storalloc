@@ -42,6 +42,3 @@ hosts:
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme1n1
-
-
-

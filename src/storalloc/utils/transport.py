@@ -12,6 +12,10 @@ class Transport:
     def __init__(self, socket: zmq.Socket):
         self.socket = socket
 
+    def __del__(self):
+        """Close socket on destroy (just in case ?)"""
+        self.socket.close()
+
     def send_multipart(self, message: Message, prefix: str = None):
         """Send multipart message with emulated enveloppe"""
         if prefix and isinstance(prefix, str):
