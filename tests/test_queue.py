@@ -15,39 +15,20 @@ from storalloc.utils.transport import Transport
 # pylint: disable=redefined-outer-name,missing-function-docstring,protected-access
 
 
-@pytest.fixture
+@pytest.fixture(name="zmqctx")
 def context():
     context = zmq.Context()
     yield context
     context.destroy()
 
 
-@pytest.fixture
-def zmq_router(context):
-    socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
-    socket.bind("ipc://queue_manager.ipc")  # nasty constant in code...
-    yield socket
-    socket.close()
-    context.destroy()
-
-
-@pytest.fixture
-def queue_and_router(zmq_router):
+@pytest.fixture(name="queue")
+def alloc_queue():
     uid = "test_alloc_queue"
     queue = AllocationQueue(uid, verbose=False)
-    yield (queue, zmq_router)
+    yield queue
     if queue.is_alive():
         queue.terminate()
-
-
-@pytest.fixture
-def started_queue_and_router(queue_and_router):
-    alloc_queue, router = queue_and_router
-    alloc_queue.start()
-    assert router.poll(timeout=3000)
-    _, msg = router.recv_multipart()
-    assert Message.unpack(msg).category == MsgCat.NOTIFICATION
-    yield (alloc_queue, router)
 
 
 @pytest.fixture
@@ -71,18 +52,25 @@ def rand_message(rand_request, schema):
     return msg
 
 
-def test_start_queue(queue_and_router):
+def test_start_queue(zmqctx, queue):
     """Start a queue process and check connectivity"""
-    alloc_queue, router = queue_and_router
-    alloc_queue.start()
-    assert router.poll(timeout=3000)
+    socket = zmqctx.socket(zmq.ROUTER)  # pylint: disable=no-member
+    socket.bind("ipc://queue_manager.ipc")  # nasty constant in code...
+    queue.start()
+    assert socket.poll(timeout=4000)
+    queue.terminate()
 
 
-def test_request_basic(started_queue_and_router, rand_message, schema):
+def test_request_basic(zmqctx, queue, rand_message, schema):
     """Test receiving and handling a basic request (not splitted)"""
-    alloc_queue, router = started_queue_and_router
-    assert alloc_queue.is_alive()
+    router = zmqctx.socket(zmq.ROUTER)  # pylint: disable=no-member
+    router.bind("ipc://queue_manager.ipc")  # nasty constant in code...
+    queue.start()
     transport = Transport(router)
+    assert transport.poll(timeout=3000)
+    identities, message = transport.recv_multipart()
+    assert message.category == MsgCat.NOTIFICATION
+
     # send request, which will live no more than 5s, and wait for deallocation message
     transport.send_multipart(rand_message, "test_alloc_queue")
     identities, message = transport.recv_multipart()
@@ -201,18 +189,18 @@ def test_store_request_splitted():
     }
 
 
-def test_prune_requests(context, schema):
+def test_prune_requests(zmqctx, schema):
     """Test the __prune_requests private method
     (quite complexe out of its process, as it requires
     an operational ZMQ Dealer)
     """
 
     # Prepare communication
-    router = context.socket(zmq.ROUTER)  # pylint: disable=no-member
+    router = zmqctx.socket(zmq.ROUTER)  # pylint: disable=no-member
     router.setsockopt(zmq.IDENTITY, "test_router".encode("utf-8"))  # pylint: disable=no-member
     router.bind("ipc://queue_manager.ipc")  # nasty constant in code...
     router_t = Transport(router)
-    dealer = context.socket(zmq.DEALER)  # pylint: disable=no-member
+    dealer = zmqctx.socket(zmq.DEALER)  # pylint: disable=no-member
     dealer.setsockopt(zmq.IDENTITY, "test_dealer".encode("utf-8"))  # pylint: disable=no-member
     dealer.connect("ipc://queue_manager.ipc")  # nasty constant in code...
 
@@ -266,15 +254,15 @@ def test_prune_requests(context, schema):
     assert len(queue.request_deque) == 1
 
 
-def test_check_split(context, schema):
+def test_check_split(zmqctx, schema):
     """Check split request"""
 
     # Prepare communication
-    router = context.socket(zmq.ROUTER)  # pylint: disable=no-member
+    router = zmqctx.socket(zmq.ROUTER)  # pylint: disable=no-member
     router.setsockopt(zmq.IDENTITY, "test_router".encode("utf-8"))  # pylint: disable=no-member
     router.bind("ipc://queue_manager.ipc")  # nasty constant in code...
     router_t = Transport(router)
-    dealer = context.socket(zmq.DEALER)  # pylint: disable=no-member
+    dealer = zmqctx.socket(zmq.DEALER)  # pylint: disable=no-member
     dealer.setsockopt(zmq.IDENTITY, "test_dealer".encode("utf-8"))  # pylint: disable=no-member
     dealer.connect("ipc://queue_manager.ipc")  # nasty constant in code...
 
@@ -306,12 +294,15 @@ def test_check_split(context, schema):
     }
 
     queue._AllocationQueue__check_splits()
+
+    assert router_t.poll(timeout=1000)
     _, message = router_t.recv_multipart()
     assert message.category == MsgCat.REQUEST
     req = schema.load(message.content)
     assert req.state == ReqState.ENDED
     assert req.job_id == "REQ1"
     # Second request ended
+    assert router_t.poll(timeout=1000)
     _, message = router_t.recv_multipart()
     assert message.category == MsgCat.REQUEST
     req = schema.load(message.content)

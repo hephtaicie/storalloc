@@ -12,6 +12,7 @@ from storalloc.request import RequestSchema, ReqState, StorageRequest
 # TODO: Use the __init__ in strategies subpackage to import strategy object in a cleaner way
 from storalloc.strategies.random_alloc import RandomAlloc
 from storalloc.strategies.worst_case import WorstCase
+from storalloc.strategies.round_robin import RoundRobin
 from storalloc import resources
 from storalloc.orchestrator.queue import AllocationQueue
 from storalloc.orchestrator.scheduler import Scheduler
@@ -29,6 +30,8 @@ def make_strategy(strategy_name: str):
 
     if strategy_name == "random_alloc":
         return RandomAlloc()
+    if strategy_name == "round_robin":
+        return RoundRobin()
     if strategy_name == "worst_case":
         return WorstCase()
 
