@@ -12,6 +12,8 @@ import bokeh
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, DatetimeTickFormatter
 from bokeh.server.server import Server
+from bokeh.transform import dodge
+from bokeh.models import FactorRange
 
 from storalloc.utils.logging import get_storalloc_logger, add_remote_handler
 from storalloc.utils.config import config_from_yaml
@@ -34,10 +36,11 @@ class Visualisation:
     ):
         """Init zmq comm"""
 
-        self.uid = uid or f"SIM-{str(uuid.uuid4().hex)[:6]}"
+        self.uid = uid or f"VIS-{str(uuid.uuid4().hex)[:6]}"
         self.conf = config_from_yaml(config_path)
         self.log = get_storalloc_logger(verbose)
         self.context = context if context else zmq.Context()
+        self.max_points = self.conf["visualisation"]["max_points"]
 
         # Don't ever use self.logger inside a bokeh thread, as this would mean
         # using the same zmq Socket from differents threads, which has und. behaviour
@@ -75,6 +78,7 @@ class Visualisation:
         sources = {}
         sources["alloc"] = ColumnDataSource(data={"time": [], "value": []})
         sources["calloc"] = ColumnDataSource(data={"time": [], "value": []})
+        sources["calloc_disk"] = ColumnDataSource(data={"disk_label": [], "ca": [], "max_ca": []})
 
         # Plot Allocated GB - Simulation
         alloc_plot = figure(
@@ -89,7 +93,7 @@ class Visualisation:
             x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen"
         )
 
-        # Plot Concurrent allocations - Simulation
+        # Plot Concurrent allocations (vbar) - Simulation
         calloc_plot = figure(
             y_axis_label="Concurrent Allocations",
             x_axis_label="Simulation Time",
@@ -98,21 +102,62 @@ class Visualisation:
             sizing_mode="stretch_both",
         )
         calloc_plot.xaxis[0].formatter = DatetimeTickFormatter()
-        calloc_plot.dot(x="time", y="value", source=sources["calloc"], size=6, color="dodgerblue")
+        calloc_plot.dot(x="time", y="value", source=sources["calloc"], size=15, color="dodgerblue")
 
-        doc.add_root(bokeh.layouts.column(alloc_plot, calloc_plot, sizing_mode="stretch_both"))
+        ca_per_disk = figure(
+            y_range=FactorRange(),
+            x_range=(0, 5),
+            title="Concurrent Allocations per disk",
+            width=400,
+            sizing_mode="stretch_height",
+        )
 
-        async def update_alloc_sim(time, value):
-            sources["alloc"].stream(dict(time=[time], value=[value]))
+        ca_per_disk.hbar(
+            y=dodge("disk_label", -0.25, range=ca_per_disk.y_range),
+            right="ca",
+            source=sources["calloc_disk"],
+            height=0.2,
+            color="#c9d9d3",
+            legend_label="CA",
+        )
 
-        async def update_calloc_sim(time, value):
-            sources["calloc"].stream(dict(time=[time], value=[value]))
+        ca_per_disk.hbar(
+            y=dodge("disk_label", 0.25, range=ca_per_disk.y_range),
+            right="max_ca",
+            source=sources["calloc_disk"],
+            height=0.2,
+            color="#e84d60",
+            legend_label="Max CA",
+        )
+
+        ca_per_disk.y_range.range_padding = 0.1
+        ca_per_disk.legend.location = "top_left"
+        ca_per_disk.legend.orientation = "horizontal"
+
+        doc.add_root(
+            bokeh.layouts.row(
+                bokeh.layouts.column(alloc_plot, calloc_plot, sizing_mode="stretch_width"),
+                ca_per_disk,
+            )
+        )
+
+        async def update_plots(update_data):
+            for plot_key, update in update_data.items():
+                if plot_key == "calloc_disk":
+                    ca_per_disk.y_range.factors = update["disk_label"]
+                    ca_per_disk.x_range.end = max(update["max_ca"]) + 2
+                    sources[plot_key].stream(update, len(update["disk_label"]))
+                else:
+                    sources[plot_key].stream(update, self.max_points)
 
         def blocking_task():
 
             vis_sub = self.zmq_init_subscriber(simulation=True)
 
             total_used_storage_sim = 0
+            disks = {}
+            disk_labels = []
+            disk_max_ca = []
 
             while threading.main_thread().is_alive():
 
@@ -124,24 +169,44 @@ class Visualisation:
 
                 topic, msg = vis_sub.recv_multipart()
                 topic = topic[0]
+                update = {}
 
                 if topic != "sim":
                     print(f"INVALID TOPIC {topic}. How did this message reach the visualisation ?")
                     continue
 
-                if msg.category is MsgCat.DATAPOINT and msg.content[0] == "alloc":
-                    # print(f"New simulation point : {msg.content}")
-                    total_used_storage_sim += msg.content[2]
-                    time = datetime.datetime.fromtimestamp(msg.content[1])
-                    doc.add_next_tick_callback(
-                        partial(update_alloc_sim, time=time, value=total_used_storage_sim)
-                    )
-                if msg.category is MsgCat.DATAPOINT and msg.content[0] == "calloc":
-                    # print(f"New simulation point : {msg.content}")
-                    time = datetime.datetime.fromtimestamp(msg.content[1])
-                    doc.add_next_tick_callback(
-                        partial(update_calloc_sim, time=time, value=msg.content[2])
-                    )
+                if msg.category is MsgCat.DATALIST:
+                    updt_values = msg.content
+                    for plot, xval, yval in updt_values:
+                        if plot == "alloc":
+                            total_used_storage_sim += yval
+                            xval = datetime.datetime.fromtimestamp(xval)
+                            update[plot] = {"time": [xval], "value": [total_used_storage_sim]}
+                        elif plot == "calloc":
+                            xval = datetime.datetime.fromtimestamp(xval)
+                            update[plot] = {"time": [xval], "value": [yval]}
+                        elif plot == "calloc_disk":
+                            if xval not in disks:
+                                disks[xval] = [yval, yval]
+                                disk_labels = list(disks.keys())
+                                disk_max_ca = [val[1] for val in disks.values()]
+                            else:
+                                if yval > disks[xval][1]:
+                                    disks[xval] = [yval, yval]  # Update current and max
+                                    disk_max_ca = [val[1] for val in disks.values()]
+                                else:
+                                    disks[xval][0] = yval  # update current only
+
+                            disk_ca = [val[0] for val in disks.values()]
+                            update[plot] = {
+                                "disk_label": disk_labels,
+                                "max_ca": disk_max_ca,
+                                "ca": disk_ca,
+                            }
+                        else:
+                            print(f"Unknown plot {plot}")
+
+                    doc.add_next_tick_callback(partial(update_plots, update_data=update))
 
         thread = threading.Thread(target=blocking_task)
         thread.start()
@@ -154,6 +219,9 @@ class Visualisation:
         else:
             raise NotImplementedError("Visualisation can only be used with simulation so far.")
 
-        bkserver.io_loop.add_callback(bkserver.show, "/")
-        bkserver.start()
-        bkserver.io_loop.start()
+        try:
+            bkserver.io_loop.add_callback(bkserver.show, "/")
+            bkserver.start()
+            bkserver.io_loop.start()
+        except KeyboardInterrupt:
+            self.log.info("Visualisation server terminated by keyboard interrupt")
