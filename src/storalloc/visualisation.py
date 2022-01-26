@@ -40,6 +40,7 @@ class Visualisation:
         self.conf = config_from_yaml(config_path)
         self.log = get_storalloc_logger(verbose)
         self.context = context if context else zmq.Context()
+        self.max_points = self.conf["visualisation"]["max_points"]
 
         # Don't ever use self.logger inside a bokeh thread, as this would mean
         # using the same zmq Socket from differents threads, which has und. behaviour
@@ -147,7 +148,7 @@ class Visualisation:
                     ca_per_disk.x_range.end = max(update["max_ca"]) + 2
                     sources[plot_key].stream(update, len(update["disk_label"]))
                 else:
-                    sources[plot_key].stream(update)
+                    sources[plot_key].stream(update, self.max_points)
 
         def blocking_task():
 

@@ -24,17 +24,10 @@ CONFIG_SCHEMA = {
     "s_visualisation_port": {"type": "integer", "min": 1025, "max": 65535},
     "transport": {"type": "string", "allowed": ["tcp", "ipc"]},
     "sched_strategy": {"type": "string", "allowed": ["random_alloc", "worst_case"]},
-    "res_catalog": {
-        "type": "string",
-        "allowed": [
-            "inmemory",
-        ],
-    },
-    "simulation": {
+    "visualisation": {
         "type": "dict",
         "schema": {
-            "nb_clients": {"type": "integer"},
-            "nb_servers": {"type": "integer"},
+            "max_points": {"type": "integer", "min": 100},
         },
     },
 }
