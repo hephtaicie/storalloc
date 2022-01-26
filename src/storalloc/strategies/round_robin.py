@@ -1,4 +1,4 @@
-"""Round Robin Scheudling algorithm"""
+"""Round Robin Scheduling algorithm"""
 
 
 from storalloc.strategies.base import StrategyInterface
