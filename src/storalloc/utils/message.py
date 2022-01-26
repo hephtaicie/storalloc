@@ -90,10 +90,8 @@ class Message:
         return cls(MsgCat.DATAPOINT, (source_name, x_data, y_data))
 
     @classmethod
-    def datalist(
-        cls, source_name: str, x_data: list[float], y_data: list[float], pack: bool = False
-    ):
-        """Create a multiple datapoints message"""
+    def datalist(cls, data: list, pack: bool = False):
+        """Create a datalist message (for simultaneous updates of many plots)"""
         if pack:
-            return cls(MsgCat.DATALIST, (source_name, x_data, y_data)).pack()
-        return cls(MsgCat.DATALIST, (source_name, x_data, y_data))
+            return cls(MsgCat.DATALIST, data).pack()
+        return cls(MsgCat.DATALIST, data)

@@ -17,7 +17,6 @@ o_visualisation_port: 35055
 transport: tcp
 sched_strategy: round_robin
 res_catalog: inmemory
-simulation:
-  nb_clients: 1
-  nb_servers: 1
+visualisation:
+  max_points: 5000
 ...
