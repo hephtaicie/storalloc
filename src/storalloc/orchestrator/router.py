@@ -54,12 +54,15 @@ def make_resource_catalog(catalog_name: str):
 class Router:
     """Default router between components"""
 
-    def __init__(self, config_path: str, uid: str = None, verbose: bool = False):
+    def __init__(
+        self, config_path: str, uid: str = None, verbose: bool = False, simulation: bool = True
+    ):
         """Init router"""
 
         self.uid = uid or f"R-{str(uuid.uuid4().hex)[:6]}"
         self.conf = config_from_yaml(config_path)
         self.log = get_storalloc_logger(verbose, logger_name=self.uid)
+        self.simulation = simulation
         # Init transports (as soon as possible after logger, as it will
         # possibly append a handler on it)
         self.transports = self.zmq_init()
@@ -389,10 +392,15 @@ class Router:
         request = self.schema.load(message.content)
         if request.state == ReqState.ENDED:
             self.stats[request.state] += 1
-            # Notify server that he can reclaim the storage used by this request
+            # Notify server that he can reclaim the storage used by this request - has currently no effect
             self.transports["server"].send_multipart(message)
-            # Notify scheduler that the storage space used by this request will be available again
-            self.transports["scheduler"].send_multipart(message)
+            if self.simulation:
+                # Notify scheduler that the storage space used by this request will be
+                # available again
+                # Currently has no effect, AND should never reach scheduler in simulation mode
+                # (due to the timestamp being all in the past, every allocations would be ended
+                # by queue scheduler after a maximum of 5s, which is not desirable.
+                self.transports["scheduler"].send_multipart(message)
             # Notify client (if still connected ?) that storage space has been reclaimed
             self.transports["client"].send_multipart(message, request.client_id)
             self.log.debug(f"All components notified of deallocation of request {request.job_id}")

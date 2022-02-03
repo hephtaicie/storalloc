@@ -68,6 +68,7 @@ class Scheduler(Process):
     def process_deallocation_request(self, request):
         """Acknowledge the release of some storage resource in the resource catalog
         (request in ENDED state)"""
+        # TODO: should actually remove allocation from disk in resource catalog
         self.log.debug(f"Processing ENDED request : {request}")
 
     def process_node_registration(self, server_id: str, node_data: dict):
