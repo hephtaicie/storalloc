@@ -3,6 +3,7 @@ orchestrator_hostname: localhost
 orchestrator_addr: 127.0.0.1
 orchestrator_fe_ipc: client_ipc
 orchestrator_be_ipc: server_ipc
+res_catalog: inmemory
 block_size_gb: 1000
 min_block_size_gb: 100
 client_port: 35010
