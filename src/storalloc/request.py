@@ -28,6 +28,7 @@ class RequestSchema(Schema):
     capacity = fields.Float()
     duration = fields.TimeDelta()
     start_time = fields.DateTime()
+    original_start_time = fields.DateTime()
     end_time = fields.DateTime()
     client_id = fields.Str()
     server_id = fields.Str()
@@ -62,6 +63,7 @@ class StorageRequest:
     capacity: float
     duration: datetime.timedelta
     start_time: datetime.datetime
+    original_start_time: datetime.datetime = None
     end_time: datetime.datetime = None
 
     # Set for PENDING
@@ -89,6 +91,9 @@ class StorageRequest:
         if self.end_time is None:
             self.end_time = self.start_time + self.duration
 
+        if self.original_start_time is None:
+            self.original_start_time = self.start_time
+
         if self.capacity <= 0:
             raise ValueError("Capacity must be strictly positive")
 
@@ -109,6 +114,8 @@ class StorageRequest:
                 f"Request [GRANTED] : {self.capacity} GB, for {self.duration}, "
                 + f"{self.start_time} on {self.node_id}:{self.disk_id}"
             )
+            if self.original_start_time is not None:
+                desc += f"[DELAYED] by {(self.start_time - self.original_start_time).seconds} s"
         elif self.state is ReqState.REFUSED:
             desc = "Request [REFUSED] by orchestrator"
         elif self.state is ReqState.ALLOCATED:

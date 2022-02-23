@@ -84,8 +84,13 @@ class Simulation:
             "concurrent_allocations": 0,
             "max_ca": 0,  # max concurrent allocations at some point
             "events_nb": 0,
+            "scheduler_failures": 0,
+            "total_waiting_time_minutes": 0,
+            "delayed_requests": 0,
             "total_gb_alloc": 0,
             "total_gb_dealloc": 0,
+            "first_event_time": 0,
+            "last_event_time": 0,
         }
         self.visualisation = visualisation
 
@@ -151,6 +156,8 @@ class Simulation:
                     f"[SIM ERROR] Allocation on {server_id}:{node_id}:{disk_id}"
                     + " will have to be postponned as capacity is not sufficient"
                 )
+                self.stats["scheduler_failures"] += 1
+
             container.get(allocation)
             disk.sim_nb_alloc += 1
             node.sim_nb_alloc += 1
@@ -199,11 +206,18 @@ class Simulation:
 
     def allocate(self, request: StorageRequest):
         """Simulate allocation"""
+
         self.log.debug(
             f"[SIM] Registering {request.job_id} ({request.capacity} GB on "
             + f"{request.server_id}:{request.node_id}:{request.disk_id})"
         )
+
         self.log.debug(f"[SIM] Duration is {request.duration} / start_time is {request.start_time}")
+        if request.start_time > request.original_start_time:
+            self.stats["total_waiting_time_minutes"] += (
+                request.start_time - request.original_start_time
+            ).total_seconds * 60
+
         storage = yield simpy.events.Timeout(
             self.env, delay=int(request.start_time.timestamp()), value=request.capacity
         )
@@ -257,6 +271,8 @@ class Simulation:
             node = Node.from_dict(data)
             self.log.info(f"[PRE-SIM] Processing new node registration for node {node.hostname}")
             setattr(node, "sim_nb_alloc", 0)
+            setattr(node, "sim_mean_nb_alloc", 0)
+            setattr(node, "sim_last_alloc_time", 0)
 
             for disk in node.disks:
                 # Colocate a simulation container with each disk of a node.
@@ -268,6 +284,8 @@ class Simulation:
                     disk, "sim_container", simpy.Container(self.env, init=0, capacity=disk.capacity)
                 )
                 setattr(disk, "sim_nb_alloc", 0)
+                setattr(disk, "sim_mean_nb_alloc", 0)
+                setattr(disk, "sim_last_alloc_time", 0)
 
             self.resource_catalog.append_resources(identity, [node])
 
@@ -321,6 +339,8 @@ class Simulation:
         )
         self.log.info(f"[POST-SIM] Total GB allocated: {self.stats['total_gb_alloc']}")
         self.log.info(f"[POST-SIM] Total GB deallocated: {self.stats['total_gb_dealloc']}")
+        self.log.info(f"Full stats: {self.stats}")
+        print(f"Full stats: {self.stats}")
 
         if self.visualisation:
             pvis.join()

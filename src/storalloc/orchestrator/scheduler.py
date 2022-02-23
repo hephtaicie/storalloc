@@ -3,6 +3,7 @@
 """
 
 from multiprocessing import Process
+import datetime
 
 import zmq
 
@@ -57,13 +58,26 @@ class Scheduler(Process):
             request.state = ReqState.GRANTED
             self.log.debug(f"Request [GRANTED] on disk {server_id}:{target_node}:{target_disk}")
             self.resource_catalog.add_allocation(server_id, target_node, target_disk, request)
+            # Send back the allocated request to the orchestrator
+            self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
         else:
-            self.log.error(f"Unable to fulfill request : {server_id}:{target_node}:{target_disk}")
-            request.state = ReqState.REFUSED
-            request.reason = "Could not fit request onto current resources"
+            if request.original_start_time is None:
+                request.original_start_time = request.start_time
 
-        # Send back the allocated request to the orchestrator
-        self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
+            if request.start_time - request.original_start_time < datetime.timedelta(hours=1):
+                request.start_time += datetime.timedelta(minutes=5)
+                self.log.warning("process_allocation_request : retrying with start_time += 5min")
+                self.process_allocation_request(request)
+            else:
+                self.log.error(
+                    f"Unable to fulfill request : {server_id}:{target_node}:{target_disk}"
+                )
+                request.state = ReqState.REFUSED
+                request.reason = (
+                    "Could not fit request onto current resources, even after delaying start"
+                )
+                # Send back the allocated request to the orchestrator
+                self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
 
     def process_deallocation_request(self, request):
         """Acknowledge the release of some storage resource in the resource catalog

@@ -86,6 +86,8 @@ class Router:
             "events": 0,
             "req_count": 0,
             "total_req_count": 0,
+            "delayed_requests": 0,
+            "total_delayed_minutes": 0,
         }
 
         # Init scheduler
@@ -205,6 +207,7 @@ class Router:
     def print_stats(self):
         """Print short stats about current number of processed events"""
         self.log.info(self.stats)
+        print(self.stats)
 
     def divide_allocation(self, initial_request):
         """Return a list of request, which holds either only the
@@ -361,6 +364,13 @@ class Router:
 
         request = self.schema.load(message.content)
 
+        if request.start_time != request.original_start_time:
+            print(f"Delayed requests spotted : {request}")
+            self.stats["delayed_requests"] += 1
+            delay = (request.start_time - request.original_start_time).total_seconds() * 60
+            self.stats["total_delayed_minutes"] += delay
+            self.log.warning("Request {req.id} got delayed by {delay} min")
+
         if request.state == ReqState.GRANTED:
             # Forward to server for actual allocation
             self.log.debug(
@@ -369,6 +379,7 @@ class Router:
             self.stats[request.state] += 1
             self.transports["server"].send_multipart(message, request.server_id)
         elif request.state == ReqState.REFUSED:
+
             # Send an error to client
             error = Message.error(f"Requested allocation refused : {request.reason}")
             self.stats[request.state] += 1
@@ -379,7 +390,6 @@ class Router:
                 + " and should be either one of GRANTED / REFUSED instead"
             )
             self.stats["errors"] += 1
-            return
 
     def process_queue_message(self):
         """Process incoming messages from queue_manager. Those messages will always be
@@ -397,7 +407,7 @@ class Router:
             self.stats[request.state] += 1
             # Notify server that he can reclaim the storage used by this request - has currently no effect
             self.transports["server"].send_multipart(message)
-            if self.simulation:
+            if not self.simulation:
                 # Notify scheduler that the storage space used by this request will be
                 # available again
                 # Currently has no effect, AND should never reach scheduler in simulation mode

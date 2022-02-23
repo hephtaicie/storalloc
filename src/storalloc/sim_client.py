@@ -41,8 +41,7 @@ class SimulationClient:
         self.transports["context"].term()
 
     def zmq_init(self, remote_logging: bool = True):
-        """Prepare connection to the orchestrator and possibly add handler for
-        remote logging to the application's main logger"""
+        """Prepare connection to the orchestrator and possibly add handler for remote logging to the application's main logger"""
 
         context = zmq.Context()
 
