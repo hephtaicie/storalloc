@@ -12,6 +12,7 @@ from storalloc.request import RequestSchema, ReqState, StorageRequest
 # TODO: Use the __init__ in strategies subpackage to import strategy object in a cleaner way
 from storalloc.strategies.random_alloc import RandomAlloc
 from storalloc.strategies.worst_case import WorstCase
+from storalloc.strategies.worst_fit import WorstFit
 from storalloc.strategies.round_robin import RoundRobin
 from storalloc import resources
 from storalloc.orchestrator.queue import AllocationQueue
@@ -34,6 +35,8 @@ def make_strategy(strategy_name: str):
         return RoundRobin()
     if strategy_name == "worst_case":
         return WorstCase()
+    if strategy_name == "worst_fit":
+        return WorstFit()
 
     raise ValueError(
         f"The scheduling strategy {strategy_name} specified in configuration does not exist"

@@ -158,6 +158,7 @@ class Simulation:
             self.transports["visualisation"].send_multipart(
                 Message.datalist(
                     [
+                        ("calloc_node", f"{server_id}:{node_id}", node.sim_nb_alloc),
                         ("calloc_disk", f"{server_id}:{node_id}:{disk_id}", disk.sim_nb_alloc),
                         ("alloc", self.env.now, allocation),
                         ("calloc", self.env.now, self.stats["concurrent_allocations"]),
@@ -180,6 +181,7 @@ class Simulation:
             self.transports["visualisation"].send_multipart(
                 Message.datalist(
                     [
+                        ("calloc_node", f"{server_id}:{node_id}", node.sim_nb_alloc),
                         ("calloc_disk", f"{server_id}:{node_id}:{disk_id}", disk.sim_nb_alloc),
                         ("alloc", self.env.now, allocation),
                         ("calloc", self.env.now, self.stats["concurrent_allocations"]),

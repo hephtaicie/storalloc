@@ -19,7 +19,7 @@ from storalloc.utils.transport import Transport
 def context():
     context = zmq.Context()
     yield context
-    context.destroy()
+    context.term()
 
 
 @pytest.fixture(name="queue")
@@ -58,26 +58,25 @@ def test_start_queue(zmqctx, queue):
     socket.bind("ipc://queue_manager.ipc")  # nasty constant in code...
     queue.start()
     assert socket.poll(timeout=4000)
-    queue.terminate()
 
 
 def test_request_basic(zmqctx, queue, rand_message, schema):
-    """Test receiving and handling a basic request (not splitted)"""
-    router = zmqctx.socket(zmq.ROUTER)  # pylint: disable=no-member
-    router.bind("ipc://queue_manager.ipc")  # nasty constant in code...
-    queue.start()
-    transport = Transport(router)
-    assert transport.poll(timeout=3000)
-    identities, message = transport.recv_multipart()
-    assert message.category == MsgCat.NOTIFICATION
+   """Test receiving and handling a basic request (not splitted)"""
+   router = zmqctx.socket(zmq.ROUTER)  # pylint: disable=no-member
+   router.bind("ipc://queue_manager.ipc")  # nasty constant in code...
+   queue.start()
+   transport = Transport(router)
+   assert transport.poll(timeout=3000)
+   identities, message = transport.recv_multipart()
+   assert message.category == MsgCat.NOTIFICATION
 
-    # send request, which will live no more than 5s, and wait for deallocation message
-    transport.send_multipart(rand_message, "test_alloc_queue")
-    identities, message = transport.recv_multipart()
-    assert "test_alloc_queue" in identities
-    assert message.category == MsgCat.REQUEST
-    request = schema.load(message.content)
-    assert request.state == ReqState.ENDED
+   # send request, which will live no more than 5s, and wait for deallocation message
+   transport.send_multipart(rand_message, "test_alloc_queue")
+   identities, message = transport.recv_multipart()
+   assert "test_alloc_queue" in identities
+   assert message.category == MsgCat.REQUEST
+   request = schema.load(message.content)
+   assert request.state == ReqState.ENDED
 
 
 def test_store_request():

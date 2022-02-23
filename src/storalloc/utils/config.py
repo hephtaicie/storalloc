@@ -13,6 +13,12 @@ CONFIG_SCHEMA = {
     "orchestrator_addr": {"type": "string"},
     "orchestrator_fe_ipc": {"type": "string"},
     "orchestrator_be_ipc": {"type": "string"},
+    "res_catalog": {
+        "type": "string",
+        "allowed": [
+            "inmemory",
+        ],
+    },
     "block_size_gb": {"type": "integer", "min": 0},
     "min_block_size_gb": {"type": "integer", "min": 0},
     "client_port": {"type": "integer", "min": 1025, "max": 65535},
@@ -25,7 +31,10 @@ CONFIG_SCHEMA = {
     "o_visualisation_port": {"type": "integer", "min": 1025, "max": 65535},
     "s_visualisation_port": {"type": "integer", "min": 1025, "max": 65535},
     "transport": {"type": "string", "allowed": ["tcp", "ipc"]},
-    "sched_strategy": {"type": "string", "allowed": ["random_alloc", "worst_case", "round_robin"]},
+    "sched_strategy": {
+        "type": "string",
+        "allowed": ["random_alloc", "worst_case", "round_robin", "worst_fit"],
+    },
     "visualisation": {
         "type": "dict",
         "schema": {

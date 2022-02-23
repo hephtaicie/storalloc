@@ -79,6 +79,7 @@ class Visualisation:
         sources["alloc"] = ColumnDataSource(data={"time": [], "value": []})
         sources["calloc"] = ColumnDataSource(data={"time": [], "value": []})
         sources["calloc_disk"] = ColumnDataSource(data={"disk_label": [], "ca": [], "max_ca": []})
+        sources["calloc_node"] = ColumnDataSource(data={"node_label": [], "ca": [], "max_ca": []})
 
         # Plot Allocated GB - Simulation
         alloc_plot = figure(
@@ -93,7 +94,7 @@ class Visualisation:
             x="time", y="value", source=sources["alloc"], line_width=1, color="darkgreen"
         )
 
-        # Plot Concurrent allocations (vbar) - Simulation
+        # Plot Concurrent allocations per disk (vbar) - Simulation
         calloc_plot = figure(
             y_axis_label="Concurrent Allocations",
             x_axis_label="Simulation Time",
@@ -134,10 +135,42 @@ class Visualisation:
         ca_per_disk.legend.location = "top_left"
         ca_per_disk.legend.orientation = "horizontal"
 
+        # Plot concurrent allocations per node
+        ca_per_node = figure(
+            y_range=FactorRange(),
+            x_range=(0, 5),
+            title="Concurrent Allocations per node",
+            width=400,
+            height=350,
+            # sizing_mode="stretch_height",
+        )
+
+        ca_per_node.hbar(
+            y=dodge("node_label", -0.25, range=ca_per_node.y_range),
+            right="ca",
+            source=sources["calloc_node"],
+            height=0.2,
+            color="#c9d9d3",
+            legend_label="CA",
+        )
+
+        ca_per_node.hbar(
+            y=dodge("node_label", 0.25, range=ca_per_node.y_range),
+            right="max_ca",
+            source=sources["calloc_node"],
+            height=0.2,
+            color="#e84d60",
+            legend_label="Max CA",
+        )
+
+        ca_per_node.y_range.range_padding = 0.1
+        ca_per_node.legend.location = "top_left"
+        ca_per_node.legend.orientation = "horizontal"
+
         doc.add_root(
             bokeh.layouts.row(
                 bokeh.layouts.column(alloc_plot, calloc_plot, sizing_mode="stretch_width"),
-                ca_per_disk,
+                bokeh.layouts.column(ca_per_node, ca_per_disk),
             )
         )
 
@@ -147,6 +180,10 @@ class Visualisation:
                     ca_per_disk.y_range.factors = update["disk_label"]
                     ca_per_disk.x_range.end = max(update["max_ca"]) + 2
                     sources[plot_key].stream(update, len(update["disk_label"]))
+                elif plot_key == "calloc_node":
+                    ca_per_node.y_range.factors = update["node_label"]
+                    ca_per_node.x_range.end = max(update["max_ca"]) + 2
+                    sources[plot_key].stream(update, len(update["node_label"]))
                 else:
                     sources[plot_key].stream(update, self.max_points)
 
@@ -158,6 +195,9 @@ class Visualisation:
             disks = {}
             disk_labels = []
             disk_max_ca = []
+            nodes = {}
+            node_labels = []
+            node_max_ca = []
 
             while threading.main_thread().is_alive():
 
@@ -202,6 +242,24 @@ class Visualisation:
                                 "disk_label": disk_labels,
                                 "max_ca": disk_max_ca,
                                 "ca": disk_ca,
+                            }
+                        elif plot == "calloc_node":
+                            if xval not in nodes:
+                                nodes[xval] = [yval, yval]
+                                node_labels = list(nodes.keys())
+                                node_max_ca = [val[1] for val in nodes.values()]
+                            else:
+                                if yval > nodes[xval][1]:
+                                    nodes[xval] = [yval, yval]  # Update current and max
+                                    node_max_ca = [val[1] for val in nodes.values()]
+                                else:
+                                    nodes[xval][0] = yval  # update current only
+
+                            node_ca = [val[0] for val in nodes.values()]
+                            update[plot] = {
+                                "node_label": node_labels,
+                                "max_ca": node_max_ca,
+                                "ca": node_ca,
                             }
                         else:
                             print(f"Unknown plot {plot}")
