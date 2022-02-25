@@ -152,6 +152,7 @@ class Simulation:
 
         # Reserve some disk space
         if allocation > 0:
+
             if container.level + allocation > container.capacity:
                 self.log.warning(
                     f"[SIM ERROR] Allocation on {server_id}:{node_id}:{disk_id}"
@@ -159,13 +160,38 @@ class Simulation:
                 )
                 self.stats["scheduler_failures"] += 1
 
-            self.log.info(f"Container level before allocation: {container.level}")
-            container.get(allocation)
-            self.log.info(f"Container level after allocation: {container.level}")
+            # DISK-related stats
+            if disk.sim_last_alloc_time:
+                # Record how many allocations were active for the last period, before accounting
+                # for the allocation
+                disk.sim_mean_nb_alloc += (
+                    self.env.now - disk.sim_last_alloc_time
+                ) * disk.sim_nb_alloc
+                disk.sim_mean_cap_utilisation += (self.env.now - disk.sim_last_alloc_time) * (
+                    ((container.level) * 100) / container.capacity
+                )
+
+            container.put(allocation)
+            utilisation = (container.level * 100) / container.capacity
+            if utilisation > disk.sim_max_cap_utilisation:
+                disk.sim_max_cap_utilisation = utilisation
             disk.sim_nb_alloc += 1
+            if disk.sim_nb_alloc > disk.sim_max_alloc:
+                disk.sim_max_alloc = disk.sim_nb_alloc
+
             node.sim_nb_alloc += 1
-            # Update the last_alloc_time
             disk.sim_last_alloc_time = self.env.now
+
+            # Global stats
+            self.stats["concurrent_allocations"] += 1
+            self.stats["total_gb_alloc"] += allocation
+            if self.stats["concurrent_allocations"] > self.stats["max_ca"]:
+                self.stats["max_ca"] = self.stats["concurrent_allocations"]
+
+            self.log.info(
+                f"[SIM] Concurrent allocated requests : {self.stats['concurrent_allocations']}"
+            )
+
             self.log.debug(summarise_ressource_catalog(self.resource_catalog))
             self.transports["visualisation"].send_multipart(
                 Message.datalist(
@@ -179,26 +205,32 @@ class Simulation:
                 "sim",
             )
 
-        # free some disk space
+        # Free some disk space
         elif allocation < 0:
+
             if container.level - allocation < 0:
                 self.log.error(
                     f"[SIM ERROR] Deallocation on {server_id}:{node_id}:{disk_id}"
                     + "causes level to get below 0. Something bad is happening"
                 )
-            # Recored how many allocations were active for the last period, before accounting
-            # for the deallocation
+
+            # DISK-related stats
             disk.sim_mean_nb_alloc += (self.env.now - disk.sim_last_alloc_time) * disk.sim_nb_alloc
             disk.sim_mean_cap_utilisation += (self.env.now - disk.sim_last_alloc_time) * (
                 (container.level * 100) / container.capacity
             )
-            self.log.info(
-                f"Current utilisation : {(container.level * 100) / container.capacity} % "
-            )
             disk.sim_last_alloc_time = self.env.now
+            container.get(-allocation)
             disk.sim_nb_alloc -= 1
             node.sim_nb_alloc -= 1
-            container.put(-allocation)
+
+            # Global stats
+            self.stats["concurrent_allocations"] -= 1
+            self.stats["total_gb_dealloc"] += allocation
+            self.log.info(
+                f"[SIM] Concurrent allocated requests : {self.stats['concurrent_allocations']}"
+            )
+
             self.log.debug(summarise_ressource_catalog(self.resource_catalog))
             self.transports["visualisation"].send_multipart(
                 Message.datalist(
@@ -245,24 +277,11 @@ class Simulation:
 
         self.update_disk(request.server_id, request.node_id, request.disk_id, storage)
         self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
-        self.stats["concurrent_allocations"] += 1
-        self.stats["total_gb_alloc"] += storage
-        if self.stats["concurrent_allocations"] > self.stats["max_ca"]:
-            self.stats["max_ca"] = self.stats["concurrent_allocations"]
-
-        self.log.info(
-            f"[SIM] Concurrent allocated requests : {self.stats['concurrent_allocations']}"
-        )
 
         # Deallocate
         yield simpy.events.Timeout(self.env, delay=request.duration.seconds)
         self.update_disk(request.server_id, request.node_id, request.disk_id, -storage)
         self.log.info(f"[SIM] {request.job_id} deallocated from disk")
-        self.stats["concurrent_allocations"] -= 1
-        self.stats["total_gb_dealloc"] += storage
-        self.log.info(
-            f"[SIM] Concurrent allocated requests : {self.stats['concurrent_allocations']}"
-        )
         self.stats["last_event_time"] = self.env.now
 
     def process_request(self, request: StorageRequest):
@@ -307,12 +326,14 @@ class Simulation:
                 setattr(
                     disk,
                     "sim_container",
-                    simpy.Container(self.env, init=disk.capacity, capacity=disk.capacity),
+                    simpy.Container(self.env, init=0, capacity=disk.capacity),
                 )
-                setattr(disk, "sim_nb_alloc", 0)
+                setattr(disk, "sim_nb_alloc", 0)  # at a given simulation time
                 setattr(disk, "sim_mean_nb_alloc", 0)
                 setattr(disk, "sim_last_alloc_time", 0)
                 setattr(disk, "sim_mean_cap_utilisation", 0)
+                setattr(disk, "sim_max_cap_utilisation", 0)
+                setattr(disk, "sim_max_alloc", 0)
 
             self.resource_catalog.append_resources(identity, [node])
 
@@ -374,8 +395,10 @@ class Simulation:
             disk.sim_mean_cap_utilisation /= sim_duration
             self.log.info(
                 f"Disk {server_id}:{node.uid}:{disk.uid} \n"
-                f"  - allocations average = {disk.sim_mean_nb_alloc:.4f}\n"
-                f"  - utilisation average = {disk.sim_mean_cap_utilisation:.4f} %"
+                f"  - allocations average = {disk.sim_mean_nb_alloc:.2f}\n"
+                f"  - max allocations = {disk.sim_max_alloc} \n"
+                f"  - utilisation average = {disk.sim_mean_cap_utilisation:.2f}%\n"
+                f"  - max utilisation = {disk.sim_max_cap_utilisation:.2f}%"
             )
 
         if self.visualisation:

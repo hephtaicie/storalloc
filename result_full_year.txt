@@ -1,0 +1,25 @@
+2022-02-25 16:06:34,091 - [INFO][simulation:389] :: Disk S-705970:0:0
+  - allocations average = 0.3775
+  - utilisation average = 0.6000 %
+2022-02-25 16:06:34,091 - [INFO][simulation:389] :: Disk S-705970:0:1
+  - allocations average = 0.3811
+  - utilisation average = 0.7362 %
+2022-02-25 16:06:34,091 - [INFO][simulation:389] :: Disk S-705970:0:2
+  - allocations average = 0.3904
+  - utilisation average = 1.8521 %
+2022-02-25 16:06:34,091 - [INFO][simulation:389] :: Disk S-705970:0:3
+  - allocations average = 0.3956
+  - utilisation average = 1.0155 %
+2022-02-25 16:06:34,092 - [INFO][simulation:389] :: Disk S-705970:0:4
+  - allocations average = 0.3841
+  - utilisation average = 0.9294 %
+2022-02-25 16:06:34,092 - [INFO][simulation:389] :: Disk S-705970:0:5
+  - allocations average = 0.3765
+  - utilisation average = 0.6634 %
+2022-02-25 16:06:34,092 - [INFO][simulation:389] :: Disk S-705970:0:6
+  - allocations average = 0.3852
+  - utilisation average = 2.6696 %
+2022-02-25 16:06:34,093 - [INFO][simulation:389] :: Disk S-705970:0:7
+  - allocations average = 0.3742
+  - utilisation average = 2.2879 %
+
