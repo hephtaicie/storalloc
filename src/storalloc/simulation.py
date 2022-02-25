@@ -83,7 +83,8 @@ class Simulation:
         self.stats = {
             "concurrent_allocations": 0,
             "max_ca": 0,  # max concurrent allocations at some point
-            "events_nb": 0,
+            "requests_nb": 0,
+            "registrations_nb": 0,
             "scheduler_failures": 0,
             "total_waiting_time_minutes": 0,
             "delayed_requests": 0,
@@ -158,9 +159,13 @@ class Simulation:
                 )
                 self.stats["scheduler_failures"] += 1
 
+            self.log.info(f"Container level before allocation: {container.level}")
             container.get(allocation)
+            self.log.info(f"Container level after allocation: {container.level}")
             disk.sim_nb_alloc += 1
             node.sim_nb_alloc += 1
+            # Update the last_alloc_time
+            disk.sim_last_alloc_time = self.env.now
             self.log.debug(summarise_ressource_catalog(self.resource_catalog))
             self.transports["visualisation"].send_multipart(
                 Message.datalist(
@@ -181,9 +186,19 @@ class Simulation:
                     f"[SIM ERROR] Deallocation on {server_id}:{node_id}:{disk_id}"
                     + "causes level to get below 0. Something bad is happening"
                 )
-            container.put(-allocation)
+            # Recored how many allocations were active for the last period, before accounting
+            # for the deallocation
+            disk.sim_mean_nb_alloc += (self.env.now - disk.sim_last_alloc_time) * disk.sim_nb_alloc
+            disk.sim_mean_cap_utilisation += (self.env.now - disk.sim_last_alloc_time) * (
+                (container.level * 100) / container.capacity
+            )
+            self.log.info(
+                f"Current utilisation : {(container.level * 100) / container.capacity} % "
+            )
+            disk.sim_last_alloc_time = self.env.now
             disk.sim_nb_alloc -= 1
             node.sim_nb_alloc -= 1
+            container.put(-allocation)
             self.log.debug(summarise_ressource_catalog(self.resource_catalog))
             self.transports["visualisation"].send_multipart(
                 Message.datalist(
@@ -213,16 +228,23 @@ class Simulation:
         )
 
         self.log.debug(f"[SIM] Duration is {request.duration} / start_time is {request.start_time}")
+        # Register any delay in allocation compared to original need from client.
         if request.start_time > request.original_start_time:
             self.stats["total_waiting_time_minutes"] += (
                 request.start_time - request.original_start_time
-            ).total_seconds * 60
+            ).total_seconds() * 60
 
+        # Allocate request at correct time
         storage = yield simpy.events.Timeout(
             self.env, delay=int(request.start_time.timestamp()), value=request.capacity
         )
+
+        # Set up first event as the first allocation time on any disk:
+        if self.stats["first_event_time"] == 0:
+            self.stats["first_event_time"] = self.env.now
+
         self.update_disk(request.server_id, request.node_id, request.disk_id, storage)
-        self.log.info(f"[SIM] {request.job_id} allocated to disk")
+        self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
         self.stats["concurrent_allocations"] += 1
         self.stats["total_gb_alloc"] += storage
         if self.stats["concurrent_allocations"] > self.stats["max_ca"]:
@@ -232,6 +254,7 @@ class Simulation:
             f"[SIM] Concurrent allocated requests : {self.stats['concurrent_allocations']}"
         )
 
+        # Deallocate
         yield simpy.events.Timeout(self.env, delay=request.duration.seconds)
         self.update_disk(request.server_id, request.node_id, request.disk_id, -storage)
         self.log.info(f"[SIM] {request.job_id} deallocated from disk")
@@ -240,6 +263,7 @@ class Simulation:
         self.log.info(
             f"[SIM] Concurrent allocated requests : {self.stats['concurrent_allocations']}"
         )
+        self.stats["last_event_time"] = self.env.now
 
     def process_request(self, request: StorageRequest):
         """Process a storage request, which might be any state"""
@@ -281,11 +305,14 @@ class Simulation:
                     + f"{disk.uid}, with capacity {disk.capacity}"
                 )
                 setattr(
-                    disk, "sim_container", simpy.Container(self.env, init=0, capacity=disk.capacity)
+                    disk,
+                    "sim_container",
+                    simpy.Container(self.env, init=disk.capacity, capacity=disk.capacity),
                 )
                 setattr(disk, "sim_nb_alloc", 0)
                 setattr(disk, "sim_mean_nb_alloc", 0)
                 setattr(disk, "sim_last_alloc_time", 0)
+                setattr(disk, "sim_mean_cap_utilisation", 0)
 
             self.resource_catalog.append_resources(identity, [node])
 
@@ -317,7 +344,7 @@ class Simulation:
             total_capacity += total_server_capacity
         print(f"==> Total platform capacity is {total_capacity}")
 
-        print(f"## Number of events collected for simulation: {self.stats['events_nb']}")
+        print(f"## Number of events collected for simulation: {self.stats['requests_nb']}")
 
     def simulation(self):
         """Run the simulation"""
@@ -340,7 +367,16 @@ class Simulation:
         self.log.info(f"[POST-SIM] Total GB allocated: {self.stats['total_gb_alloc']}")
         self.log.info(f"[POST-SIM] Total GB deallocated: {self.stats['total_gb_dealloc']}")
         self.log.info(f"Full stats: {self.stats}")
-        print(f"Full stats: {self.stats}")
+
+        sim_duration = self.stats["last_event_time"] - self.stats["first_event_time"]
+        for server_id, node, disk in self.resource_catalog.list_resources():
+            disk.sim_mean_nb_alloc /= sim_duration
+            disk.sim_mean_cap_utilisation /= sim_duration
+            self.log.info(
+                f"Disk {server_id}:{node.uid}:{disk.uid} \n"
+                f"  - allocations average = {disk.sim_mean_nb_alloc:.4f}\n"
+                f"  - utilisation average = {disk.sim_mean_cap_utilisation:.4f} %"
+            )
 
         if self.visualisation:
             pvis.join()
@@ -354,17 +390,14 @@ class Simulation:
             try:
 
                 events = dict(self.transports["poller"].poll())
-                nb_events = len(events)
-                if nb_events > 1:
-                    print(f"##### {nb_events} #####")
                 if events.get(self.transports["simulation"].socket) == zmq.POLLIN:
                     identity, message = self.transports["simulation"].recv_multipart()
                     if message.category is MsgCat.REQUEST:
                         self.process_request(self.schema.load(message.content))
-                        self.stats["events_nb"] += nb_events
+                        self.stats["requests_nb"] += 1
                     elif message.category is MsgCat.REGISTRATION:
                         self.process_registration(identity[1], message.content)
-                        self.stats["events_nb"] += nb_events
+                        self.stats["registrations_nb"] += 1
                     else:
                         self.log.warning(
                             "Undesired message category received "
@@ -380,7 +413,7 @@ class Simulation:
                 self.simulation()
                 break
 
-            if self.stats["events_nb"] % 1000 == 0:
-                self.log.info(f"[PRE-SIM] Collected {self.stats['events_nb']} events.")
+            if self.stats["requests_nb"] % 1000 == 0:
+                self.log.info(f"[PRE-SIM] Collected {self.stats['requests_nb']} events.")
 
         self.transports["context"].destroy()

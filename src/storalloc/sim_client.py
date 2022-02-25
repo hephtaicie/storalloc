@@ -103,7 +103,9 @@ class SimulationClient:
                 elif message.category == MsgCat.REQUEST:
                     request = self.schema.load(message.content)
                     processed += 1
-                    self.log.info(f"Request got back: {request} - ({processed} requests processed)")
+                    self.log.info(
+                        f"Request got back: {request} - ({processed} request related events processed)"
+                    )
                 else:
                     self.log.error("Unexpected message category, exiting client")
                     break
@@ -122,6 +124,7 @@ class SimulationClient:
                     self.log.info(
                         f"# - {discarded_no_write} requests not sent because writtenBytes == 0"
                     )
+                    continue
 
                 if job["writtenBytes"] > 0:
                     start_time = datetime.datetime.fromisoformat(job["startTime"])
