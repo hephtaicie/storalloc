@@ -394,7 +394,6 @@ def test_compute_no_space(resource_catalog):
     catalog.add_allocation(server, 1, 1, big_alloc)
     catalog.add_allocation(server, 1, 2, big_alloc)
 
-
     big_alloc = request.StorageRequest(
         capacity=4001,
         duration=dt.timedelta(hours=2),
