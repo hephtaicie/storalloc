@@ -6,6 +6,7 @@ from time import sleep
 import uuid
 import zmq
 import simpy
+import yaml
 
 from storalloc.request import RequestSchema, ReqState, StorageRequest
 from storalloc.resources import ResourceCatalog, Node
@@ -160,16 +161,19 @@ class Simulation:
                 )
                 self.stats["scheduler_failures"] += 1
 
-            # DISK-related stats
+            # DISK/NODE-related stats
             if disk.sim_last_alloc_time:
-                # Record how many allocations were active for the last period, before accounting
-                # for the allocation
                 disk.sim_mean_nb_alloc += (
                     self.env.now - disk.sim_last_alloc_time
                 ) * disk.sim_nb_alloc
                 disk.sim_mean_cap_utilisation += (self.env.now - disk.sim_last_alloc_time) * (
                     ((container.level) * 100) / container.capacity
                 )
+
+            if node.sim_last_alloc_time:
+                node.sim_mean_nb_alloc += (
+                    self.env.now - node.sim_last_alloc_time
+                ) * node.sim_nb_alloc
 
             container.put(allocation)
             utilisation = (container.level * 100) / container.capacity
@@ -181,6 +185,7 @@ class Simulation:
 
             node.sim_nb_alloc += 1
             disk.sim_last_alloc_time = self.env.now
+            node.sim_last_alloc_time = self.env.now
 
             # Global stats
             self.stats["concurrent_allocations"] += 1
@@ -214,19 +219,21 @@ class Simulation:
                     + "causes level to get below 0. Something bad is happening"
                 )
 
-            # DISK-related stats
+            # DISK/NODE-related stats
             disk.sim_mean_nb_alloc += (self.env.now - disk.sim_last_alloc_time) * disk.sim_nb_alloc
+            node.sim_mean_nb_alloc += (self.env.now - node.sim_last_alloc_time) * node.sim_nb_alloc
             disk.sim_mean_cap_utilisation += (self.env.now - disk.sim_last_alloc_time) * (
                 (container.level * 100) / container.capacity
             )
             disk.sim_last_alloc_time = self.env.now
+            node.sim_last_alloc_time = self.env.now
             container.get(-allocation)
             disk.sim_nb_alloc -= 1
             node.sim_nb_alloc -= 1
 
             # Global stats
             self.stats["concurrent_allocations"] -= 1
-            self.stats["total_gb_dealloc"] += allocation
+            self.stats["total_gb_dealloc"] += -allocation
             self.log.info(
                 f"[SIM] Concurrent allocated requests : {self.stats['concurrent_allocations']}"
             )
@@ -400,6 +407,44 @@ class Simulation:
                 f"  - utilisation average = {disk.sim_mean_cap_utilisation:.2f}%\n"
                 f"  - max utilisation = {disk.sim_max_cap_utilisation:.2f}%"
             )
+
+        # Output data for yml statistics file.
+        sim_data = {
+            "max_concurrent_allocations": self.stats["max_ca"],
+            "nb_of_requests": self.stats["requests_nb"],
+            "nb_of_registrations": self.stats["registrations_nb"],
+            "nb_of_scheduler_failures": self.stats["scheduler_failures"],
+            "tt_waiting_time_minutes": self.stats["total_waiting_time_minutes"],
+            "nb_of_delayed_requests": self.stats["delayed_requests"],
+            "tt_gb_allocated": self.stats["total_gb_alloc"],
+            "tt_gb_deallocated": self.stats["total_gb_dealloc"],
+            "sim_first_ts": self.stats["first_event_time"],
+            "sim_last_ts": self.stats["last_event_time"],
+            "sim_duration": sim_duration,
+            "nodes": [
+                {
+                    "id": f"{server_id}:{node.uid}",
+                    "mean_nb_alloc": round(node.sim_mean_nb_alloc / sim_duration, 3),
+                    "last_alloc_ts": node.sim_last_alloc_time,
+                    "disks": [
+                        {
+                            "id": disk.uid,
+                            "capacity": disk.capacity,
+                            "mean_nb_alloc": round(disk.sim_mean_nb_alloc, 3),
+                            "max_alloc": disk.sim_max_alloc,
+                            "last_alloc_time": disk.sim_last_alloc_time,
+                            "mean_capacity_utilisation": round(disk.sim_mean_cap_utilisation, 3),
+                            "max_cap_utilisation": round(disk.sim_max_cap_utilisation, 3),
+                        }
+                        for disk in node.disks
+                    ],
+                }
+                for server_id, node in self.resource_catalog.list_nodes()
+            ],
+        }
+
+        with open("output.yml", "w", encoding="utf-8") as output:
+            yaml.dump(sim_data, output)
 
         if self.visualisation:
             pvis.join()

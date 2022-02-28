@@ -27,14 +27,16 @@ class WorstCase(StrategyInterface):
 
             self.log.debug(f"[WCc] Disks before filtering: {len(node.disks)} candidates")
             filtered_disks = [
-                disk for disk in node.disks if disk.disk_status.capacity > request.capacity
+                disk for disk in node.disks if disk.disk_status.capacity >= request.capacity
             ]
             self.log.debug(f"[WCc] Disks after filtering: {len(filtered_disks)} candidates")
             # Add every not filtered out disk to the candidates
             candidates.extend([(server_id, node, disk) for disk in filtered_disks])
 
         if not candidates:
-            self.log.error("Not enough space on any of the disks")
+            self.log.error(
+                f"Not enough space on any of the disks, cannot grant request {request.job_id}"
+            )
             return ("", -1, -1)
 
         sorted_disks = sorted(candidates, key=lambda t: -t[2].disk_status.bandwidth)

@@ -93,8 +93,6 @@ class StorageRequest:
 
         if self.original_start_time is None:
             self.original_start_time = self.start_time
-
-        if self.capacity <= 0:
             raise ValueError("Capacity must be strictly positive")
 
         if self.duration.total_seconds() <= 0:

@@ -280,6 +280,8 @@ class Router:
 
             # Does the request need to be divided into blocks ?
             requests = self.divide_allocation(req)
+            if len(requests) > 1:
+                self.log.info(f"Request from client {req.client_id} has been splitted")
 
             for sp_idx, req in enumerate(requests):
                 # Update request state
@@ -297,7 +299,7 @@ class Router:
 
                 # To client for ack
                 notification = Message.notification(
-                    f"Request PENDING and sent to scheduler, with ID {req.job_id}"
+                    f"Request {req.job_id} [PENDING] and sent to scheduler"
                 )
                 self.transports["client"].send_multipart(notification, client_id)
                 self.stats["total_req_count"] += 1
@@ -344,7 +346,9 @@ class Router:
                 self.transports["simulation"].send_multipart(message, "sim")
                 self.transports["visualisation"].send_multipart(message, "vis")
             elif request.state == ReqState.FAILED:
-                error = Message.error(f"Requested allocation failed : {request.reason}")
+                error = Message.error(
+                    f"Requested allocation {request.job_id} failed : {request.reason}"
+                )
                 self.stats[request.state] += 1
                 self.transports["client"].send_multipart(error, request.client_id)
         else:
@@ -369,24 +373,26 @@ class Router:
             self.stats["delayed_requests"] += 1
             delay = (request.start_time - request.original_start_time).total_seconds() * 60
             self.stats["total_delayed_minutes"] += delay
-            self.log.warning("Request {req.id} got delayed by {delay} min")
+            self.log.warning(f"Request {request.job_id} got delayed by {delay} min")
 
         if request.state == ReqState.GRANTED:
             # Forward to server for actual allocation
             self.log.debug(
-                f"Request [GRANTED], forwarding allocation request to server {request.server_id}"
+                f"Request {request.job_id} [GRANTED], forwarding allocation request to server {request.server_id}"
             )
             self.stats[request.state] += 1
             self.transports["server"].send_multipart(message, request.server_id)
         elif request.state == ReqState.REFUSED:
 
             # Send an error to client
-            error = Message.error(f"Requested allocation refused : {request.reason}")
+            error = Message.error(
+                f"Requested allocation {request.job_id} refused : {request.reason}"
+            )
             self.stats[request.state] += 1
             self.transports["client"].send_multipart(error, request.client_id)
         else:
             self.log.error(
-                f"Request transmitted by scheduler has state {request.state},"
+                f"Request {request.job_id} transmitted by scheduler has state {request.state},"
                 + " and should be either one of GRANTED / REFUSED instead"
             )
             self.stats["errors"] += 1
