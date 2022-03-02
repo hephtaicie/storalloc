@@ -1,0 +1,100 @@
+max_concurrent_allocations: 30
+nb_of_delayed_requests: 0
+nb_of_registrations: 1
+nb_of_requests: 294
+nb_of_scheduler_failures: 0
+nodes:
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 50.0
+    mean_capacity_utilisation: 0.618
+    mean_nb_alloc: 0.198
+  id: S-f3d905:0
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.198
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 47.4
+    mean_capacity_utilisation: 0.701
+    mean_nb_alloc: 0.122
+  id: S-f3d905:1
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.122
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 50.0
+    mean_capacity_utilisation: 0.869
+    mean_nb_alloc: 0.212
+  id: S-f3d905:2
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.212
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 42.307
+    mean_capacity_utilisation: 1.503
+    mean_nb_alloc: 0.146
+  id: S-f3d905:3
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.146
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 50.0
+    mean_capacity_utilisation: 0.472
+    mean_nb_alloc: 0.041
+  id: S-f3d905:4
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.041
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604106131
+    max_alloc: 3
+    max_cap_utilisation: 37.5
+    mean_capacity_utilisation: 0.665
+    mean_nb_alloc: 0.112
+  id: S-f3d905:5
+  last_alloc_ts: 1604106131
+  mean_nb_alloc: 0.112
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 50.0
+    mean_capacity_utilisation: 1.101
+    mean_nb_alloc: 0.181
+  id: S-f3d905:6
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.181
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 3
+    max_cap_utilisation: 37.5
+    mean_capacity_utilisation: 0.362
+    mean_nb_alloc: 0.219
+  id: S-f3d905:7
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.219
+sim_duration: 2557588
+sim_first_ts: 1601548543
+sim_last_ts: 1604106131
+tt_gb_allocated: 177263.46125040096
+tt_gb_deallocated: 177263.46125040093
+tt_waiting_time_minutes: 0

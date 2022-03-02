@@ -94,7 +94,6 @@ class SimulationClient:
 
                 identities, message = self.transports["orchestrator"].recv_multipart()
                 self.log.debug(f"Received message that transited from {';'.join(identities)}")
-
                 if message.category == MsgCat.NOTIFICATION:
                     self.log.debug(f"New notification received [{message.content}]")
                 elif message.category == MsgCat.ERROR:
@@ -142,6 +141,8 @@ class SimulationClient:
                     sleep(0.01)
                 else:
                     discarded_no_write += 1
+
+        self.transports["context"].destroy()
 
     def send_eos(self):
         """Send End Of Simulation flag to orchestrator"""

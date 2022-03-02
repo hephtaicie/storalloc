@@ -63,6 +63,7 @@ def add_remote_handler(
 
     # Synchronisation -> we expect the log-server to be already up and running
     sync_socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
+    sync_socket.setsockopt(zmq.LINGER, 2)
     sync_socket.connect(sync_url)
     sync_socket.send_multipart([topic.encode("utf-8")])
     res = sync_socket.poll(timeout=1000)

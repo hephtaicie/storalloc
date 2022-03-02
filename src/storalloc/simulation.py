@@ -70,7 +70,7 @@ class Simulation:
         self.uid = uid or f"SIM-{str(uuid.uuid4().hex)[:6]}"
         self.config_path = config_path
         self.conf = config_from_yaml(config_path)
-        self.log = get_storalloc_logger(verbose, True, "sim-server")
+        self.log = get_storalloc_logger(verbose, remote_logging, "sim-server")
 
         self.schema = RequestSchema()
 
@@ -117,6 +117,8 @@ class Simulation:
         self.log.info("Connecting socket for subscribing to simulation updates")
         simulation_socket = context.socket(zmq.SUB)  # pylint: disable=no-member
         simulation_socket.setsockopt(zmq.SUBSCRIBE, b"sim")  # pylint: disable=no-member
+        simulation_socket.setsockopt(zmq.LINGER, 0)
+        simulation_socket.setsockopt(zmq.IMMEDIATE, 1)
         simulation_socket.connect(
             f"tcp://{self.conf['orchestrator_addr']}:{self.conf['simulation_port']}"
         )
@@ -125,6 +127,8 @@ class Simulation:
         self.log.info("Binding socket for publishing visualisation updates")
         visualisation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
         visualisation_socket.set_hwm(50000)
+        visualisation_socket.setsockopt(zmq.LINGER, 0)
+        simulation_socket.setsockopt(zmq.IMMEDIATE, 1)
         visualisation_socket.bind(
             f"tcp://{self.conf['simulation_addr']}:{self.conf['s_visualisation_port']}"
         )
@@ -453,24 +457,38 @@ class Simulation:
         """Infinite loop for collecting events (before simulation is run)"""
 
         self.log.info(f"Simulation server {self.uid} ready.")
+        eos = False
+        stop = 3
 
-        while True:
+        while stop != 0:
             try:
+                events = dict(self.transports["poller"].poll(timeout=5000))
+                if eos and not events:
+                    # After 3 polling attempts that result in 0 events, consider that
+                    # no more messages will arrive (if EoS flag has been raised as well)
+                    stop -= 1
+                    self.log.info(f"Polling attempt with no message ({stop}/3)")
 
-                events = dict(self.transports["poller"].poll())
-                if events.get(self.transports["simulation"].socket) == zmq.POLLIN:
-                    identity, message = self.transports["simulation"].recv_multipart()
-                    if message.category is MsgCat.REQUEST:
-                        self.process_request(self.schema.load(message.content))
-                        self.stats["requests_nb"] += 1
-                    elif message.category is MsgCat.REGISTRATION:
-                        self.process_registration(identity[1], message.content)
-                        self.stats["registrations_nb"] += 1
-                    else:
-                        self.log.warning(
-                            "Undesired message category received "
-                            + f"({message.category}, silently discarding"
-                        )
+                for _, mask in events.items():
+
+                    if mask == zmq.POLLIN:
+                        identity, message = self.transports["simulation"].recv_multipart()
+                        if message.category is MsgCat.REQUEST:
+                            self.process_request(self.schema.load(message.content))
+                            self.stats["requests_nb"] += 1
+                        elif message.category is MsgCat.REGISTRATION:
+                            self.process_registration(identity[1], message.content)
+                            self.stats["registrations_nb"] += 1
+                        elif message.category is MsgCat.EOS:
+                            self.log.info(
+                                "EoS received. Simulation server will stop receiving messages ASAP."
+                            )
+                            eos = True
+                        else:
+                            self.log.warning(
+                                "Undesired message category received "
+                                + f"({message.category}, silently discarding"
+                            )
 
             except zmq.ZMQError as err:
                 if err.errno == zmq.ETERM:
@@ -478,10 +496,12 @@ class Simulation:
                 raise
             except KeyboardInterrupt:
                 self.log.info("[!] Simulation server stopped by Ctrl-C - Now running simulation")
-                self.simulation()
                 break
 
             if self.stats["requests_nb"] % 1000 == 0:
                 self.log.info(f"[PRE-SIM] Collected {self.stats['requests_nb']} events.")
 
+        self.simulation()
+
         self.transports["context"].destroy()
+        self.log.info("Simulation ended")

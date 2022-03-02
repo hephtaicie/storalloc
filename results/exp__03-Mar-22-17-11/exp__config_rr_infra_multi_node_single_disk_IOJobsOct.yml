@@ -1,0 +1,100 @@
+max_concurrent_allocations: 30
+nb_of_delayed_requests: 0
+nb_of_registrations: 1
+nb_of_requests: 294
+nb_of_scheduler_failures: 0
+nodes:
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 47.4
+    mean_capacity_utilisation: 0.573
+    mean_nb_alloc: 0.106
+  id: S-79593a:0
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.106
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 3
+    max_cap_utilisation: 37.5
+    mean_capacity_utilisation: 0.955
+    mean_nb_alloc: 0.149
+  id: S-79593a:1
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.149
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 3
+    max_cap_utilisation: 37.5
+    mean_capacity_utilisation: 2.217
+    mean_nb_alloc: 0.194
+  id: S-79593a:2
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.194
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 50.0
+    mean_capacity_utilisation: 0.695
+    mean_nb_alloc: 0.188
+  id: S-79593a:3
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.188
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 50.0
+    mean_capacity_utilisation: 1.18
+    mean_nb_alloc: 0.181
+  id: S-79593a:4
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.181
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604106131
+    max_alloc: 4
+    max_cap_utilisation: 50.0
+    mean_capacity_utilisation: 0.844
+    mean_nb_alloc: 0.181
+  id: S-79593a:5
+  last_alloc_ts: 1604106131
+  mean_nb_alloc: 0.181
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 50.0
+    mean_capacity_utilisation: 0.537
+    mean_nb_alloc: 0.117
+  id: S-79593a:6
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.117
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1604091561
+    max_alloc: 4
+    max_cap_utilisation: 50.0
+    mean_capacity_utilisation: 0.499
+    mean_nb_alloc: 0.113
+  id: S-79593a:7
+  last_alloc_ts: 1604091561
+  mean_nb_alloc: 0.113
+sim_duration: 2557588
+sim_first_ts: 1601548543
+sim_last_ts: 1604106131
+tt_gb_allocated: 177263.46125040096
+tt_gb_deallocated: 177263.46125040093
+tt_waiting_time_minutes: 0

@@ -141,30 +141,35 @@ class Router:
         self.log.info(f"Binding socket for client on {client_url}")
         client_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
         client_socket.set_hwm(50000)
+        client_socket.setsockopt(zmq.LINGER, 0)
         client_socket.bind(client_url)
 
         # Bind server socket
         self.log.info(f"Binding socket for server on {server_url}")
         server_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
         server_socket.set_hwm(50000)
+        server_socket.setsockopt(zmq.LINGER, 0)
         server_socket.bind(server_url)
 
         # Scheduler ROUTER ########################################################################
         self.log.info("Binding socket for scheduler process via IPC")
         scheduler_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
         scheduler_socket.set_hwm(50000)
+        scheduler_socket.setsockopt(zmq.LINGER, 0)
         scheduler_socket.bind("ipc://scheduler.ipc")
 
         # Queue manager ROUTER ####################################################################
         self.log.info("Binding socket for queue manager process via IPC")
         queue_manager_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
         queue_manager_socket.set_hwm(50000)
+        queue_manager_socket.setsockopt(zmq.LINGER, 0)
         queue_manager_socket.bind("ipc://queue_manager.ipc")
 
         # Simulation PUBLISHER ####################################################################
         self.log.info("Binding socket for publishing simulation updates")
         simulation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
         simulation_socket.set_hwm(50000)
+        simulation_socket.setsockopt(zmq.LINGER, 0)
         simulation_socket.bind(
             f"tcp://{self.conf['orchestrator_addr']}:{self.conf['simulation_port']}"
         )
@@ -173,6 +178,7 @@ class Router:
         self.log.info("Binding socket for publishing visualisation updates")
         visualisation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
         visualisation_socket.set_hwm(50000)
+        visualisation_socket.setsockopt(zmq.LINGER, 0)
         visualisation_socket.bind(
             f"tcp://{self.conf['orchestrator_addr']}:{self.conf['o_visualisation_port']}"
         )
@@ -502,3 +508,5 @@ class Router:
                 self.scheduler.terminate()
                 self.queue_manager.terminate()
                 break
+
+        self.transports["context"].destroy()
