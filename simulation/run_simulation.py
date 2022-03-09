@@ -30,9 +30,9 @@ def prepare_result_directory():
     results from this experiment run will be stored
     """
 
-    dir_name = f"exp__{dt.datetime.now().strftime('%m-%b-%y-%H-%M')}"
+    dir_name = f"exp__{dt.datetime.now().strftime('%d-%b-%y_%H-%M')}"
 
-    results_path = Path(f"../results/{dir_name}")
+    results_path = Path(f"./results/{dir_name}")
     if results_path.exists():
         raise RuntimeError(f"Result directory {dir_name} already exists !")
 
@@ -107,25 +107,34 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     sim_client.kill()
     time.sleep(2)
 
-    copy_results(exp_dir, Path(config_file).stem, Path(system_file).stem, Path(job_file).stem)
+    copy_results(
+        exp_dir,
+        Path(config_file).stem.lstrip("config_"),
+        f"{Path(system_file).parent.stem}_{Path(system_file).stem}",
+        Path(job_file).stem,
+    )
 
 
 if __name__ == "__main__":
 
+    BASE_PATH_CONFIG = "../config"
+    BASE_PATH_SYSTEM = "../config/systems/infra64TB"
+    BASE_PATH_DATA = "../data"
+
     CONFIG_FILES = [
-        "../config/config_worst_case.yml",
-        "../config/config_random.yml",
-        "../config/config_rr.yml",
-        "../config/config_worst_fit.yml",
+        f"{BASE_PATH_CONFIG}/config_worst_case.yml",
+        f"{BASE_PATH_CONFIG}/config_random.yml",
+        f"{BASE_PATH_CONFIG}/config_rr.yml",
+        f"{BASE_PATH_CONFIG}/config_worst_fit.yml",
     ]
     SYSTEM_FILES = [
-        "../config/systems/infra_multi_node_multi_disk.yml",
-        "../config/systems/infra_single_node_multi_disk.yml",
-        "../config/systems/infra_multi_node_single_disk.yml",
-        "../config/systems/infra_single_node_single_disk.yml",
+        f"{BASE_PATH_SYSTEM}/multi_node_multi_disk.yml",
+        f"{BASE_PATH_SYSTEM}/single_node_multi_disk.yml",
+        f"{BASE_PATH_SYSTEM}/multi_node_single_disk.yml",
+        f"{BASE_PATH_SYSTEM}/single_node_single_disk.yml",
     ]
     JOB_FILES = [
-        "../data/IOJobsOct.yml",
+        f"{BASE_PATH_DATA}/IOJobs.yml",
     ]
 
     exp_dir = prepare_result_directory()

@@ -276,6 +276,7 @@ class Simulation:
             self.stats["total_waiting_time_minutes"] += (
                 request.start_time - request.original_start_time
             ).total_seconds() * 60
+            self.stats["delayed_requests"] += 1
 
         # Allocate request at correct time
         storage = yield simpy.events.Timeout(

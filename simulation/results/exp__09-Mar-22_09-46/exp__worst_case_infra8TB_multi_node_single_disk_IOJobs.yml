@@ -1,0 +1,100 @@
+max_concurrent_allocations: 10
+nb_of_delayed_requests: 7
+nb_of_registrations: 1
+nb_of_requests: 564
+nb_of_scheduler_failures: 0
+nodes:
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1584691059
+    max_alloc: 2
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 1.647
+    mean_nb_alloc: 0.079
+  id: S-8caf21:0
+  last_alloc_ts: 1584691059
+  mean_nb_alloc: 0.079
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1584691059
+    max_alloc: 2
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 1.909
+    mean_nb_alloc: 0.085
+  id: S-8caf21:1
+  last_alloc_ts: 1584691059
+  mean_nb_alloc: 0.085
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1584691059
+    max_alloc: 1
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 4.609
+    mean_nb_alloc: 0.075
+  id: S-8caf21:2
+  last_alloc_ts: 1584691059
+  mean_nb_alloc: 0.075
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1584691059
+    max_alloc: 2
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 6.137
+    mean_nb_alloc: 0.094
+  id: S-8caf21:3
+  last_alloc_ts: 1584691059
+  mean_nb_alloc: 0.094
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1584691059
+    max_alloc: 1
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 4.0
+    mean_nb_alloc: 0.083
+  id: S-8caf21:4
+  last_alloc_ts: 1584691059
+  mean_nb_alloc: 0.083
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1584691059
+    max_alloc: 2
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 4.459
+    mean_nb_alloc: 0.102
+  id: S-8caf21:5
+  last_alloc_ts: 1584691059
+  mean_nb_alloc: 0.102
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1584691059
+    max_alloc: 2
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 6.167
+    mean_nb_alloc: 0.096
+  id: S-8caf21:6
+  last_alloc_ts: 1584691059
+  mean_nb_alloc: 0.096
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1584691059
+    max_alloc: 2
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 2.452
+    mean_nb_alloc: 0.092
+  id: S-8caf21:7
+  last_alloc_ts: 1584691059
+  mean_nb_alloc: 0.092
+sim_duration: 6759681
+sim_first_ts: 1577931378
+sim_last_ts: 1584691059
+tt_gb_allocated: 180685.85822841388
+tt_gb_deallocated: 180685.85822841388
+tt_waiting_time_minutes: 828000.0
