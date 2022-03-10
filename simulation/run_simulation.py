@@ -134,7 +134,7 @@ if __name__ == "__main__":
         f"{BASE_PATH_SYSTEM}/single_node_single_disk.yml",
     ]
     JOB_FILES = [
-        f"{BASE_PATH_DATA}/IOJobs.yml",
+        f"{BASE_PATH_DATA}/IOJobForged_8.yml",
     ]
 
     exp_dir = prepare_result_directory()
