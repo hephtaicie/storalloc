@@ -86,6 +86,8 @@ class Router:
             "events": 0,
             "req_count": 0,
             "total_req_count": 0,
+            "delayed_requests": 0,
+            "total_delayed_minutes": 0,
         }
 
         # Init scheduler
@@ -139,30 +141,35 @@ class Router:
         self.log.info(f"Binding socket for client on {client_url}")
         client_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
         client_socket.set_hwm(50000)
+        client_socket.setsockopt(zmq.LINGER, 0)
         client_socket.bind(client_url)
 
         # Bind server socket
         self.log.info(f"Binding socket for server on {server_url}")
         server_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
         server_socket.set_hwm(50000)
+        server_socket.setsockopt(zmq.LINGER, 0)
         server_socket.bind(server_url)
 
         # Scheduler ROUTER ########################################################################
         self.log.info("Binding socket for scheduler process via IPC")
         scheduler_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
         scheduler_socket.set_hwm(50000)
+        scheduler_socket.setsockopt(zmq.LINGER, 0)
         scheduler_socket.bind("ipc://scheduler.ipc")
 
         # Queue manager ROUTER ####################################################################
         self.log.info("Binding socket for queue manager process via IPC")
         queue_manager_socket = context.socket(zmq.ROUTER)  # pylint: disable=no-member
         queue_manager_socket.set_hwm(50000)
+        queue_manager_socket.setsockopt(zmq.LINGER, 0)
         queue_manager_socket.bind("ipc://queue_manager.ipc")
 
         # Simulation PUBLISHER ####################################################################
         self.log.info("Binding socket for publishing simulation updates")
         simulation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
         simulation_socket.set_hwm(50000)
+        simulation_socket.setsockopt(zmq.LINGER, 0)
         simulation_socket.bind(
             f"tcp://{self.conf['orchestrator_addr']}:{self.conf['simulation_port']}"
         )
@@ -171,6 +178,7 @@ class Router:
         self.log.info("Binding socket for publishing visualisation updates")
         visualisation_socket = context.socket(zmq.PUB)  # pylint: disable=no-member
         visualisation_socket.set_hwm(50000)
+        visualisation_socket.setsockopt(zmq.LINGER, 0)
         visualisation_socket.bind(
             f"tcp://{self.conf['orchestrator_addr']}:{self.conf['o_visualisation_port']}"
         )
@@ -205,6 +213,7 @@ class Router:
     def print_stats(self):
         """Print short stats about current number of processed events"""
         self.log.info(self.stats)
+        print(self.stats)
 
     def divide_allocation(self, initial_request):
         """Return a list of request, which holds either only the
@@ -277,6 +286,8 @@ class Router:
 
             # Does the request need to be divided into blocks ?
             requests = self.divide_allocation(req)
+            if len(requests) > 1:
+                self.log.info(f"Request from client {req.client_id} has been splitted")
 
             for sp_idx, req in enumerate(requests):
                 # Update request state
@@ -294,7 +305,7 @@ class Router:
 
                 # To client for ack
                 notification = Message.notification(
-                    f"Request PENDING and sent to scheduler, with ID {req.job_id}"
+                    f"Request {req.job_id} [PENDING] and sent to scheduler"
                 )
                 self.transports["client"].send_multipart(notification, client_id)
                 self.stats["total_req_count"] += 1
@@ -341,7 +352,9 @@ class Router:
                 self.transports["simulation"].send_multipart(message, "sim")
                 self.transports["visualisation"].send_multipart(message, "vis")
             elif request.state == ReqState.FAILED:
-                error = Message.error(f"Requested allocation failed : {request.reason}")
+                error = Message.error(
+                    f"Requested allocation {request.job_id} failed : {request.reason}"
+                )
                 self.stats[request.state] += 1
                 self.transports["client"].send_multipart(error, request.client_id)
         else:
@@ -361,25 +374,34 @@ class Router:
 
         request = self.schema.load(message.content)
 
+        if request.start_time != request.original_start_time:
+            print(f"Delayed requests spotted : {request}")
+            self.stats["delayed_requests"] += 1
+            delay = (request.start_time - request.original_start_time).total_seconds() * 60
+            self.stats["total_delayed_minutes"] += delay
+            self.log.warning(f"Request {request.job_id} got delayed by {delay} min")
+
         if request.state == ReqState.GRANTED:
             # Forward to server for actual allocation
             self.log.debug(
-                f"Request [GRANTED], forwarding allocation request to server {request.server_id}"
+                f"Request {request.job_id} [GRANTED], forwarding allocation request to server {request.server_id}"
             )
             self.stats[request.state] += 1
             self.transports["server"].send_multipart(message, request.server_id)
         elif request.state == ReqState.REFUSED:
+
             # Send an error to client
-            error = Message.error(f"Requested allocation refused : {request.reason}")
+            error = Message.error(
+                f"Requested allocation {request.job_id} refused : {request.reason}"
+            )
             self.stats[request.state] += 1
             self.transports["client"].send_multipart(error, request.client_id)
         else:
             self.log.error(
-                f"Request transmitted by scheduler has state {request.state},"
+                f"Request {request.job_id} transmitted by scheduler has state {request.state},"
                 + " and should be either one of GRANTED / REFUSED instead"
             )
             self.stats["errors"] += 1
-            return
 
     def process_queue_message(self):
         """Process incoming messages from queue_manager. Those messages will always be
@@ -397,7 +419,7 @@ class Router:
             self.stats[request.state] += 1
             # Notify server that he can reclaim the storage used by this request - has currently no effect
             self.transports["server"].send_multipart(message)
-            if self.simulation:
+            if not self.simulation:
                 # Notify scheduler that the storage space used by this request will be
                 # available again
                 # Currently has no effect, AND should never reach scheduler in simulation mode
@@ -486,3 +508,5 @@ class Router:
                 self.scheduler.terminate()
                 self.queue_manager.terminate()
                 break
+
+        self.transports["context"].destroy()

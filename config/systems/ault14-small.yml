@@ -1,0 +1,27 @@
+hosts:
+  - hostname: ault14-1
+    ipv4: 148.187.104.85
+    network_bw: 12.5 #GBps (100Gb Eth)
+    disks:
+      - vendor: INTEL
+        model: SSDPE2KX080T1
+        serial: BTLJ9342009D8P0HGN
+        capacity: 500 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme0n1
+      - vendor: INTEL
+        model: SSDPE2KX080T2
+        serial: BTLJ93420AFN8P0HGN
+        capacity: 500 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme1n1
+      - vendor: INTEL
+        model: SSDPE2KX080T2
+        serial: BTLJ934100UU8P0HGN
+        capacity: 500 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme2n1
+ 

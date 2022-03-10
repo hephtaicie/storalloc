@@ -41,8 +41,7 @@ class SimulationClient:
         self.transports["context"].term()
 
     def zmq_init(self, remote_logging: bool = True):
-        """Prepare connection to the orchestrator and possibly add handler for
-        remote logging to the application's main logger"""
+        """Prepare connection to the orchestrator and possibly add handler for remote logging to the application's main logger"""
 
         context = zmq.Context()
 
@@ -95,7 +94,6 @@ class SimulationClient:
 
                 identities, message = self.transports["orchestrator"].recv_multipart()
                 self.log.debug(f"Received message that transited from {';'.join(identities)}")
-
                 if message.category == MsgCat.NOTIFICATION:
                     self.log.debug(f"New notification received [{message.content}]")
                 elif message.category == MsgCat.ERROR:
@@ -104,7 +102,9 @@ class SimulationClient:
                 elif message.category == MsgCat.REQUEST:
                     request = self.schema.load(message.content)
                     processed += 1
-                    self.log.info(f"Request got back: {request} - ({processed} requests processed)")
+                    self.log.info(
+                        f"Request got back: {request} - ({processed} request related events processed)"
+                    )
                 else:
                     self.log.error("Unexpected message category, exiting client")
                     break
@@ -123,6 +123,7 @@ class SimulationClient:
                     self.log.info(
                         f"# - {discarded_no_write} requests not sent because writtenBytes == 0"
                     )
+                    continue
 
                 if job["writtenBytes"] > 0:
                     start_time = datetime.datetime.fromisoformat(job["startTime"])
@@ -140,6 +141,8 @@ class SimulationClient:
                     sleep(0.01)
                 else:
                     discarded_no_write += 1
+
+        self.transports["context"].destroy()
 
     def send_eos(self):
         """Send End Of Simulation flag to orchestrator"""

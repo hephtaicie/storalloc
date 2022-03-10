@@ -32,6 +32,7 @@ def test_request_creation():
     assert req.nqn == ""
     assert req.state == rq.ReqState.OPENED
     assert req.reason == ""
+    assert req.original_start_time <= req.start_time
 
     # Capacity value is incorrect
     with pytest.raises(ValueError):

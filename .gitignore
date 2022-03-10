@@ -151,3 +151,4 @@ simulation/traces/*.yml
 .python-version
 data
 *.log.*
+output.yml
