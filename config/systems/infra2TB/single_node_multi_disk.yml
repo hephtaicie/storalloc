@@ -1,0 +1,61 @@
+hosts:
+  - hostname: infra_single_node_multi_disk
+    ipv4: 10.0.0.1
+    network_bw: 12.5 #GBps (100Gb Eth)
+    disks:
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ9342009D8P0HGN
+        capacity: 250 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme0n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ93420AFN8P0HGN
+        capacity: 250 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme1n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ934100UU8P0HGN
+        capacity: 250 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme2n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ934106YT8P0HGN
+        capacity: 250 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme3n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ934200WX8P0HGN
+        capacity: 250 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme4n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ934100LT8P0HGN
+        capacity: 250 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme5n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ934107408P0HGN
+        capacity: 250 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme6n1
+      - vendor: INTEL
+        model: SSDPE2KX080T8
+        serial: BTLJ9341075B8P0HGN
+        capacity: 250 #GB
+        write_bandwidth: 2.93 #GBps
+        read_bandwidth: 3.13 #GPBS
+        block_device: /dev/nvme7n1

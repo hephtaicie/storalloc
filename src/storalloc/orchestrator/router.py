@@ -396,6 +396,7 @@ class Router:
             )
             self.stats[request.state] += 1
             self.transports["client"].send_multipart(error, request.client_id)
+            self.transports["simulation"].send_multipart(message, ["sim"] + identities)
         else:
             self.log.error(
                 f"Request {request.job_id} transmitted by scheduler has state {request.state},"

@@ -296,6 +296,22 @@ class Simulation:
         self.log.info(f"[SIM] {request.job_id} deallocated from disk")
         self.stats["last_event_time"] = self.env.now
 
+    def record_failure(self, request: StorageRequest):
+        """Record a failed request during simulation"""
+
+        self.log.debug(
+            f"[SIM] Recording failure for {request.job_id} ({request.capacity} GB on "
+            + f"{request.server_id}:{request.node_id}:{request.disk_id})"
+        )
+
+        self.log.debug(f"[SIM] Duration is {request.duration} / start_time is {request.start_time}")
+
+        yield simpy.events.Timeout(
+            self.env,
+            delay=int(request.start_time.timestamp()),
+        )
+        self.stats["scheduler_failures"] += 1
+
     def process_request(self, request: StorageRequest):
         """Process a storage request, which might be any state"""
 
@@ -307,11 +323,13 @@ class Simulation:
             self.log.debug("New request is in GRANTED state")
         elif request.state is ReqState.REFUSED:
             self.log.debug("New request is in REFUSED state")
+            self.env.process(self.record_failure(request))
         elif request.state is ReqState.ALLOCATED:
             self.log.debug("New request is in ALLOCATED state")
             self.env.process(self.allocate(request))
         elif request.state is ReqState.FAILED:
             self.log.debug("New request is in FAILED state")
+            self.env.process(self.record_failure(request))
         elif request.state is ReqState.ENDED:
             self.log.debug("New request is in ENDED state")
         else:
@@ -401,7 +419,10 @@ class Simulation:
         self.log.info(f"[POST-SIM] Total GB deallocated: {self.stats['total_gb_dealloc']}")
         self.log.info(f"Full stats: {self.stats}")
 
-        sim_duration = self.stats["last_event_time"] - self.stats["first_event_time"]
+        if self.stats["last_event_time"] == self.stats["first_event_time"]:
+            sim_duration = 1
+        else:
+            sim_duration = self.stats["last_event_time"] - self.stats["first_event_time"]
         for server_id, node, disk in self.resource_catalog.list_resources():
             disk.sim_mean_nb_alloc /= sim_duration
             disk.sim_mean_cap_utilisation /= sim_duration
@@ -503,6 +524,5 @@ class Simulation:
                 self.log.info(f"[PRE-SIM] Collected {self.stats['requests_nb']} events.")
 
         self.simulation()
-
-        self.transports["context"].destroy()
         self.log.info("Simulation ended")
+        self.transports["context"].destroy()

@@ -1,4 +1,4 @@
-"""Round Robin Scheduling algorithm"""
+"""Round Robin Scheduling algorithm, with retries in case of failure"""
 
 
 from storalloc.strategies.base import StrategyInterface
@@ -18,6 +18,7 @@ class RoundRobin(StrategyInterface):
         """Compute chosen server,node,disk tuple based on a round robin scheduling"""
 
         if self.attempts >= 5:
+            self.attempts = 0
             return ("", -1, -1)
 
         # Select server from list

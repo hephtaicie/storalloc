@@ -118,7 +118,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
 if __name__ == "__main__":
 
     BASE_PATH_CONFIG = "../config"
-    BASE_PATH_SYSTEM = "../config/systems/infra64TB"
+    BASE_PATH_SYSTEM = "../config/systems/infra2TB"
     BASE_PATH_DATA = "../data"
 
     CONFIG_FILES = [
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         f"{BASE_PATH_SYSTEM}/single_node_single_disk.yml",
     ]
     JOB_FILES = [
-        f"{BASE_PATH_DATA}/IOJobForged_8.yml",
+        f"{BASE_PATH_DATA}/IOJobsOct.yml",
     ]
 
     exp_dir = prepare_result_directory()
