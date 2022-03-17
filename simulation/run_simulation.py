@@ -118,7 +118,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
 if __name__ == "__main__":
 
     BASE_PATH_CONFIG = "../config"
-    BASE_PATH_SYSTEM = "../config/systems/infra2TB"
+    BASE_PATH_SYSTEM = "../config/systems/infra8TB"
     BASE_PATH_DATA = "../data"
 
     CONFIG_FILES = [

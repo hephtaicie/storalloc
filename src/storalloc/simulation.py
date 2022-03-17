@@ -161,9 +161,10 @@ class Simulation:
             if container.level + allocation > container.capacity:
                 self.log.warning(
                     f"[SIM ERROR] Allocation on {server_id}:{node_id}:{disk_id}"
-                    + " will have to be postponned as capacity is not sufficient"
+                    + " can't happen as capacity is not sufficient"
                 )
                 self.stats["scheduler_failures"] += 1
+                return False
 
             # DISK/NODE-related stats
             if disk.sim_last_alloc_time:
@@ -180,11 +181,12 @@ class Simulation:
                 ) * node.sim_nb_alloc
 
             container.put(allocation)
+
             utilisation = (container.level * 100) / container.capacity
-            if utilisation > disk.sim_max_cap_utilisation:
+            if utilisation > disk.sim_max_cap_utilisation:  # max utilisation per disk
                 disk.sim_max_cap_utilisation = utilisation
             disk.sim_nb_alloc += 1
-            if disk.sim_nb_alloc > disk.sim_max_alloc:
+            if disk.sim_nb_alloc > disk.sim_max_alloc:  # max alloc per disk
                 disk.sim_max_alloc = disk.sim_nb_alloc
 
             node.sim_nb_alloc += 1
@@ -222,6 +224,7 @@ class Simulation:
                     f"[SIM ERROR] Deallocation on {server_id}:{node_id}:{disk_id}"
                     + "causes level to get below 0. Something bad is happening"
                 )
+                return
 
             # DISK/NODE-related stats
             disk.sim_mean_nb_alloc += (self.env.now - disk.sim_last_alloc_time) * disk.sim_nb_alloc
@@ -262,6 +265,8 @@ class Simulation:
                 + f"{server_id}:{node_id}:{disk_id}"
             )
 
+        return True
+
     def allocate(self, request: StorageRequest):
         """Simulate allocation"""
 
@@ -287,8 +292,14 @@ class Simulation:
         if self.stats["first_event_time"] == 0:
             self.stats["first_event_time"] = self.env.now
 
-        self.update_disk(request.server_id, request.node_id, request.disk_id, storage)
-        self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
+        alloc_state = self.update_disk(request.server_id, request.node_id, request.disk_id, storage)
+        if alloc_state:
+            self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
+        else:
+            self.log.error(
+                f"[SIM] {request.job_id} NOT allocated to disk at {self.env.now} (scheduler failure)"
+            )
+            return
 
         # Deallocate
         yield simpy.events.Timeout(self.env, delay=request.duration.seconds)
