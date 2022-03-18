@@ -66,7 +66,9 @@ class Scheduler(Process):
             if request.original_start_time is None:
                 request.original_start_time = request.start_time
 
-            if request.start_time - request.original_start_time < datetime.timedelta(hours=1):
+            if (request.start_time - request.original_start_time) < datetime.timedelta(
+                hours=1
+            ) and (request.start_time + datetime.timedelta(minutes=5) < request.end_time):
                 request.start_time += datetime.timedelta(minutes=5)
                 self.log.warning(f"Currently no resources for {request.job_id} : delaying by 5min")
                 self.process_allocation_request(request)

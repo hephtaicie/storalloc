@@ -81,7 +81,13 @@ class WorstCase(StrategyInterface):
                 disk_bw += (
                     end_time_chunk - (start_time_chunk + overlap_offset)
                 ) * disk.write_bandwidth
-                disk_bw = disk_bw / ((request.end_time - request.start_time).seconds)
+                try:
+                    disk_bw = disk_bw / ((request.end_time - request.start_time).seconds)
+                except ZeroDivisionError:
+                    self.log.error(
+                        f"Request {request.job_id} seems to have the same start and end_time..."
+                    )
+
                 self.log.debug(f"[WC] .. Disk/Current node_bw: {node_bw}")
                 self.log.debug(f"[WC] .. Disk/Current disk_bw: {disk_bw}")
 
@@ -92,9 +98,15 @@ class WorstCase(StrategyInterface):
                     + f" => {disk.capacity} GB / {disk_bw} GB/s"
                 )
 
-            node.node_status.bandwidth = (
-                node_bw / (request.end_time - request.start_time).seconds / len(node.disks)
-            )
+            try:
+                node.node_status.bandwidth = (
+                    node_bw / (request.end_time - request.start_time).seconds / len(node.disks)
+                )
+            except ZeroDivisionError:
+                self.log.error(
+                    f"Request {request.job_id} seems to have the same start and end_time..."
+                )
+
             self.log.debug(
                 f"[WC] .. Access bandwidth for {server_id}:{node.uid}"
                 + f"= {node.node_status.bandwidth} GB/s"

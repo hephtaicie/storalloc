@@ -377,7 +377,7 @@ class Router:
         if request.start_time != request.original_start_time:
             print(f"Delayed requests spotted : {request}")
             self.stats["delayed_requests"] += 1
-            delay = (request.start_time - request.original_start_time).total_seconds() * 60
+            delay = (request.start_time - request.original_start_time).total_seconds() / 60
             self.stats["total_delayed_minutes"] += delay
             self.log.warning(f"Request {request.job_id} got delayed by {delay} min")
 
