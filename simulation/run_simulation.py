@@ -118,7 +118,11 @@ def run_exp(exp_dir, config_file, system_file, job_file):
 if __name__ == "__main__":
 
     BASE_PATH_CONFIG = "../config"
-    BASE_PATH_SYSTEM = "../config/systems/infra64TB"
+    BASE_PATH_SYSTEM = [
+        "../config/systems/infra8TB",
+        "../config/systems/infra16TB",
+        "../config/systems/infra64TB",
+    ]
     BASE_PATH_DATA = "../data"
 
     CONFIG_FILES = [
@@ -127,11 +131,21 @@ if __name__ == "__main__":
         f"{BASE_PATH_CONFIG}/config_rr.yml",
         f"{BASE_PATH_CONFIG}/config_worst_fit.yml",
     ]
+
+    # I was too lazy to add a damn loop, and copy paste is so fast in vim...
     SYSTEM_FILES = [
-        f"{BASE_PATH_SYSTEM}/multi_node_multi_disk.yml",
-        f"{BASE_PATH_SYSTEM}/single_node_multi_disk.yml",
-        f"{BASE_PATH_SYSTEM}/multi_node_single_disk.yml",
-        f"{BASE_PATH_SYSTEM}/single_node_single_disk.yml",
+        f"../config/systems/infra8TB/multi_node_multi_disk.yml",
+        f"../config/systems/infra8TB/single_node_multi_disk.yml",
+        f"../config/systems/infra8TB/multi_node_single_disk.yml",
+        f"../config/systems/infra8TB/single_node_single_disk.yml",
+        f"../config/systems/infra16TB/multi_node_multi_disk.yml",
+        f"../config/systems/infra16TB/single_node_multi_disk.yml",
+        f"../config/systems/infra16TB/multi_node_single_disk.yml",
+        f"../config/systems/infra16TB/single_node_single_disk.yml",
+        f"../config/systems/infra64TB/multi_node_multi_disk.yml",
+        f"../config/systems/infra64TB/single_node_multi_disk.yml",
+        f"../config/systems/infra64TB/multi_node_single_disk.yml",
+        f"../config/systems/infra64TB/single_node_single_disk.yml",
     ]
     JOB_FILES = [
         f"{BASE_PATH_DATA}/IOJobs.yml",
