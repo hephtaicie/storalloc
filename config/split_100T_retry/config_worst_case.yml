@@ -4,7 +4,8 @@ orchestrator_addr: 127.0.0.1
 orchestrator_fe_ipc: client_ipc
 orchestrator_be_ipc: server_ipc
 res_catalog: inmemory
-block_size_gb: 1000
+allow_retry: True
+block_size_gb: 100000
 min_block_size_gb: 100
 client_port: 35010
 server_port: 35020
@@ -16,7 +17,7 @@ simulation_port: 35040
 s_visualisation_port: 35050
 o_visualisation_port: 35055
 transport: tcp
-sched_strategy: random_alloc
+sched_strategy: worst_case
 visualisation:
   max_points: 5000
 ...

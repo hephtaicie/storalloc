@@ -19,6 +19,7 @@ CONFIG_SCHEMA = {
             "inmemory",
         ],
     },
+    "allow_retry": {"type": "boolean"},
     "block_size_gb": {"type": "integer", "min": 0},
     "min_block_size_gb": {"type": "integer", "min": 0},
     "client_port": {"type": "integer", "min": 1025, "max": 65535},

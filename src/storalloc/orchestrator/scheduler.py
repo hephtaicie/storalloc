@@ -29,6 +29,7 @@ class Scheduler(Process):
         self,
         uid: str,
         strategy: StrategyInterface = None,
+        allow_retry: bool = False,
         resource_catalog: ResourceCatalog = None,
         verbose: bool = False,
         remote_logging: tuple = None,
@@ -37,6 +38,7 @@ class Scheduler(Process):
         super().__init__()
         self.uid = uid
         self.strategy = strategy
+        self.allow_retry = allow_retry
         self.resource_catalog = resource_catalog
         self.schema = RequestSchema()
         self.transport = None  # waiting for context init to run when process is started
@@ -51,7 +53,7 @@ class Scheduler(Process):
 
         server_id, target_node, target_disk = self.strategy.compute(self.resource_catalog, request)
 
-        if server_id:
+        if server_id or not self.allow_retry:
             request.node_id = target_node
             request.disk_id = target_disk
             request.server_id = server_id

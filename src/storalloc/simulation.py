@@ -76,6 +76,8 @@ class Simulation:
 
         self.resource_catalog = ResourceCatalog()
 
+        self.split_job_ids = set()
+
         self.transports = self.zmq_init(remote_logging)
         if rt_factor == 1.0:
             self.env = simpy.Environment()
@@ -283,6 +285,12 @@ class Simulation:
             ).total_seconds() * 60
             self.stats["delayed_requests"] += 1
 
+        # Keep track of split requests
+        last_dash = request.job_id.rfind("-")
+        job_id = request.job_id[:last_dash]
+        if request.job_id[last_dash:] != "-0" and job_id not in self.split_job_ids:
+            self.split_job_ids.add(job_id)
+
         # Allocate request at correct time
         storage = yield simpy.events.Timeout(
             self.env, delay=int(request.start_time.timestamp()), value=request.capacity
@@ -449,12 +457,15 @@ class Simulation:
         sim_data = {
             "max_concurrent_allocations": self.stats["max_ca"],
             "nb_of_requests": self.stats["requests_nb"],
+            "nb_of_split_requests": len(self.split_job_ids),
+            "split_threshold_gb": self.conf["block_size_gb"],
             "nb_of_registrations": self.stats["registrations_nb"],
-            "nb_of_scheduler_failures": self.stats["scheduler_failures"],
-            "tt_waiting_time_minutes": self.stats["total_waiting_time_minutes"],
+            "nb_of_scheduler_fallbacks": self.stats["scheduler_failures"],
+            "tt_delay_time_minutes": self.stats["total_waiting_time_minutes"],
             "nb_of_delayed_requests": self.stats["delayed_requests"],
-            "tt_gb_allocated": self.stats["total_gb_alloc"],
-            "tt_gb_deallocated": self.stats["total_gb_dealloc"],
+            "retries_allowed": "yes" if self.conf["allow_retry"] else "no",
+            "tt_allocated_gb": self.stats["total_gb_alloc"],
+            "tt_deallocated_gb": self.stats["total_gb_dealloc"],
             "sim_first_ts": self.stats["first_event_time"],
             "sim_last_ts": self.stats["last_event_time"],
             "sim_duration": sim_duration,
