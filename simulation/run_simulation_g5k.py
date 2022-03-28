@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-Running the simulations on Grid5000 clusters
+""" Running the simulations on Grid5000 clusters
 """
 
 import sys
@@ -37,7 +36,7 @@ CONFIG_FILES = [
 ]
 
 # I was too lazy to add a damn loop, and copy paste is so fast in vim...
-SYSTEM_FILES = [f"{base_path}/mutli_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
+SYSTEM_FILES = [f"{base_path}/multi_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
 # SYSTEM_FILES += [f"{base_path}/single_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
 # SYSTEM_FILES += [f"{base_path}/multi_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
 # SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
@@ -49,8 +48,8 @@ JOB_FILES = [
 
 
 PERMUTATIONS = list(itertools.product(CONFIG_FILES, SYSTEM_FILES, JOB_FILES))
-
-TASKS_PER_NODE = 2
+MAX_TASKS_PER_NODE = 4
+MAX_NODES = 8
 CLUSTER = "parasilo"
 
 
@@ -61,8 +60,35 @@ def results_dir_name():
     return str(results_path)
 
 
-def run_node(job_name: str, walltime: str, params: list):
-    """Run a few simulations (whose parameters are given in a list) sequentially on a node"""
+def split_permutations(permutations: list, split_size: int):
+    """Split the list of permutations into multiple sublists"""
+
+    for idx in range(0, len(permutations), split_size):
+        yield permutations[idx : idx + split_size]
+
+
+def prepare_params():
+    """Prepare a list of parameters for each simulation to be run"""
+
+    results_dir = results_dir_name()
+    print(f"There will be {len(PERMUTATIONS)} simulations to run on {CLUSTER}")
+    nb_nodes = min(int(len(PERMUTATIONS) / MAX_TASKS_PER_NODE), MAX_NODES)
+    nb_tasks_per_node = int(len(PERMUTATIONS) / nb_nodes)
+    print(f"They will run on {nb_nodes} nodes ({nb_tasks_per_node} tasks per node)")
+
+    params = []
+    for idx, param_set in enumerate(split_permutations(PERMUTATIONS, nb_tasks_per_node)):
+        params.append(list())
+        for param in param_set:
+            param = list(param)
+            param.insert(0, results_dir)
+            params[idx].append(param)
+
+    return params
+
+
+def run_batch(node_number: int, params: list):
+    """Run a few simulations (whose parameters are given in a list) on a set of nodes"""
 
     ## Prepare Configuration
     prod_network = en.G5kNetworkConf(
@@ -74,36 +100,33 @@ def run_node(job_name: str, walltime: str, params: list):
 
     conf = (
         en.G5kConf.from_settings(
-            job_name=job_name,
-            walltime=walltime,
+            job_name="storalloc_sim",
+            walltime="01:00:00",
             job_type=["allow_classic_ssh"],
-            key=str(Path.home() / ".ssh" / "id_rsa_grid5000.pub"),
+            # key=str(Path.home() / ".ssh" / "id_rsa_grid5000.pub"),
         )
         .add_network_conf(prod_network)
         .add_machine(
             roles=["compute_storalloc"],
             cluster=CLUSTER,
-            nodes=1,
+            nodes=node_number,
             primary_network=prod_network,
         )
         .finalize()
     )
 
-    # Use the correct SSH key (in my case it's not the regular id_rsa.pub)
-    conf.key = str(Path.home() / ".ssh" / "id_rsa_grid5000.pub")
-
     provider = en.G5k(conf)
     roles, network = provider.init()
     roles = en.sync_info(roles, network)
 
-    for node in roles["compute_storalloc"]:
-        print(type(node))
-        print(node)
+    ### Prepare parameters
+    for node, param in zip(roles["compute_storalloc"], params):
+        node.extra = {"storalloc_params": param}
 
     en.ensure_python3(roles=roles)
 
     ### ACTIONS
-    """
+    results = None
     with en.actions(
         roles=roles,
         gather_facts=True,
@@ -112,56 +135,49 @@ def run_node(job_name: str, walltime: str, params: list):
 
         play.apt(name="git", state="present")
         play.git(
+            # TODO: remove the key and use a new one
             repo="https://oauth2:glpat-W7MXcHS1tkjmr7JAr95H@gitlab.inria.fr/Kerdata/kerdata-projects/storalloc.git",
             dest="/tmp/storalloc",
             depth=1,
-            version="develop",
+            version="feature-g5ksim",
         )
         play.pip(
             chdir="/tmp/storalloc",
             name=".",
             virtualenv="storalloc_venv",
         )
-        for param in params:
-            play.command(
-                chdir="/tmp/storalloc/simulation",
-                cmd=f"../storalloc_venv/bin/python3 run_simulation.py {' '.join(param)}",
-            )
-    """
+        play.shell(
+            command="echo '{{ storalloc_params  }}' >> /home/jmonniot/StorAlloc/results/{{ ansible_hostname }}_params.txt"
+        )
+        print(play.results)
+        play.shell(
+            chdir="/tmp/storalloc",
+            command=". storalloc_venv/bin/activate && cd simulation && ./run_simulation.py {{ storalloc_params }}",
+        )
+        results = play.results
+
+    for result in results:
+        print(result)
+        print("################################################################################")
 
     provider.destroy()
-
-
-def split_permutations(permutations: list, split_size: int):
-    """Split the list of permutations into multiple sublists"""
-
-    for idx in range(0, len(permutations), split_size):
-        yield permutations[idx : idx + split_size]
 
 
 def run():
     """Main"""
 
-    print(f"There will be {len(PERMUTATIONS)} simulations to run on {CLUSTER}")
-    nb_nodes = int(len(PERMUTATIONS) / TASKS_PER_NODE)
-    print(f"They will run on {nb_nodes} nodes")
+    params = prepare_params()
 
-    results_dir = results_dir_name()
+    for idx, batch in enumerate(params):
+        print(f"Batch {idx} :: ")
+        batch_params = []
+        for node_idx, param_set in enumerate(batch):
+            print(f" Node {node_idx} :: Params : {param_set}")
+            str_params = " ".join(param_set)
+            batch_params.append(str_params)
 
-    run_node("storalloc_test", "00:05:00", PERMUTATIONS)
-
-    """
-    job_idx = 0
-    for param_set in split_permutations(PERMUTATIONS, TASKS_PER_NODE):
-        print(param_set)
-        for param in param_set:
-            param = list(param)
-            param.insert(0, results_dir)
-            job_name = f"storalloc_{job_idx}"
-            run_node(job_name, "00:05:00", param)
-            job_idx += 1
-        print("_________________")
-    """
+        print(f"Starting batch with {len(batch)} nodes")
+        run_batch(len(batch), batch_params)
 
 
 if __name__ == "__main__":

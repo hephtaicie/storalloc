@@ -9,6 +9,7 @@ Beware : May take a long time to run depending on the size of the dataset.
 """
 
 import subprocess
+import shutil
 from pathlib import Path
 import signal
 import time
@@ -39,7 +40,7 @@ def copy_results(exp_dir, algo, infra, jobs):
         )
 
     new_path = Path(exp_dir).joinpath(Path(f"exp__{algo}_{infra}_{jobs}.yml"))
-    output_path.replace(new_path)
+    shutil.move(str(output_path), str(new_path))
 
 
 def run_exp(exp_dir, config_file, system_file, job_file):
@@ -53,7 +54,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     sim_server = subprocess.Popen(
         ["storalloc", "sim-server", "-c", config_file],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL,
     )
     time.sleep(1)
     print(f"Started subprocess sim_server with PID {sim_server.pid}")
@@ -62,7 +63,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     orchestrator = subprocess.Popen(
         ["storalloc", "orchestrator", "-c", config_file],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL,
     )
     time.sleep(1)
     print(f"Started subprocess orchestrator with PID {orchestrator.pid}")
@@ -71,7 +72,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     server = subprocess.Popen(
         ["storalloc", "server", "-c", config_file, "-s", system_file],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL,
     )
     time.sleep(1)
     print(f"Started subprocess server with PID {server.pid}")
@@ -80,7 +81,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     sim_client = subprocess.Popen(
         ["storalloc", "sim-client", "-c", config_file, "-j", job_file],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL,
     )
     time.sleep(1)
     print(f"Started subprocess sim_client with PID {sim_client.pid}")
