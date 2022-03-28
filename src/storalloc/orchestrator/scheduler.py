@@ -53,7 +53,7 @@ class Scheduler(Process):
 
         server_id, target_node, target_disk = self.strategy.compute(self.resource_catalog, request)
 
-        if server_id or not self.allow_retry:
+        if server_id:
             request.node_id = target_node
             request.disk_id = target_disk
             request.server_id = server_id
@@ -64,7 +64,7 @@ class Scheduler(Process):
             self.resource_catalog.add_allocation(server_id, target_node, target_disk, request)
             # Send back the allocated request to the orchestrator
             self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
-        else:
+        elif self.allow_retry:
             if request.original_start_time is None:
                 request.original_start_time = request.start_time
 
@@ -85,6 +85,17 @@ class Scheduler(Process):
                 )
                 # Send back the allocated request to the orchestrator
                 self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
+        else:
+            self.log.error(
+                f"Unable to fulfill request {request.job_id} : "
+                f"{server_id}:{target_node}:{target_disk}"
+            )
+            request.state = ReqState.REFUSED
+            request.reason = (
+                "Could not fit request onto current resources/ Delaying start unallowed."
+            )
+            # Send back the allocated request to the orchestrator
+            self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
 
     def process_deallocation_request(self, request):
         """Acknowledge the release of some storage resource in the resource catalog
