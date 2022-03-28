@@ -3,11 +3,9 @@
 """ Running the simulations on Grid5000 clusters
 """
 
-import sys
 from pathlib import Path
 import itertools
 import datetime as dt
-import numpy as np
 import enoslib as en
 
 WORK_DIR = "/tmp/storalloc"
@@ -87,7 +85,7 @@ def prepare_params():
     return params
 
 
-def run_batch(node_number: int, params: list):
+def run_batch(node_number: int, params: list, results_dir: str):
     """Run a few simulations (whose parameters are given in a list) on a set of nodes"""
 
     ## Prepare Configuration
@@ -130,7 +128,6 @@ def run_batch(node_number: int, params: list):
     with en.actions(
         roles=roles,
         gather_facts=True,
-        extra_vars={"remote_user": "jmonniot", "ansible_ssh_private_key_file": conf.key[:-4]},
     ) as play:
 
         play.apt(name="git", state="present")
@@ -149,7 +146,7 @@ def run_batch(node_number: int, params: list):
         play.shell(
             command="echo '{{ storalloc_params  }}' >> /home/jmonniot/StorAlloc/results/{{ ansible_hostname }}_params.txt"
         )
-        print(play.results)
+        play.file(path=results_dir, state="directory")
         play.shell(
             chdir="/tmp/storalloc",
             command=". storalloc_venv/bin/activate && cd simulation && ./run_simulation.py {{ storalloc_params }}",
@@ -167,6 +164,7 @@ def run():
     """Main"""
 
     params = prepare_params()
+    results_dir = params[0][0][0]
 
     for idx, batch in enumerate(params):
         print(f"Batch {idx} :: ")
@@ -177,7 +175,7 @@ def run():
             batch_params.append(str_params)
 
         print(f"Starting batch with {len(batch)} nodes")
-        run_batch(len(batch), batch_params)
+        run_batch(len(batch), batch_params, results_dir)
 
 
 if __name__ == "__main__":
