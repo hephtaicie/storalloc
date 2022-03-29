@@ -100,7 +100,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     copy_results(
         exp_dir,
         Path(config_file).stem.lstrip("config_"),
-        Path(config_file).parent,
+        Path(config_file).parent.stem,
         f"{Path(system_file).parent.stem}_{Path(system_file).stem}",
         Path(job_file).stem,
     )
