@@ -94,7 +94,7 @@ class Router:
         self.scheduler = Scheduler(
             f"{self.uid}-SC",
             make_strategy(self.conf["sched_strategy"]),
-            self.conf['allow_retry'],
+            self.conf["allow_retry"],
             make_resource_catalog(self.conf["res_catalog"]),
             verbose,
             (

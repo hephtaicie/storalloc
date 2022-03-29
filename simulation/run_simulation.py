@@ -30,7 +30,7 @@ def remove_output():
         print("No local copy of output.yml found")
 
 
-def copy_results(exp_dir, algo, infra, jobs):
+def copy_results(exp_dir, algo, split, infra, jobs):
     """Copy experiment result to the correct directory"""
 
     output_path = Path("./output.yml")
@@ -39,7 +39,7 @@ def copy_results(exp_dir, algo, infra, jobs):
             f"Couldn't find a result file for experiment with algo {algo} and infra {infra}"
         )
 
-    new_path = Path(exp_dir).joinpath(Path(f"exp__{algo}_{infra}_{jobs}.yml"))
+    new_path = Path(exp_dir).joinpath(Path(f"exp__{split}_{algo}_{infra}_{jobs}.yml"))
     shutil.move(str(output_path), str(new_path))
 
 
@@ -100,6 +100,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     copy_results(
         exp_dir,
         Path(config_file).stem.lstrip("config_"),
+        Path(config_file).parent,
         f"{Path(system_file).parent.stem}_{Path(system_file).stem}",
         Path(job_file).stem,
     )
