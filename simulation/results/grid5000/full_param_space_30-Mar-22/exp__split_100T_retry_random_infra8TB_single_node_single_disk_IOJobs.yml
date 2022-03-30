@@ -1,0 +1,26 @@
+max_concurrent_allocations: 181
+nb_of_delayed_requests: 0
+nb_of_registrations: 1
+nb_of_requests: 23338
+nb_of_scheduler_fallbacks: 39
+nb_of_split_requests: 0
+nodes:
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 181
+    max_cap_utilisation: 97.083
+    mean_capacity_utilisation: 4.567
+    mean_nb_alloc: 2.837
+  id: S-81c5b6:0
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 2.837
+retries_allowed: 'yes'
+sim_duration: 31515560
+sim_first_ts: 1577931378
+sim_last_ts: 1609446938
+split_threshold_gb: 100000
+tt_allocated_gb: 658843.6154484822
+tt_deallocated_gb: 658843.6154484822
+tt_delay_time_minutes: 0

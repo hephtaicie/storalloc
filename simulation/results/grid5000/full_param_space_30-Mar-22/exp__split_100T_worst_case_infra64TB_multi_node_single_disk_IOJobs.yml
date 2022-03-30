@@ -1,0 +1,103 @@
+max_concurrent_allocations: 181
+nb_of_delayed_requests: 0
+nb_of_registrations: 1
+nb_of_requests: 23338
+nb_of_scheduler_fallbacks: 38
+nb_of_split_requests: 0
+nodes:
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609441000
+    max_alloc: 23
+    max_cap_utilisation: 65.912
+    mean_capacity_utilisation: 0.556
+    mean_nb_alloc: 0.347
+  id: S-f84cd0:0
+  last_alloc_ts: 1609441000
+  mean_nb_alloc: 0.347
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 23
+    max_cap_utilisation: 32.756
+    mean_capacity_utilisation: 0.407
+    mean_nb_alloc: 0.348
+  id: S-f84cd0:1
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.348
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 72.731
+    mean_capacity_utilisation: 0.916
+    mean_nb_alloc: 0.364
+  id: S-f84cd0:2
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.364
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 43.816
+    mean_capacity_utilisation: 0.771
+    mean_nb_alloc: 0.374
+  id: S-f84cd0:3
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.374
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 41.827
+    mean_capacity_utilisation: 0.865
+    mean_nb_alloc: 0.352
+  id: S-f84cd0:4
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.352
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 54.569
+    mean_capacity_utilisation: 0.42
+    mean_nb_alloc: 0.344
+  id: S-f84cd0:5
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.344
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 22
+    max_cap_utilisation: 27.488
+    mean_capacity_utilisation: 0.617
+    mean_nb_alloc: 0.352
+  id: S-f84cd0:6
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.352
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 91.47
+    mean_capacity_utilisation: 0.5
+    mean_nb_alloc: 0.355
+  id: S-f84cd0:7
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.355
+retries_allowed: 'no'
+sim_duration: 31515560
+sim_first_ts: 1577931378
+sim_last_ts: 1609446938
+split_threshold_gb: 100000
+tt_allocated_gb: 664116.5667749551
+tt_deallocated_gb: 664116.5667749553
+tt_delay_time_minutes: 0
