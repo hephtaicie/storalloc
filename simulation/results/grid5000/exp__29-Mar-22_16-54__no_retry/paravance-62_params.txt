@@ -1,0 +1,3 @@
+/home/jmonniot/StorAlloc/results/exp__29-Mar-22_16-54 /tmp/storalloc/config/split_100G/config_worst_case.yml /tmp/storalloc/config/systems/infra16TB/multi_node_single_disk.yml /home/jmonniot/StorAlloc/data/IOJobs.yml
+/home/jmonniot/StorAlloc/results/exp__29-Mar-22_16-54 /tmp/storalloc/config/split_100T/config_rr.yml /tmp/storalloc/config/systems/infra8TB/single_node_multi_disk.yml /home/jmonniot/StorAlloc/data/IOJobs.yml
+/home/jmonniot/StorAlloc/results/exp__29-Mar-22_16-54 /tmp/storalloc/config/split_100T/config_worst_fit.yml /tmp/storalloc/config/systems/infra64TB/single_node_single_disk.yml /home/jmonniot/StorAlloc/data/IOJobs.yml
