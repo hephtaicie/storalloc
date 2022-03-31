@@ -71,7 +71,7 @@ def prepare_params():
 
     results_dir = results_dir_name()
     print(f"There will be {len(PERMUTATIONS)} simulations to run on {CLUSTER}")
-    nb_nodes = max(int(len(PERMUTATIONS) / MAX_TASKS_PER_NODE), MAX_NODES)
+    nb_nodes = min(int(len(PERMUTATIONS) / MAX_TASKS_PER_NODE), MAX_NODES)
     nb_tasks_per_node = int(len(PERMUTATIONS) / nb_nodes)
     print(f"They will run on {nb_nodes} nodes ({nb_tasks_per_node} tasks per node)")
 
