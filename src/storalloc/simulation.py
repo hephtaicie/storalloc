@@ -17,7 +17,7 @@ from storalloc.utils.config import config_from_yaml
 from storalloc.utils.transport import Transport
 
 
-# pylint: disable=no-member,logging-not-lazy,too-many-instance-attributes
+# pylint: disable=no-member,logging-not-lazy,too-many-instance-attributes,logging-fstring-interpolation
 
 
 def start_visualisation(path: str):
@@ -51,10 +51,11 @@ def summarise_ressource_catalog(resource_catalog: ResourceCatalog):
 
 
 # pylint: disable=too-many-arguments
-
-
 class Simulation:
-    """basic simulator"""
+    """Basic simulator. Outputs a yaml file with a summary of the
+    simulation and send regular updates to any visualisation or log server
+    up before the simulation starts.
+    """
 
     def __init__(
         self,
@@ -76,27 +77,34 @@ class Simulation:
 
         self.resource_catalog = ResourceCatalog()
 
-        self.split_job_ids = set()
-
         self.transports = self.zmq_init(remote_logging)
         if rt_factor == 1.0:
             self.env = simpy.Environment()
         else:
             self.env = simpy.rt.RealtimeEnvironement(factor=rt_factor)
+
+        self.visualisation = visualisation
+
+        ## Everything related to simulation statistics ##
+        # Number of requests that have been split (but not necessarily
+        # successfully allocated)
+        self.split_job_ids = set()
+        # Number of requests that have been split and succesfully allocated
+        self.allocated_split_job_ids = set()
         self.stats = {
             "concurrent_allocations": 0,
             "max_ca": 0,  # max concurrent allocations at some point
             "requests_nb": 0,
             "registrations_nb": 0,
-            "scheduler_failures": 0,
+            "scheduler_fallbacks": 0,
             "total_waiting_time_minutes": 0,
             "delayed_requests": 0,
+            "allocated_delayed_requests": 0,
             "total_gb_alloc": 0,
             "total_gb_dealloc": 0,
             "first_event_time": 0,
             "last_event_time": 0,
         }
-        self.visualisation = visualisation
 
         self.log.info(f"Simulation server {self.uid} initiated.")
 
@@ -157,7 +165,7 @@ class Simulation:
         disk = node.disks[disk_id]
         container = disk.sim_container
 
-        # Reserve some disk space
+        #### Try to allocate the requested capacity on virtual storage
         if allocation > 0:
 
             if container.level + allocation > container.capacity:
@@ -165,10 +173,10 @@ class Simulation:
                     f"[SIM ERROR] Allocation on {server_id}:{node_id}:{disk_id}"
                     + " can't happen as capacity is not sufficient"
                 )
-                self.stats["scheduler_failures"] += 1
-                return False
+                self.stats["scheduler_fallbacks"] += 1
+                raise ValueError("Not enough space (allocation)")
 
-            # DISK/NODE-related stats
+            # DISK/NODE-related stats: Mean capacity utilisation and mean number of allocations
             if disk.sim_last_alloc_time:
                 disk.sim_mean_nb_alloc += (
                     self.env.now - disk.sim_last_alloc_time
@@ -182,8 +190,11 @@ class Simulation:
                     self.env.now - node.sim_last_alloc_time
                 ) * node.sim_nb_alloc
 
+            ### --> Storage allocation happens here
             container.put(allocation)
+            ### <-- ###
 
+            # Update max capacity utilisation / max number of allocations of current disk
             utilisation = (container.level * 100) / container.capacity
             if utilisation > disk.sim_max_cap_utilisation:  # max utilisation per disk
                 disk.sim_max_cap_utilisation = utilisation
@@ -195,7 +206,7 @@ class Simulation:
             disk.sim_last_alloc_time = self.env.now
             node.sim_last_alloc_time = self.env.now
 
-            # Global stats
+            # Global stats and real-time visualisation data #
             self.stats["concurrent_allocations"] += 1
             self.stats["total_gb_alloc"] += allocation
             if self.stats["concurrent_allocations"] > self.stats["max_ca"]:
@@ -218,7 +229,7 @@ class Simulation:
                 "sim",
             )
 
-        # Free some disk space
+        #### Try to deallocate a request from virtual storage
         elif allocation < 0:
 
             if container.level - allocation < 0:
@@ -226,7 +237,7 @@ class Simulation:
                     f"[SIM ERROR] Deallocation on {server_id}:{node_id}:{disk_id}"
                     + "causes level to get below 0. Something bad is happening"
                 )
-                return
+                raise ValueError("Not enough space (deallocation)")
 
             # DISK/NODE-related stats
             disk.sim_mean_nb_alloc += (self.env.now - disk.sim_last_alloc_time) * disk.sim_nb_alloc
@@ -240,7 +251,7 @@ class Simulation:
             disk.sim_nb_alloc -= 1
             node.sim_nb_alloc -= 1
 
-            # Global stats
+            # Global stats and real-time visualisation data #
             self.stats["concurrent_allocations"] -= 1
             self.stats["total_gb_dealloc"] += -allocation
             self.log.info(
@@ -267,8 +278,6 @@ class Simulation:
                 + f"{server_id}:{node_id}:{disk_id}"
             )
 
-        return True
-
     def allocate(self, request: StorageRequest):
         """Simulate allocation"""
 
@@ -277,6 +286,7 @@ class Simulation:
             + f"{request.server_id}:{request.node_id}:{request.disk_id})"
         )
 
+        ### Stats on request before we know if allocation will be successful ###
         self.log.debug(f"[SIM] Duration is {request.duration} / start_time is {request.start_time}")
         # Register any delay in allocation compared to original need from client.
         if request.start_time > request.original_start_time:
@@ -285,13 +295,14 @@ class Simulation:
             ).total_seconds() * 60
             self.stats["delayed_requests"] += 1
 
-        # Keep track of split requests
+        # Split request accounting (we only consider how many requests have been split,
+        # not how many sub-requests are created)
         last_dash = request.job_id.rfind("-")
         job_id = request.job_id[:last_dash]
         if request.job_id[last_dash:] != "-0" and job_id not in self.split_job_ids:
             self.split_job_ids.add(job_id)
 
-        # Allocate request at correct time
+        # Wait for the actual allocation time of request
         storage = yield simpy.events.Timeout(
             self.env, delay=int(request.start_time.timestamp()), value=request.capacity
         )
@@ -300,20 +311,33 @@ class Simulation:
         if self.stats["first_event_time"] == 0:
             self.stats["first_event_time"] = self.env.now
 
-        alloc_state = self.update_disk(request.server_id, request.node_id, request.disk_id, storage)
-        if alloc_state:
-            self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
-        else:
+        ### ATTEMPT THE ACTUAL ALLOCATION, AND STOP RIGHT HERE IF IT FAILS
+        try:
+            self.update_disk(request.server_id, request.node_id, request.disk_id, storage)
+        except ValueError as exc:
             self.log.error(
-                f"[SIM] {request.job_id} NOT allocated to disk at {self.env.now} (scheduler failure)"
+                f"[SIM] {request.job_id} NOT allocated to disk at {self.env.now} : {exc}"
             )
             return
+        else:
+            self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
 
-        # Deallocate
+        # Keep track of split requests (in allocated state)
+        if request.job_id[last_dash:] != "-0" and job_id not in self.allocated_split_job_ids:
+            self.allocated_split_job_ids.add(job_id)
+        # Keep track of delayed requests (in allocated state)
+        if request.start_time > request.original_start_time:
+            self.stats["allocated_delayed_requests"] += 1
+
+        # Wait for deallocation time and attempt deallocation (should never fail, but who knows...)
         yield simpy.events.Timeout(self.env, delay=request.duration.seconds)
-        self.update_disk(request.server_id, request.node_id, request.disk_id, -storage)
-        self.log.info(f"[SIM] {request.job_id} deallocated from disk")
-        self.stats["last_event_time"] = self.env.now
+        try:
+            self.update_disk(request.server_id, request.node_id, request.disk_id, -storage)
+        except ValueError as exc:
+            self.log.error(f"Failure at deallocation at {self.env.now} : {exc}")
+        else:
+            self.log.info(f"[SIM] {request.job_id} deallocated from disk")
+            self.stats["last_event_time"] = self.env.now
 
     def record_failure(self, request: StorageRequest):
         """Record a failed request during simulation"""
@@ -329,7 +353,7 @@ class Simulation:
             self.env,
             delay=int(request.start_time.timestamp()),
         )
-        self.stats["scheduler_failures"] += 1
+        self.stats["scheduler_fallbacks"] += 1
 
     def process_request(self, request: StorageRequest):
         """Process a storage request, which might be any state"""
@@ -456,13 +480,15 @@ class Simulation:
         # Output data for yml statistics file.
         sim_data = {
             "max_concurrent_allocations": self.stats["max_ca"],
-            "nb_of_requests": self.stats["requests_nb"],
-            "nb_of_split_requests": len(self.split_job_ids),
+            "requests_count": self.stats["requests_nb"],
+            "split_requests_count": len(self.split_job_ids),
+            "alloc_split_requests_count": len(self.allocated_split_job_ids),
             "split_threshold_gb": self.conf["block_size_gb"],
-            "nb_of_registrations": self.stats["registrations_nb"],
-            "nb_of_scheduler_fallbacks": self.stats["scheduler_failures"],
+            "registrations_count": self.stats["registrations_nb"],
+            "scheduler_fallbacks_count": self.stats["scheduler_fallbacks"],
             "tt_delay_time_minutes": self.stats["total_waiting_time_minutes"],
-            "nb_of_delayed_requests": self.stats["delayed_requests"],
+            "delayed_requests_count": self.stats["delayed_requests"],
+            "alloc_delayed_requests_count": self.stats["allocated_delayed_requests"],
             "retries_allowed": "yes" if self.conf["allow_retry"] else "no",
             "tt_allocated_gb": self.stats["total_gb_alloc"],
             "tt_deallocated_gb": self.stats["total_gb_dealloc"],
@@ -506,7 +532,9 @@ class Simulation:
 
         while stop != 0:
             try:
+
                 events = dict(self.transports["poller"].poll(timeout=5000))
+
                 if eos and not events:
                     # After 3 polling attempts that result in 0 events, consider that
                     # no more messages will arrive (if EoS flag has been raised as well)

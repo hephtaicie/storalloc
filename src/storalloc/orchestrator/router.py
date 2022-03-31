@@ -291,7 +291,7 @@ class Router:
                 self.log.info(f"Request from client {req.client_id} has been splitted")
 
             for sp_idx, req in enumerate(requests):
-                # Update request state
+                # Update request state (and set a UNIQUE job_id to each request)
                 req.job_id = f"{self.uid}-{self.stats['req_count']}-{sp_idx}"
                 req.client_id = client_id
                 req.state = ReqState.PENDING
