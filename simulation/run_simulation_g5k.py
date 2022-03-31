@@ -14,12 +14,13 @@ BASE_PATH_CONFIG = f"{WORK_DIR}/config"
 
 BASE_PATH_SYSTEM = [
     f"{BASE_PATH_CONFIG}/systems/infra8TB",
-    #    f"{BASE_PATH_CONFIG}/systems/infra16TB",
-    #    f"{BASE_PATH_CONFIG}/systems/infra64TB",
+    f"{BASE_PATH_CONFIG}/systems/infra16TB",
+    f"{BASE_PATH_CONFIG}/systems/infra64TB",
 ]
 
 # CONFIG_OPTIONS = ["split_100T", "split_100G", "split_100T_retry", "split_100G_retry"]
-CONFIG_OPTIONS = ["split_100T"]
+# CONFIG_OPTIONS = ["split_100T", "split_100T_retry"]
+CONFIG_OPTIONS = ["split_100G", "split_100G_retry"]
 CONFIG_FILES = [
     f"{BASE_PATH_CONFIG}/{opt}/{algo}"
     for algo, opt in itertools.product(
@@ -35,9 +36,9 @@ CONFIG_FILES = [
 
 # I was too lazy to add a damn loop, and copy paste is so fast in vim...
 SYSTEM_FILES = [f"{base_path}/multi_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
-# SYSTEM_FILES += [f"{base_path}/single_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
-# SYSTEM_FILES += [f"{base_path}/multi_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
-# SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
+SYSTEM_FILES += [f"{base_path}/single_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
+SYSTEM_FILES += [f"{base_path}/multi_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
+SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
 
 BASE_PATH_DATA = "/home/jmonniot/StorAlloc/data"
 JOB_FILES = [
@@ -46,9 +47,9 @@ JOB_FILES = [
 
 
 PERMUTATIONS = list(itertools.product(CONFIG_FILES, SYSTEM_FILES, JOB_FILES))
-MAX_TASKS_PER_NODE = 4
-MAX_NODES = 8
-CLUSTER = "parasilo"
+MAX_TASKS_PER_NODE = 3
+MAX_NODES = 32
+CLUSTER = "paravance"
 
 
 def results_dir_name():
@@ -70,12 +71,12 @@ def prepare_params():
 
     results_dir = results_dir_name()
     print(f"There will be {len(PERMUTATIONS)} simulations to run on {CLUSTER}")
-    nb_nodes = min(int(len(PERMUTATIONS) / MAX_TASKS_PER_NODE), MAX_NODES)
+    nb_nodes = max(int(len(PERMUTATIONS) / MAX_TASKS_PER_NODE), MAX_NODES)
     nb_tasks_per_node = int(len(PERMUTATIONS) / nb_nodes)
     print(f"They will run on {nb_nodes} nodes ({nb_tasks_per_node} tasks per node)")
 
     params = []
-    for idx, param_set in enumerate(split_permutations(PERMUTATIONS, nb_tasks_per_node)):
+    for idx, param_set in enumerate(split_permutations(PERMUTATIONS, nb_nodes)):
         params.append(list())
         for param in param_set:
             param = list(param)
@@ -99,8 +100,8 @@ def run_batch(node_number: int, params: list, results_dir: str):
     conf = (
         en.G5kConf.from_settings(
             job_name="storalloc_sim",
-            walltime="01:00:00",
-            job_type=["allow_classic_ssh"],
+            walltime="02:00:00",
+            # job_type=["allow_classic_ssh"],
             # key=str(Path.home() / ".ssh" / "id_rsa_grid5000.pub"),
         )
         .add_network_conf(prod_network)
@@ -144,12 +145,15 @@ def run_batch(node_number: int, params: list, results_dir: str):
             virtualenv="storalloc_venv",
         )
         play.shell(
-            command="echo '{{ storalloc_params  }}' >> /home/jmonniot/StorAlloc/results/{{ ansible_hostname }}_params.txt"
+            command="echo '{{ storalloc_params  }}' "
+            + ">> /home/jmonniot/StorAlloc/results/{{ ansible_hostname }}_params.txt"
         )
         play.file(path=results_dir, state="directory")
         play.shell(
             chdir="/tmp/storalloc",
-            command=". storalloc_venv/bin/activate && cd simulation && ./run_simulation.py {{ storalloc_params }}",
+            command=". storalloc_venv/bin/activate &&"
+            + " cd simulation &&"
+            + " ./run_simulation.py {{ storalloc_params }}",
         )
         results = play.results
 
@@ -157,7 +161,7 @@ def run_batch(node_number: int, params: list, results_dir: str):
         print(result)
         print("################################################################################")
 
-    provider.destroy()
+    return provider
 
 
 def run():
@@ -165,6 +169,7 @@ def run():
 
     params = prepare_params()
     results_dir = params[0][0][0]
+    provider = None
 
     for idx, batch in enumerate(params):
         print(f"Batch {idx} :: ")
@@ -175,7 +180,9 @@ def run():
             batch_params.append(str_params)
 
         print(f"Starting batch with {len(batch)} nodes")
-        run_batch(len(batch), batch_params, results_dir)
+        provider = run_batch(len(batch), batch_params, results_dir)
+
+    provider.destroy()
 
 
 if __name__ == "__main__":
