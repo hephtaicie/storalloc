@@ -71,13 +71,15 @@ def prepare_params():
 
     results_dir = results_dir_name()
     print(f"There will be {len(PERMUTATIONS)} simulations to run on {CLUSTER}")
-    nb_nodes = min(int(len(PERMUTATIONS) / MAX_TASKS_PER_NODE), MAX_NODES)
+    nb_nodes = int(len(PERMUTATIONS) / MAX_TASKS_PER_NODE)
+    if nb_nodes > MAX_NODES:
+        nb_nodes = MAX_NODES
     nb_tasks_per_node = int(len(PERMUTATIONS) / nb_nodes)
     print(f"They will run on {nb_nodes} nodes ({nb_tasks_per_node} tasks per node)")
 
     params = []
     for idx, param_set in enumerate(split_permutations(PERMUTATIONS, nb_nodes)):
-        params.append(list())
+        params.append([])
         for param in param_set:
             param = list(param)
             param.insert(0, results_dir)
