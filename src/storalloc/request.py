@@ -20,6 +20,7 @@ class ReqState(Enum):
     ALLOCATED = 5
     FAILED = 6
     ENDED = 7
+    ABORTED = 8  # For splits, when at least one can't be allocated, but others have already been
 
 
 class RequestSchema(Schema):
@@ -128,6 +129,9 @@ class StorageRequest:
             desc = f"Request [FAILED] on {self.node_id}, reason : {self.reason}"
         elif self.state is ReqState.ENDED:
             desc = f"Request [ENDED] at {self.end_time} (was on {self.server_id}:{self.node_id}:{self.disk_id})"
+        elif self.state is ReqState.ABORTED:
+            desc = f"Request [ABORTED] at {self.end_time} (was on {self.server_id}:{self.node_id}:{self.disk_id})"
+            desc += f"\nIt was split ({self.divided})" if self.divided > 1 else "\nIt wasn't split"
         else:
             desc = "[ERROR] Somehow the current state of this request is unknown"
 

@@ -88,9 +88,9 @@ class Simulation:
         ## Everything related to simulation statistics ##
         # Number of requests that have been split (but not necessarily
         # successfully allocated)
-        self.split_job_ids = set()
+        self.split_job_ids = {}
         # Number of requests that have been split and succesfully allocated
-        self.allocated_split_job_ids = set()
+        self.allocated_split_job_ids = {}
         self.stats = {
             "concurrent_allocations": 0,
             "max_ca": 0,  # max concurrent allocations at some point
@@ -157,6 +157,23 @@ class Simulation:
         }
 
         return transports
+
+    @classmethod
+    def inc_split_requests(cls, request: StorageRequest, split_store: dict):
+        """Split request accounting (for not yet allocated requests or for
+        allocated requests, depending on the split_store)"""
+
+        # Extract split number (which can be 0, in which case we don't do
+        # anything)
+        full_job_id = request.job_id
+        last_dash = full_job_id.rfind("-")
+        job_id = full_job_id[:last_dash]
+
+        if full_job_id[last_dash:] != "-0":
+            if job_id not in split_store:
+                split_store[job_id] = [2, request.divided]  # current request + "-0" one
+            else:
+                split_store[job_id][0] += 1
 
     def update_disk(self, server_id, node_id, disk_id, allocation):
         """Update used capacity for disk"""
@@ -278,6 +295,71 @@ class Simulation:
                 + f"{server_id}:{node_id}:{disk_id}"
             )
 
+    def ensure_split_allocation(self, request: StorageRequest):
+        """Check that at most 10 minutes after the first request of a split set
+        is allocated, all of them are allocated as well"""
+
+        raise NotImplementedError("DO not use this funciton yet")
+
+        # If request is ot split, ignore it
+        if request.divided == 1:
+            return True
+
+        # Extract split number (which can be 0, in which case we don't do
+        # anything)
+        full_job_id = request.job_id
+        last_dash = full_job_id.rfind("-")
+        job_id = full_job_id[:last_dash]
+
+        # Also ignore a request if it's not the first part of a split
+        # (we need to run this procedure only one per split request)
+        if full_job_id[last_dash:] == "-0":
+            return True
+
+        # TODO WIP
+        return True
+
+    # WIP
+    def allocated_split(self, request: StorageRequest):
+        """Simulate allocation for split request"""
+
+        self.log.debug(
+            f"[SIM] Registering {request.job_id} ({request.capacity} GB on "
+            + f"{request.server_id}:{request.node_id}:{request.disk_id})"
+        )
+
+        ### Stats on request before we know if allocation will be successful ###
+        self.log.debug(f"[SIM] Duration is {request.duration} / start_time is {request.start_time}")
+        # Register any delay in allocation compared to original need from client.
+        if request.start_time > request.original_start_time:
+            self.stats["total_waiting_time_minutes"] += (
+                request.start_time - request.original_start_time
+            ).total_seconds() * 60
+            self.stats["delayed_requests"] += 1
+
+        Simulation.inc_split_requests(request, self.split_job_ids)
+
+        # Wait for the actual allocation time of request
+        storage = yield simpy.events.Timeout(
+            self.env, delay=int(request.start_time.timestamp()), value=request.capacity
+        )
+
+        # Set up first event as the first allocation time on any disk:
+        if self.stats["first_event_time"] == 0:
+            self.stats["first_event_time"] = self.env.now
+
+         ### ATTEMPT THE ACTUAL ALLOCATION, AND STOP RIGHT HERE IF IT FAILS
+        try:
+            self.update_disk(request.server_id, request.node_id, request.disk_id, storage)
+        except ValueError as exc:
+            self.log.error(
+                f"[SIM] {request.job_id} NOT allocated to disk at {self.env.now} : {exc}"
+            )
+            return
+        else:
+            self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
+
+
     def allocate(self, request: StorageRequest):
         """Simulate allocation"""
 
@@ -295,12 +377,6 @@ class Simulation:
             ).total_seconds() * 60
             self.stats["delayed_requests"] += 1
 
-        # Split request accounting (we only consider how many requests have been split,
-        # not how many sub-requests are created)
-        last_dash = request.job_id.rfind("-")
-        job_id = request.job_id[:last_dash]
-        if request.job_id[last_dash:] != "-0" and job_id not in self.split_job_ids:
-            self.split_job_ids.add(job_id)
 
         # Wait for the actual allocation time of request
         storage = yield simpy.events.Timeout(
@@ -322,9 +398,12 @@ class Simulation:
         else:
             self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
 
+        # Ensure all sub requests were correctly allocated before deallocating
+        # if not self.ensure_split_allocation(request.job_id):
+        #   return
+
         # Keep track of split requests (in allocated state)
-        if request.job_id[last_dash:] != "-0" and job_id not in self.allocated_split_job_ids:
-            self.allocated_split_job_ids.add(job_id)
+        Simulation.inc_split_requests(request, self.allocated_split_job_ids)
         # Keep track of delayed requests (in allocated state)
         if request.start_time > request.original_start_time:
             self.stats["allocated_delayed_requests"] += 1
@@ -369,12 +448,17 @@ class Simulation:
             self.env.process(self.record_failure(request))
         elif request.state is ReqState.ALLOCATED:
             self.log.debug("New request is in ALLOCATED state")
-            self.env.process(self.allocate(request))
+            if request.divided > 1:
+                self.env.process(self.allocate_split(request))
+            else:
+                self.env.process(self.allocate(request))
         elif request.state is ReqState.FAILED:
             self.log.debug("New request is in FAILED state")
             self.env.process(self.record_failure(request))
         elif request.state is ReqState.ENDED:
             self.log.debug("New request is in ENDED state")
+        elif request.state is ReqState.ABORTED:
+            self.log.debug("New request is in ABORTED state")
         else:
             self.log.warning("Request is in an unknown state")
 
@@ -440,6 +524,22 @@ class Simulation:
 
         print(f"## Number of events collected for simulation: {self.stats['requests_nb']}")
 
+    def compute_split_abort(self):
+        """Compute the number of split requests which should have been aborted
+        because not all sub-requests could be allocated
+        """
+
+        abort_count = 0
+
+        for job_id, sub_req_count in self.split_job_ids.items():
+            if (
+                job_id not in self.allocated_split_job_ids
+                or self.allocated_split_job_ids[job_id] != sub_req_count
+            ):
+                abort_count += 1
+
+        return abort_count
+
     def simulation(self):
         """Run the simulation"""
 
@@ -478,11 +578,26 @@ class Simulation:
             )
 
         # Output data for yml statistics file.
+
+        total_sub_request_count = sum([value[0] for value in self.split_job_ids.values()])
+        total_alloc_sub_request_count = sum(
+            [value[0] for value in self.allocated_split_job_ids.values()]
+        )
+
+        print(self.split_job_ids)
+        print("####################################################")
+        print("####################################################")
+        print("####################################################")
+        print(self.allocated_split_job_ids)
+
         sim_data = {
             "max_concurrent_allocations": self.stats["max_ca"],
             "requests_count": self.stats["requests_nb"],
             "split_requests_count": len(self.split_job_ids),
             "alloc_split_requests_count": len(self.allocated_split_job_ids),
+            "abort_split_requests_count": self.compute_split_abort(),
+            "split_sub_requests_count": total_sub_request_count,
+            "alloc_split_sub_requests_count": total_alloc_sub_request_count,
             "split_threshold_gb": self.conf["block_size_gb"],
             "registrations_count": self.stats["registrations_nb"],
             "scheduler_fallbacks_count": self.stats["scheduler_fallbacks"],

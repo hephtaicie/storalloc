@@ -82,7 +82,7 @@ class AllocationQueue(Process):
             info["ttl"] -= 1
             if info["ttl"] <= 0 and info["due_parts"] > 0:
                 for request in info["requests"]:
-                    request.state = ReqState.ENDED
+                    request.state = ReqState.ABORTED
                     request.reason = "TTL exceeded before receiving all parts of splitted requests"
                     self.transport.send_multipart(
                         Message(MsgCat.REQUEST, self.schema.dump(request))

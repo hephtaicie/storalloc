@@ -79,6 +79,7 @@ class Router:
             ReqState.ALLOCATED: 0,
             ReqState.FAILED: 0,
             ReqState.ENDED: 0,
+            ReqState.ABORTED: 0,
             "sent_to_scheduler": 0,
             "recv_from_scheduler": 0,
             "sent_to_qm": 0,
@@ -287,7 +288,8 @@ class Router:
 
             # Does the request need to be divided into blocks ?
             requests = self.divide_allocation(req)
-            if len(requests) > 1:
+            request_number = len(requests)
+            if request_number > 1:
                 self.log.info(f"Request from client {req.client_id} has been splitted")
 
             for sp_idx, req in enumerate(requests):
@@ -295,6 +297,7 @@ class Router:
                 req.job_id = f"{self.uid}-{self.stats['req_count']}-{sp_idx}"
                 req.client_id = client_id
                 req.state = ReqState.PENDING
+                req.divided = request_number
                 self.log.info(req)
 
                 # To scheduler for processing
@@ -376,7 +379,6 @@ class Router:
         request = self.schema.load(message.content)
 
         if request.start_time != request.original_start_time:
-            print(f"Delayed requests spotted : {request}")
             self.stats["delayed_requests"] += 1
             delay = (request.start_time - request.original_start_time).total_seconds() / 60
             self.stats["total_delayed_minutes"] += delay
@@ -431,6 +433,13 @@ class Router:
             # Notify client (if still connected ?) that storage space has been reclaimed
             self.transports["client"].send_multipart(message, request.client_id)
             self.log.debug(f"All components notified of deallocation of request {request.job_id}")
+        elif request.state == ReqState.ABORTED:
+            self.log.error(f"Request {request.job_id} ABORTED by queue manager")
+            self.transports["client"].send_multipart(message, request.client_id)
+            if not self.simulation:
+                self.transports["scheduler"].send_multipart(message)
+
+            self.stats[request.state] += 1
         else:
             self.log.error(
                 f"Request transmitted by queue manager has state {request.state},"
