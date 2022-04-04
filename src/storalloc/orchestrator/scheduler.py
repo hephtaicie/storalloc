@@ -15,7 +15,7 @@ from storalloc.utils.message import Message, MsgCat
 from storalloc.request import RequestSchema, ReqState, StorageRequest
 
 
-# pylint: disable=logging-not-lazy
+# pylint: disable=logging-not-lazy,logging-fstring-interpolation
 
 
 class Scheduler(Process):
@@ -41,17 +41,88 @@ class Scheduler(Process):
         self.allow_retry = allow_retry
         self.resource_catalog = resource_catalog
         self.schema = RequestSchema()
+        self.ongoing_splits = {}
         self.transport = None  # waiting for context init to run when process is started
         self.log = None  # same
         self.verbose = verbose
         self.remote_logging = remote_logging
 
-    def process_allocation_request(self, request: StorageRequest):
+    def accumulate_request(self, request: StorageRequest):
+        """
+        If a request is split, register it in a buffer, and treat it when all parts are there.
+        Otherwise, transfer to process_allocation_request immediately
+        """
+
+        if request.divided == 1:
+            print(f"Request {request.job_id} is not split")
+            alloc_result = self.strategy.compute(self.resource_catalog, request)
+            self.process_allocation_request(request, *alloc_result)
+            return
+
+        full_job_id = request.job_id
+        last_dash = full_job_id.rfind("-")
+        short_job_id = full_job_id[:last_dash]
+
+        # Add entry
+        if short_job_id not in self.ongoing_splits:
+            self.ongoing_splits[short_job_id] = {full_job_id: [request]}
+            print(f"New splitted request {short_job_id} ({request.divided})")
+        # Update entry
+        elif (
+            short_job_id in self.ongoing_splits
+            and (len(self.ongoing_splits[short_job_id]) + 1) < request.divided
+        ):
+            self.ongoing_splits[short_job_id][full_job_id] = [request]
+        # Flush entry
+        elif (
+            short_job_id in self.ongoing_splits
+            and (len(self.ongoing_splits[short_job_id]) + 1) == request.divided
+        ):
+
+            self.ongoing_splits[short_job_id][full_job_id] = [request]
+
+            print(
+                f"Flushing entry {short_job_id} (recv {len(self.ongoing_splits[short_job_id])} / {request.divided})"
+            )
+            all_allocated = True
+
+            # Try to allocate every request
+            for req_id, value in self.ongoing_splits[short_job_id].items():
+                alloc_res = self.strategy.compute(self.resource_catalog, value[0])
+                if not alloc_res[0]:
+                    self.log.error(
+                        f"Unable to fulfill sub-request {req_id} / {value[0].capacity} GB"
+                    )
+                    all_allocated = False
+                    break
+                # Store scheduler results
+                value.append(alloc_res)
+
+            if not all_allocated:
+                for req_id, value in self.ongoing_splits[short_job_id].items():
+                    self.log.error(f"Unable to fulfill request {short_job_id}")
+                    value[0].state = ReqState.REFUSED
+                    value[0].reason = (
+                        "Split request with at least one failure in allocating sub-requests. "
+                        + "Delaying request not implemented for split requets"
+                    )
+                    # Send back the refused request to the orchestrator
+                    self.transport.send_multipart(
+                        Message(MsgCat.REQUEST, self.schema.dump(value[0]))
+                    )
+                    return
+
+            # Every subrequest could be allocated:
+            for req_id, value in self.ongoing_splits[short_job_id].items():
+                print(
+                    f"For entry, {short_job_id}, process alloc of {req_id}, with param {value[1]}"
+                )
+                self.process_allocation_request(value[0], *value[1])
+
+    def process_allocation_request(self, request, server_id, target_node, target_disk):
         """Run scheduling algo and attempt to find an optimal allocation for a given request"""
 
         self.log.debug(f"Processing PENDING allocation request : {request}")
-
-        server_id, target_node, target_disk = self.strategy.compute(self.resource_catalog, request)
 
         if server_id:
             request.node_id = target_node
@@ -59,7 +130,7 @@ class Scheduler(Process):
             request.server_id = server_id
             request.state = ReqState.GRANTED
             self.log.debug(
-                f"Request {request.job_id} [GRANTED] on disk {server_id}:{target_node}:{target_disk}"
+                f"Request {request.job_id} [GRANTED] on {server_id}:{target_node}:{target_disk}"
             )
             self.resource_catalog.add_allocation(server_id, target_node, target_disk, request)
             # Send back the allocated request to the orchestrator
@@ -73,7 +144,8 @@ class Scheduler(Process):
             ) and (request.start_time + datetime.timedelta(minutes=5) < request.end_time):
                 request.start_time += datetime.timedelta(minutes=5)
                 self.log.warning(f"Currently no resources for {request.job_id} : delaying by 5min")
-                self.process_allocation_request(request)
+                alloc_result = self.strategy.compute(self.resource_catalog, request)
+                self.process_allocation_request(request, *alloc_result)
             else:
                 self.log.error(
                     f"Unable to fulfill request {request.job_id} : "
@@ -83,7 +155,7 @@ class Scheduler(Process):
                 request.reason = (
                     "Could not fit request onto current resources, even after delaying start"
                 )
-                # Send back the allocated request to the orchestrator
+                # Send back the refused request to the orchestrator
                 self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
         else:
             self.log.error(
@@ -94,7 +166,7 @@ class Scheduler(Process):
             request.reason = (
                 "Could not fit request onto current resources/ Delaying start unallowed."
             )
-            # Send back the allocated request to the orchestrator
+            # Send back the refused request to the orchestrator
             self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
 
     def process_deallocation_request(self, request):
@@ -116,6 +188,7 @@ class Scheduler(Process):
         context = zmq.Context()
         socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
         socket.setsockopt(zmq.IDENTITY, self.uid.encode("utf-8"))  # pylint: disable=no-member
+        socket.set_hwm(50000)
 
         socket.connect("ipc://scheduler.ipc")
         self.transport = Transport(socket)
@@ -135,7 +208,7 @@ class Scheduler(Process):
             if message.category is MsgCat.REQUEST:
                 request = self.schema.load(message.content)
                 if request.state is ReqState.PENDING:
-                    self.process_allocation_request(request)
+                    self.accumulate_request(request)
                 elif request.state is ReqState.ENDED:
                     self.process_deallocation_request(request)
                 else:

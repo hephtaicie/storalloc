@@ -105,6 +105,7 @@ class AllocationQueue(Process):
         socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
         socket.setsockopt(zmq.IDENTITY, self.uid.encode("utf-8"))  # pylint: disable=no-member
         socket.connect("ipc://queue_manager.ipc")
+        socket.set_hwm(50000)
         self.transport = Transport(socket)
 
         self.log = get_storalloc_logger(self.verbose, True, self.uid)
