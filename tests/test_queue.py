@@ -298,14 +298,14 @@ def test_check_split(zmqctx, schema):
     _, message = router_t.recv_multipart()
     assert message.category == MsgCat.REQUEST
     req = schema.load(message.content)
-    assert req.state == ReqState.ENDED
+    assert req.state == ReqState.ABORTED
     assert req.job_id == "REQ1"
     # Second request ended
     assert router_t.poll(timeout=1000)
     _, message = router_t.recv_multipart()
     assert message.category == MsgCat.REQUEST
     req = schema.load(message.content)
-    assert req.state == ReqState.ENDED
+    assert req.state == ReqState.ABORTED
     assert req.job_id == "REQ2"
 
     # No more messages from pruning method

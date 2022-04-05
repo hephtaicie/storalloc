@@ -4,6 +4,7 @@
 
 from multiprocessing import Process
 import datetime
+import copy
 
 import zmq
 
@@ -54,7 +55,6 @@ class Scheduler(Process):
         """
 
         if request.divided == 1:
-            print(f"Request {request.job_id} is not split")
             alloc_result = self.strategy.compute(self.resource_catalog, request)
             self.process_allocation_request(request, *alloc_result)
             return
@@ -66,7 +66,6 @@ class Scheduler(Process):
         # Add entry
         if short_job_id not in self.ongoing_splits:
             self.ongoing_splits[short_job_id] = {full_job_id: [request]}
-            print(f"New splitted request {short_job_id} ({request.divided})")
         # Update entry
         elif (
             short_job_id in self.ongoing_splits
@@ -81,14 +80,11 @@ class Scheduler(Process):
 
             self.ongoing_splits[short_job_id][full_job_id] = [request]
 
-            print(
-                f"Flushing entry {short_job_id} (recv {len(self.ongoing_splits[short_job_id])} / {request.divided})"
-            )
-            all_allocated = True
-
             # Try to allocate every request
+            all_allocated = True
+            temp_resource_catalog = copy.deepcopy(self.resource_catalog)
             for req_id, value in self.ongoing_splits[short_job_id].items():
-                alloc_res = self.strategy.compute(self.resource_catalog, value[0])
+                alloc_res = self.strategy.compute(temp_resource_catalog, value[0])
                 if not alloc_res[0]:
                     self.log.error(
                         f"Unable to fulfill sub-request {req_id} / {value[0].capacity} GB"
@@ -97,10 +93,11 @@ class Scheduler(Process):
                     break
                 # Store scheduler results
                 value.append(alloc_res)
+                temp_resource_catalog.add_allocation(*alloc_res, request)
 
             if not all_allocated:
+
                 for req_id, value in self.ongoing_splits[short_job_id].items():
-                    self.log.error(f"Unable to fulfill request {short_job_id}")
                     value[0].state = ReqState.REFUSED
                     value[0].reason = (
                         "Split request with at least one failure in allocating sub-requests. "
@@ -110,13 +107,11 @@ class Scheduler(Process):
                     self.transport.send_multipart(
                         Message(MsgCat.REQUEST, self.schema.dump(value[0]))
                     )
-                    return
+
+                return
 
             # Every subrequest could be allocated:
             for req_id, value in self.ongoing_splits[short_job_id].items():
-                print(
-                    f"For entry, {short_job_id}, process alloc of {req_id}, with param {value[1]}"
-                )
                 self.process_allocation_request(value[0], *value[1])
 
     def process_allocation_request(self, request, server_id, target_node, target_disk):
