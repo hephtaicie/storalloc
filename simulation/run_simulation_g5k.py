@@ -42,7 +42,7 @@ SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BAS
 
 BASE_PATH_DATA = "/home/jmonniot/StorAlloc/data"
 JOB_FILES = [
-    f"{BASE_PATH_DATA}/IOJobsOct.yml",
+    f"{BASE_PATH_DATA}/IOJobs.yml",
 ]
 
 
@@ -103,7 +103,7 @@ def run_batch(node_number: int, params: list, results_dir: str):
         en.G5kConf.from_settings(
             job_name="storalloc_sim",
             walltime="02:00:00",
-            # job_type=["allow_classic_ssh"],
+            job_type=["allow_classic_ssh"],
             # key=str(Path.home() / ".ssh" / "id_rsa_grid5000.pub"),
         )
         .add_network_conf(prod_network)
