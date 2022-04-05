@@ -434,10 +434,14 @@ class Simulation:
                 ### AT REQUEST END TIME
 
                 if self.split_blacklisted(request):
-                    self.log.error(f"[SIM] Subrequest {request.job_id} blacklisted, skipping DEalloc")
+                    self.log.error(
+                        f"[SIM] Subrequest {request.job_id} blacklisted, skipping DEalloc"
+                    )
                 else:
                     try:
-                        self.update_disk(request.server_id, request.node_id, request.disk_id, -storage)
+                        self.update_disk(
+                            request.server_id, request.node_id, request.disk_id, -storage
+                        )
                     except ValueError as exc:
                         self.log.error(f"Failure at deallocation at {self.env.now} : {exc}")
                     else:
