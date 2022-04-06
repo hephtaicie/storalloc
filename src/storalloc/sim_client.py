@@ -121,7 +121,7 @@ class SimulationClient:
                     self.log.info(f"# - {processed} processed requests (at this point)")
                     self.log.info(f"# - {errors} errors received from orchestrator")
                     self.log.info(
-                        f"# - {discarded_no_write} requests not sent because writtenBytes == 0 " \
+                        f"# - {discarded_no_write} requests not sent because writtenBytes == 0 "
                         " & readBytes == 0"
                     )
                     continue
