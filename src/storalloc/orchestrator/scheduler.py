@@ -82,9 +82,8 @@ class Scheduler(Process):
 
             # Try to allocate every request
             all_allocated = True
-            temp_resource_catalog = copy.deepcopy(self.resource_catalog)
             for req_id, value in self.ongoing_splits[short_job_id].items():
-                alloc_res = self.strategy.compute(temp_resource_catalog, value[0])
+                alloc_res = self.strategy.compute(self.resource_catalog, value[0])
                 if not alloc_res[0]:
                     self.log.error(
                         f"Unable to fulfill sub-request {req_id} / {value[0].capacity} GB"
@@ -93,11 +92,16 @@ class Scheduler(Process):
                     break
                 # Store scheduler results
                 value.append(alloc_res)
-                temp_resource_catalog.add_allocation(*alloc_res, request)
+                self.resource_catalog.add_allocation(*alloc_res, request)
 
             if all_allocated is False:
 
                 for req_id, value in self.ongoing_splits[short_job_id].items():
+
+                    # Remove allocation from resource catalog
+                    if len(value) > 1:
+                        self.resource_catalog.del_allocation(*value[1], value[0])
+
                     value[0].state = ReqState.REFUSED
                     value[0].reason = (
                         "Split request with at least one failure in allocating sub-requests. "

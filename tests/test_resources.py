@@ -236,6 +236,38 @@ def test_add_allocation(resource_catalog):
     assert rc.get_node(server_id, 0).disks[1].allocations == [req1, req3, req2]
 
 
+def test_del_allocation(resource_catalog):
+    """Adding allocation on a ResourceCatalog node/disk"""
+
+    server_id, rc = resource_catalog
+
+    # Random storage request
+    start_time = dt.datetime.now()
+    req1 = rq.StorageRequest(capacity=20, duration=dt.timedelta(hours=3), start_time=start_time)
+    req1.job_id = "R1"
+    req1.state = rq.ReqState.ALLOCATED
+    rc.add_allocation(server_id, 0, 1, req1)
+    assert rc.get_node(server_id, 0).disks[1].allocations == [req1]
+
+    # Check allocation re-ordering (the sooner the allocation ends,
+    # the further back at the end of the list it is):
+    req2 = rq.StorageRequest(capacity=20, duration=dt.timedelta(hours=5), start_time=start_time)
+    req2.state = rq.ReqState.ALLOCATED
+    req2.job_id = "R2"
+    rc.add_allocation(server_id, 0, 1, req2)
+    assert rc.get_node(server_id, 0).disks[1].allocations == [req1, req2]
+
+    req3 = rq.StorageRequest(capacity=20, duration=dt.timedelta(hours=4), start_time=start_time)
+    req3.state = rq.ReqState.ALLOCATED
+    req3.job_id = "R3"
+    rc.add_allocation(server_id, 0, 1, req3)
+    assert rc.get_node(server_id, 0).disks[1].allocations == [req1, req3, req2]
+
+    del_result = rc.del_allocation(server_id, 0, 1, req2)
+    assert del_result is True
+    assert rc.get_node(server_id, 0).disks[1].allocations == [req1, req3]
+
+
 def test_pretty_print(resource_catalog, capsys):
     """Test ResourceCatalog pretty print function"""
 
