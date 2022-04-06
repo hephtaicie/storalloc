@@ -1,0 +1,81 @@
+alloc_delayed_requests_count: 0
+alloc_split_requests_count: 1030
+delayed_requests_count: 0
+failed_split_requests_count: 0
+max_concurrent_allocations: 292
+nodes:
+- disks:
+  - capacity: 8000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 173
+    max_cap_utilisation: 46.15
+    mean_capacity_utilisation: 0.638
+    mean_nb_alloc: 1.069
+  - capacity: 8000
+    id: 1
+    last_alloc_time: 1609446938
+    max_alloc: 62
+    max_cap_utilisation: 76.255
+    mean_capacity_utilisation: 0.658
+    mean_nb_alloc: 0.753
+  - capacity: 8000
+    id: 2
+    last_alloc_time: 1609446938
+    max_alloc: 158
+    max_cap_utilisation: 46.25
+    mean_capacity_utilisation: 1.255
+    mean_nb_alloc: 0.722
+  - capacity: 8000
+    id: 3
+    last_alloc_time: 1609446938
+    max_alloc: 57
+    max_cap_utilisation: 45.0
+    mean_capacity_utilisation: 0.636
+    mean_nb_alloc: 0.789
+  - capacity: 8000
+    id: 4
+    last_alloc_time: 1609446938
+    max_alloc: 61
+    max_cap_utilisation: 76.25
+    mean_capacity_utilisation: 0.638
+    mean_nb_alloc: 0.739
+  - capacity: 8000
+    id: 5
+    last_alloc_time: 1609446938
+    max_alloc: 95
+    max_cap_utilisation: 46.057
+    mean_capacity_utilisation: 0.644
+    mean_nb_alloc: 0.746
+  - capacity: 8000
+    id: 6
+    last_alloc_time: 1609446938
+    max_alloc: 41
+    max_cap_utilisation: 45.0
+    mean_capacity_utilisation: 0.628
+    mean_nb_alloc: 0.735
+  - capacity: 8000
+    id: 7
+    last_alloc_time: 1609446938
+    max_alloc: 167
+    max_cap_utilisation: 77.5
+    mean_capacity_utilisation: 0.607
+    mean_nb_alloc: 0.771
+  id: S-2f09ca:0
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 6.323
+refused_delayed_requests_count: 0
+refused_split_requests_count: 0
+registrations_count: 1
+requests_count: 39052
+retries_allowed: 'no'
+scheduler_fallbacks_count: 0
+sim_duration: 31515560
+sim_first_ts: 1577931378
+sim_last_ts: 1609446938
+simulation_fallbacks_count: 0
+split_requests_count: 1030
+split_threshold_gb: 100
+tt_allocated_gb: 1607838.9547907023
+tt_deallocated_gb: 1607838.9547907026
+tt_delay_time_minutes: 0

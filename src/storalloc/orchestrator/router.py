@@ -66,6 +66,7 @@ class Router:
         self.conf = config_from_yaml(config_path)
         self.log = get_storalloc_logger(verbose, logger_name=self.uid)
         self.simulation = simulation
+        self.eos = None
         # Init transports (as soon as possible after logger, as it will
         # possibly append a handler on it)
         self.transports = self.zmq_init()
@@ -318,7 +319,7 @@ class Router:
             self.log.debug("Processing EoS from client {client_id}")
             self.stats[message.category] += 1
             # Propagate the end of simulation flag to the simulation socket
-            self.transports["simulation"].send_multipart(message, "sim")
+            self.eos = message
         else:
             self.log.warning("Undesired message ({message.category}) received from a client")
 
@@ -510,6 +511,14 @@ class Router:
                     self.log.info(f"# {self.stats['events']} events processed so far")
                     self.print_stats()
                     event_nb = 0
+
+                # Might very well be too slow
+                if (
+                    self.eos is not None
+                    and self.stats["sent_to_scheduler"] == self.stats["recv_from_scheduler"]
+                ):
+                    self.transports["simulation"].send_multipart(self.eos, "sim")
+                    self.eos = None
 
             except KeyboardInterrupt:
                 self.log.info("[!] Router stopped, not forwarding anymore messaged")

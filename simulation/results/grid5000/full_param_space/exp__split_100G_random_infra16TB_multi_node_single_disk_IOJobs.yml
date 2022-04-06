@@ -1,0 +1,109 @@
+alloc_delayed_requests_count: 0
+alloc_split_requests_count: 997
+delayed_requests_count: 0
+failed_split_requests_count: 33
+max_concurrent_allocations: 239
+nodes:
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 30
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 4.509
+    mean_nb_alloc: 0.764
+  id: S-97a038:0
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.764
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 38
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 3.445
+    mean_nb_alloc: 0.789
+  id: S-97a038:1
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.789
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 35
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 2.673
+    mean_nb_alloc: 0.769
+  id: S-97a038:2
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.769
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 32
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 3.302
+    mean_nb_alloc: 0.791
+  id: S-97a038:3
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.791
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 30
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 2.151
+    mean_nb_alloc: 0.719
+  id: S-97a038:4
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.719
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609441000
+    max_alloc: 35
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 2.392
+    mean_nb_alloc: 0.749
+  id: S-97a038:5
+  last_alloc_ts: 1609441000
+  mean_nb_alloc: 0.749
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 40
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 2.694
+    mean_nb_alloc: 0.775
+  id: S-97a038:6
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.775
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 36
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 3.332
+    mean_nb_alloc: 0.773
+  id: S-97a038:7
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.773
+refused_delayed_requests_count: 0
+refused_split_requests_count: 0
+registrations_count: 1
+requests_count: 39052
+retries_allowed: 'no'
+scheduler_fallbacks_count: 0
+sim_duration: 31515560
+sim_first_ts: 1577931378
+sim_last_ts: 1609446938
+simulation_fallbacks_count: 33
+split_requests_count: 1030
+split_threshold_gb: 100
+tt_allocated_gb: 1492064.3698414292
+tt_deallocated_gb: 1492064.3698414292
+tt_delay_time_minutes: 0

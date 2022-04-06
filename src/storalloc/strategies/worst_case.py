@@ -34,7 +34,7 @@ class WorstCase(StrategyInterface):
             candidates.extend([(server_id, node, disk) for disk in filtered_disks])
 
         if not candidates:
-            self.log.error(
+            self.log.debug(
                 f"Not enough space on any of the disks, cannot grant request {request.job_id}"
             )
             return ("", -1, -1)

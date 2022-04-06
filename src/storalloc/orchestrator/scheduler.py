@@ -95,7 +95,7 @@ class Scheduler(Process):
                 value.append(alloc_res)
                 temp_resource_catalog.add_allocation(*alloc_res, request)
 
-            if not all_allocated:
+            if all_allocated is False:
 
                 for req_id, value in self.ongoing_splits[short_job_id].items():
                     value[0].state = ReqState.REFUSED
@@ -104,15 +104,22 @@ class Scheduler(Process):
                         + "Delaying request not implemented for split requets"
                     )
                     # Send back the refused request to the orchestrator
+                    # Maybe we could send as batch... ?
                     self.transport.send_multipart(
                         Message(MsgCat.REQUEST, self.schema.dump(value[0]))
                     )
 
-                return
-
-            # Every subrequest could be allocated:
-            for req_id, value in self.ongoing_splits[short_job_id].items():
-                self.process_allocation_request(value[0], *value[1])
+                # Clean up and stop allocation here
+                del self.ongoing_splits[short_job_id]
+            else:
+                # Every subrequest could be allocated, do it
+                for _, value in self.ongoing_splits[short_job_id].items():
+                    self.process_allocation_request(value[0], *value[1])
+        else:
+            print("###########################################################")
+            print("############## SHOULD NEVER TRIGGER THIS ##################")
+            print("###########################################################")
+            raise ValueError("Triggered unknown state in accumulate_requests")
 
     def process_allocation_request(self, request, server_id, target_node, target_disk):
         """Run scheduling algo and attempt to find an optimal allocation for a given request"""
@@ -138,7 +145,7 @@ class Scheduler(Process):
                 hours=1
             ) and (request.start_time + datetime.timedelta(minutes=5) < request.end_time):
                 request.start_time += datetime.timedelta(minutes=5)
-                self.log.warning(f"Currently no resources for {request.job_id} : delaying by 5min")
+                self.log.debug(f"Currently no resources for {request.job_id} : delaying by 5min")
                 alloc_result = self.strategy.compute(self.resource_catalog, request)
                 self.process_allocation_request(request, *alloc_result)
             else:
