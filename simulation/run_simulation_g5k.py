@@ -18,9 +18,9 @@ BASE_PATH_SYSTEM = [
     f"{BASE_PATH_CONFIG}/systems/infra64TB",
 ]
 
-# CONFIG_OPTIONS = ["split_100T", "split_100G", "split_100T_retry", "split_100G_retry"]
+# CONFIG_OPTIONS = ["split_100T", "split_200G", "split_100T_retry", "split_200G_retry"]
 # CONFIG_OPTIONS = ["split_100T", "split_100T_retry"]
-CONFIG_OPTIONS = ["split_100G", "split_100G_retry"]
+CONFIG_OPTIONS = ["split_200G", "split_200G_retry"]
 CONFIG_FILES = [
     f"{BASE_PATH_CONFIG}/{opt}/{algo}"
     for algo, opt in itertools.product(
