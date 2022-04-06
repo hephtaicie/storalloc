@@ -216,7 +216,11 @@ class Simulation:
         short_job_id = full_job_id[:last_dash]
         self.split_request_blacklist.add(short_job_id)
 
-        self.stats["allocated_split_requests"] -= 1
+        if full_job_id[last_dash:] != "-0":
+            # At least the first part was validated, so stat was
+            # incorrectly incremented
+            self.stats["allocated_split_requests"] -= 1
+
         self.stats["failed_split_requests"] += 1
 
         # Deallocate every subrequest that was already processed
@@ -409,44 +413,39 @@ class Simulation:
         # should be allocated
         if self.split_blacklisted(request):
             self.log.error(f"[SIM] Subrequest {request.job_id} blacklisted, skipping alloc")
+            return
+
+        ### ATTEMPT THE ACTUAL ALLOCATION, AND STOP RIGHT HERE IF IT FAILS
+        try:
+            self.update_disk(request.server_id, request.node_id, request.disk_id, storage)
+        except ValueError as exc:
+            self.log.error(f"[SIM] {request.job_id} alloc failed at {self.env.now} : {exc}")
+            self.invalidate_split(request)
+            return
+
+        self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
+        self.validate_split(request)
+
+        # Keep track of delayed requests (in allocated state)
+        if request.start_time > request.original_start_time:
+            self.stats["allocated_delayed_requests"] += 1
+
+        # Wait for deallocation time and attempt deallocation (should never fail, but who knows...)
+        yield simpy.events.Timeout(self.env, delay=request.duration.seconds)
+
+        ### AT REQUEST END TIME
+
+        if self.split_blacklisted(request):
+            self.log.error(f"[SIM] Subreq {request.job_id} blacklisted, skipping DEalloc")
+            return
+
+        try:
+            self.update_disk(request.server_id, request.node_id, request.disk_id, -storage)
+        except ValueError as exc:
+            self.log.error(f"Failure at deallocation at {self.env.now} : {exc}")
         else:
-
-            ### ATTEMPT THE ACTUAL ALLOCATION, AND STOP RIGHT HERE IF IT FAILS
-            try:
-                self.update_disk(request.server_id, request.node_id, request.disk_id, storage)
-            except ValueError as exc:
-                self.log.error(
-                    f"[SIM] {request.job_id} not allocated to disk at {self.env.now} : {exc}"
-                )
-                self.invalidate_split(request)
-            else:
-
-                self.log.info(f"[SIM] {request.job_id} allocated to disk at {self.env.now}")
-                self.validate_split(request)
-
-                # Keep track of delayed requests (in allocated state)
-                if request.start_time > request.original_start_time:
-                    self.stats["allocated_delayed_requests"] += 1
-
-                # Wait for deallocation time and attempt deallocation (should never fail, but who knows...)
-                yield simpy.events.Timeout(self.env, delay=request.duration.seconds)
-
-                ### AT REQUEST END TIME
-
-                if self.split_blacklisted(request):
-                    self.log.error(
-                        f"[SIM] Subrequest {request.job_id} blacklisted, skipping DEalloc"
-                    )
-                else:
-                    try:
-                        self.update_disk(
-                            request.server_id, request.node_id, request.disk_id, -storage
-                        )
-                    except ValueError as exc:
-                        self.log.error(f"Failure at deallocation at {self.env.now} : {exc}")
-                    else:
-                        self.log.info(f"[SIM] {request.job_id} deallocated from disk")
-                        self.stats["last_event_time"] = self.env.now
+            self.log.info(f"[SIM] {request.job_id} deallocated from disk")
+            self.stats["last_event_time"] = self.env.now
 
     def record_refused_request(self, request: StorageRequest):
         """Record a failed request during simulation (at the correct time,
@@ -598,20 +597,20 @@ class Simulation:
         # Output data for yml statistics file.
         sim_data = {
             "max_concurrent_allocations": self.stats["max_ca"],
+            "registrations_count": self.stats["registrations_nb"],
             "requests_count": self.stats["requests_nb"],
+            "scheduler_fallbacks_count": self.stats["scheduler_fallbacks"],
+            "simulation_fallbacks_count": self.stats["simulation_fallbacks"],
+            "split_threshold_gb": self.conf["block_size_gb"],
             "split_requests_count": self.stats["split_requests"],
             "alloc_split_requests_count": self.stats["allocated_split_requests"],
             "failed_split_requests_count": self.stats["failed_split_requests"],
             "refused_split_requests_count": self.stats["refused_split_requests"],
-            "split_threshold_gb": self.conf["block_size_gb"],
-            "registrations_count": self.stats["registrations_nb"],
-            "scheduler_fallbacks_count": self.stats["scheduler_fallbacks"],
-            "simulation_fallbacks_count": self.stats["simulation_fallbacks"],
-            "tt_delay_time_minutes": self.stats["total_waiting_time_minutes"],
+            "retries_allowed": "yes" if self.conf["allow_retry"] else "no",
             "delayed_requests_count": self.stats["delayed_requests"],
+            "tt_delay_time_minutes": self.stats["total_waiting_time_minutes"],
             "alloc_delayed_requests_count": self.stats["allocated_delayed_requests"],
             "refused_delayed_requests_count": self.stats["refused_delayed_requests"],
-            "retries_allowed": "yes" if self.conf["allow_retry"] else "no",
             "tt_allocated_gb": self.stats["total_gb_alloc"],
             "tt_deallocated_gb": self.stats["total_gb_dealloc"],
             "sim_first_ts": self.stats["first_event_time"],
