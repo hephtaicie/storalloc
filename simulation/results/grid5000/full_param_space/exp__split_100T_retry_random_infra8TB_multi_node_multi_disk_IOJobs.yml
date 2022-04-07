@@ -7,75 +7,75 @@ nodes:
 - disks:
   - capacity: 1000
     id: 0
-    last_alloc_time: 1609379011
+    last_alloc_time: 1609443332
     max_alloc: 32
-    max_cap_utilisation: 97.014
-    mean_capacity_utilisation: 0.729
-    mean_nb_alloc: 0.326
+    max_cap_utilisation: 99.524
+    mean_capacity_utilisation: 3.202
+    mean_nb_alloc: 0.339
   - capacity: 1000
     id: 1
-    last_alloc_time: 1609443332
-    max_alloc: 30
-    max_cap_utilisation: 82.377
-    mean_capacity_utilisation: 5.307
-    mean_nb_alloc: 0.334
-  id: S-f0b510:0
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.66
-- disks:
-  - capacity: 1000
-    id: 0
     last_alloc_time: 1609446938
     max_alloc: 31
-    max_cap_utilisation: 99.524
-    mean_capacity_utilisation: 1.274
-    mean_nb_alloc: 0.324
-  - capacity: 1000
-    id: 1
-    last_alloc_time: 1609423790
-    max_alloc: 40
-    max_cap_utilisation: 99.524
-    mean_capacity_utilisation: 1.103
-    mean_nb_alloc: 0.33
-  id: S-f0b510:1
-  last_alloc_ts: 1609446938
-  mean_nb_alloc: 0.654
-- disks:
-  - capacity: 1000
-    id: 0
-    last_alloc_time: 1609443332
-    max_alloc: 30
-    max_cap_utilisation: 99.524
-    mean_capacity_utilisation: 1.388
-    mean_nb_alloc: 0.33
-  - capacity: 1000
-    id: 1
-    last_alloc_time: 1609423790
-    max_alloc: 35
-    max_cap_utilisation: 85.804
-    mean_capacity_utilisation: 4.245
-    mean_nb_alloc: 0.343
-  id: S-f0b510:2
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.673
-- disks:
-  - capacity: 1000
-    id: 0
-    last_alloc_time: 1609443332
-    max_alloc: 31
-    max_cap_utilisation: 97.014
-    mean_capacity_utilisation: 1.611
+    max_cap_utilisation: 95.506
+    mean_capacity_utilisation: 0.996
     mean_nb_alloc: 0.337
+  id: S-405deb:0
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.676
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609441000
+    max_alloc: 33
+    max_cap_utilisation: 97.014
+    mean_capacity_utilisation: 1.352
+    mean_nb_alloc: 0.328
   - capacity: 1000
     id: 1
-    last_alloc_time: 1609404044
-    max_alloc: 31
-    max_cap_utilisation: 83.665
-    mean_capacity_utilisation: 5.338
-    mean_nb_alloc: 0.353
-  id: S-f0b510:3
+    last_alloc_time: 1609443332
+    max_alloc: 32
+    max_cap_utilisation: 97.291
+    mean_capacity_utilisation: 1.093
+    mean_nb_alloc: 0.344
+  id: S-405deb:1
   last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.69
+  mean_nb_alloc: 0.672
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 32
+    max_cap_utilisation: 97.014
+    mean_capacity_utilisation: 1.416
+    mean_nb_alloc: 0.342
+  - capacity: 1000
+    id: 1
+    last_alloc_time: 1609441000
+    max_alloc: 33
+    max_cap_utilisation: 99.524
+    mean_capacity_utilisation: 1.495
+    mean_nb_alloc: 0.347
+  id: S-405deb:2
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.689
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 32
+    max_cap_utilisation: 93.127
+    mean_capacity_utilisation: 1.068
+    mean_nb_alloc: 0.325
+  - capacity: 1000
+    id: 1
+    last_alloc_time: 1609285030
+    max_alloc: 31
+    max_cap_utilisation: 85.635
+    mean_capacity_utilisation: 10.565
+    mean_nb_alloc: 0.312
+  id: S-405deb:3
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.636
 refused_delayed_requests_count: 0
 refused_split_requests_count: 0
 registrations_count: 1
@@ -85,9 +85,9 @@ scheduler_fallbacks_count: 0
 sim_duration: 31515560
 sim_first_ts: 1577931378
 sim_last_ts: 1609446938
-simulation_fallbacks_count: 494
+simulation_fallbacks_count: 505
 split_requests_count: 0
 split_threshold_gb: 100000
-tt_allocated_gb: 262608.73489483795
-tt_deallocated_gb: 262608.734894838
+tt_allocated_gb: 254573.36882329988
+tt_deallocated_gb: 254573.36882329988
 tt_delay_time_minutes: 0

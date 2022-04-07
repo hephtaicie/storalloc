@@ -7,91 +7,91 @@ nodes:
 - disks:
   - capacity: 2000
     id: 0
-    last_alloc_time: 1609443332
+    last_alloc_time: 1609423790
     max_alloc: 56
-    max_cap_utilisation: 91.274
-    mean_capacity_utilisation: 2.454
-    mean_nb_alloc: 0.426
-  id: S-a52bb5:0
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.426
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 2.547
+    mean_nb_alloc: 0.4
+  id: S-e7dc5a:0
+  last_alloc_ts: 1609423790
+  mean_nb_alloc: 0.4
 - disks:
   - capacity: 2000
     id: 0
     last_alloc_time: 1609443332
     max_alloc: 133
-    max_cap_utilisation: 98.963
-    mean_capacity_utilisation: 2.214
-    mean_nb_alloc: 0.475
-  id: S-a52bb5:1
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 3.33
+    mean_nb_alloc: 0.516
+  id: S-e7dc5a:1
   last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.475
+  mean_nb_alloc: 0.516
 - disks:
   - capacity: 2000
     id: 0
-    last_alloc_time: 1609443332
-    max_alloc: 108
-    max_cap_utilisation: 92.266
-    mean_capacity_utilisation: 10.231
-    mean_nb_alloc: 0.409
-  id: S-a52bb5:2
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.409
+    last_alloc_time: 1609441000
+    max_alloc: 41
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 2.561
+    mean_nb_alloc: 0.333
+  id: S-e7dc5a:2
+  last_alloc_ts: 1609441000
+  mean_nb_alloc: 0.333
 - disks:
   - capacity: 2000
     id: 0
     last_alloc_time: 1609441000
     max_alloc: 158
-    max_cap_utilisation: 87.646
-    mean_capacity_utilisation: 2.919
-    mean_nb_alloc: 0.364
-  id: S-a52bb5:3
+    max_cap_utilisation: 98.95
+    mean_capacity_utilisation: 1.758
+    mean_nb_alloc: 0.338
+  id: S-e7dc5a:3
   last_alloc_ts: 1609441000
-  mean_nb_alloc: 0.364
+  mean_nb_alloc: 0.338
 - disks:
   - capacity: 2000
     id: 0
     last_alloc_time: 1609446938
-    max_alloc: 26
-    max_cap_utilisation: 83.59
-    mean_capacity_utilisation: 1.325
-    mean_nb_alloc: 0.271
-  id: S-a52bb5:4
-  last_alloc_ts: 1609446938
-  mean_nb_alloc: 0.271
-- disks:
-  - capacity: 2000
-    id: 0
-    last_alloc_time: 1609441000
-    max_alloc: 35
-    max_cap_utilisation: 91.292
-    mean_capacity_utilisation: 2.467
-    mean_nb_alloc: 0.328
-  id: S-a52bb5:5
-  last_alloc_ts: 1609441000
-  mean_nb_alloc: 0.328
-- disks:
-  - capacity: 2000
-    id: 0
-    last_alloc_time: 1609423790
-    max_alloc: 42
+    max_alloc: 108
     max_cap_utilisation: 82.464
-    mean_capacity_utilisation: 2.048
-    mean_nb_alloc: 0.325
-  id: S-a52bb5:6
-  last_alloc_ts: 1609423790
-  mean_nb_alloc: 0.325
+    mean_capacity_utilisation: 1.468
+    mean_nb_alloc: 0.317
+  id: S-e7dc5a:4
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.317
 - disks:
   - capacity: 2000
     id: 0
     last_alloc_time: 1609441000
-    max_alloc: 35
-    max_cap_utilisation: 96.789
-    mean_capacity_utilisation: 10.166
-    mean_nb_alloc: 0.28
-  id: S-a52bb5:7
+    max_alloc: 34
+    max_cap_utilisation: 82.742
+    mean_capacity_utilisation: 1.647
+    mean_nb_alloc: 0.288
+  id: S-e7dc5a:5
   last_alloc_ts: 1609441000
-  mean_nb_alloc: 0.28
+  mean_nb_alloc: 0.288
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 34
+    max_cap_utilisation: 91.292
+    mean_capacity_utilisation: 2.088
+    mean_nb_alloc: 0.317
+  id: S-e7dc5a:6
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.317
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 56
+    max_cap_utilisation: 91.274
+    mean_capacity_utilisation: 1.791
+    mean_nb_alloc: 0.371
+  id: S-e7dc5a:7
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.371
 refused_delayed_requests_count: 0
 refused_split_requests_count: 0
 registrations_count: 1
@@ -101,9 +101,9 @@ scheduler_fallbacks_count: 0
 sim_duration: 31515560
 sim_first_ts: 1577931378
 sim_last_ts: 1609446938
-simulation_fallbacks_count: 243
+simulation_fallbacks_count: 218
 split_requests_count: 0
 split_threshold_gb: 100000
-tt_allocated_gb: 611427.7010547535
-tt_deallocated_gb: 611427.7010547535
+tt_allocated_gb: 639147.6230044413
+tt_deallocated_gb: 639147.6230044413
 tt_delay_time_minutes: 0

@@ -12,7 +12,7 @@ nodes:
     max_cap_utilisation: 99.719
     mean_capacity_utilisation: 2.436
     mean_nb_alloc: 2.851
-  id: S-5c9f5a:0
+  id: S-098c11:0
   last_alloc_ts: 1609446938
   mean_nb_alloc: 2.851
 refused_delayed_requests_count: 0

@@ -7,75 +7,75 @@ nodes:
 - disks:
   - capacity: 2000
     id: 0
-    last_alloc_time: 1609423790
-    max_alloc: 36
-    max_cap_utilisation: 98.963
-    mean_capacity_utilisation: 2.09
-    mean_nb_alloc: 0.363
-  - capacity: 2000
-    id: 1
-    last_alloc_time: 1609443332
-    max_alloc: 35
-    max_cap_utilisation: 86.239
-    mean_capacity_utilisation: 3.823
-    mean_nb_alloc: 0.341
-  id: S-47d490:0
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.704
-- disks:
-  - capacity: 2000
-    id: 0
-    last_alloc_time: 1609443332
+    last_alloc_time: 1609379011
     max_alloc: 33
-    max_cap_utilisation: 92.609
-    mean_capacity_utilisation: 1.853
-    mean_nb_alloc: 0.356
+    max_cap_utilisation: 88.835
+    mean_capacity_utilisation: 1.678
+    mean_nb_alloc: 0.358
   - capacity: 2000
     id: 1
-    last_alloc_time: 1609443332
-    max_alloc: 36
-    max_cap_utilisation: 94.836
-    mean_capacity_utilisation: 1.82
-    mean_nb_alloc: 0.346
-  id: S-47d490:1
-  last_alloc_ts: 1609443332
+    last_alloc_time: 1609423790
+    max_alloc: 32
+    max_cap_utilisation: 98.965
+    mean_capacity_utilisation: 1.739
+    mean_nb_alloc: 0.344
+  id: S-a62759:0
+  last_alloc_ts: 1609423790
   mean_nb_alloc: 0.702
 - disks:
   - capacity: 2000
     id: 0
-    last_alloc_time: 1609441000
-    max_alloc: 33
-    max_cap_utilisation: 95.689
-    mean_capacity_utilisation: 5.061
-    mean_nb_alloc: 0.367
+    last_alloc_time: 1609446938
+    max_alloc: 35
+    max_cap_utilisation: 96.004
+    mean_capacity_utilisation: 6.305
+    mean_nb_alloc: 0.363
   - capacity: 2000
     id: 1
-    last_alloc_time: 1609360634
-    max_alloc: 32
-    max_cap_utilisation: 97.564
-    mean_capacity_utilisation: 2.581
-    mean_nb_alloc: 0.371
-  id: S-47d490:2
-  last_alloc_ts: 1609441000
-  mean_nb_alloc: 0.738
+    last_alloc_time: 1609423790
+    max_alloc: 34
+    max_cap_utilisation: 96.789
+    mean_capacity_utilisation: 5.952
+    mean_nb_alloc: 0.36
+  id: S-a62759:1
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.723
 - disks:
   - capacity: 2000
     id: 0
-    last_alloc_time: 1609360634
-    max_alloc: 33
-    max_cap_utilisation: 82.464
-    mean_capacity_utilisation: 1.951
-    mean_nb_alloc: 0.341
+    last_alloc_time: 1609443332
+    max_alloc: 36
+    max_cap_utilisation: 89.494
+    mean_capacity_utilisation: 1.591
+    mean_nb_alloc: 0.353
   - capacity: 2000
     id: 1
-    last_alloc_time: 1609446938
-    max_alloc: 32
-    max_cap_utilisation: 98.822
-    mean_capacity_utilisation: 1.956
-    mean_nb_alloc: 0.367
-  id: S-47d490:3
-  last_alloc_ts: 1609446938
-  mean_nb_alloc: 0.708
+    last_alloc_time: 1609423790
+    max_alloc: 33
+    max_cap_utilisation: 87.414
+    mean_capacity_utilisation: 13.278
+    mean_nb_alloc: 0.346
+  id: S-a62759:2
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.698
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 34
+    max_cap_utilisation: 92.266
+    mean_capacity_utilisation: 3.119
+    mean_nb_alloc: 0.345
+  - capacity: 2000
+    id: 1
+    last_alloc_time: 1609443332
+    max_alloc: 31
+    max_cap_utilisation: 96.203
+    mean_capacity_utilisation: 3.348
+    mean_nb_alloc: 0.373
+  id: S-a62759:3
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.718
 refused_delayed_requests_count: 0
 refused_split_requests_count: 0
 registrations_count: 1
@@ -85,9 +85,9 @@ scheduler_fallbacks_count: 0
 sim_duration: 31515560
 sim_first_ts: 1577931378
 sim_last_ts: 1609446938
-simulation_fallbacks_count: 271
+simulation_fallbacks_count: 281
 split_requests_count: 0
 split_threshold_gb: 100000
-tt_allocated_gb: 579181.9292153143
-tt_deallocated_gb: 579181.9292153142
+tt_allocated_gb: 566419.2143237242
+tt_deallocated_gb: 566419.2143237242
 tt_delay_time_minutes: 0

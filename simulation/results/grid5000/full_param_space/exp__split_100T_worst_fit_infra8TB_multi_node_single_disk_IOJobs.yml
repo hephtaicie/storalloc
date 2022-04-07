@@ -7,91 +7,91 @@ nodes:
 - disks:
   - capacity: 1000
     id: 0
-    last_alloc_time: 1609443332
-    max_alloc: 108
-    max_cap_utilisation: 97.014
-    mean_capacity_utilisation: 1.259
-    mean_nb_alloc: 0.403
-  id: S-222415:0
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.403
-- disks:
-  - capacity: 1000
-    id: 0
-    last_alloc_time: 1609443332
-    max_alloc: 49
-    max_cap_utilisation: 93.127
-    mean_capacity_utilisation: 0.609
-    mean_nb_alloc: 0.301
-  id: S-222415:1
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.301
-- disks:
-  - capacity: 1000
-    id: 0
-    last_alloc_time: 1609446938
-    max_alloc: 34
-    max_cap_utilisation: 93.127
-    mean_capacity_utilisation: 1.397
-    mean_nb_alloc: 0.304
-  id: S-222415:2
-  last_alloc_ts: 1609446938
-  mean_nb_alloc: 0.304
-- disks:
-  - capacity: 1000
-    id: 0
     last_alloc_time: 1609441000
     max_alloc: 169
-    max_cap_utilisation: 99.524
-    mean_capacity_utilisation: 1.388
-    mean_nb_alloc: 0.461
-  id: S-222415:3
+    max_cap_utilisation: 79.348
+    mean_capacity_utilisation: 1.114
+    mean_nb_alloc: 0.488
+  id: S-c30250:0
   last_alloc_ts: 1609441000
-  mean_nb_alloc: 0.461
+  mean_nb_alloc: 0.488
 - disks:
   - capacity: 1000
     id: 0
-    last_alloc_time: 1609441000
-    max_alloc: 56
+    last_alloc_time: 1609443332
+    max_alloc: 50
     max_cap_utilisation: 97.014
-    mean_capacity_utilisation: 1.042
+    mean_capacity_utilisation: 1.278
     mean_nb_alloc: 0.316
-  id: S-222415:4
-  last_alloc_ts: 1609441000
+  id: S-c30250:1
+  last_alloc_ts: 1609443332
   mean_nb_alloc: 0.316
 - disks:
   - capacity: 1000
     id: 0
     last_alloc_time: 1609423790
-    max_alloc: 158
-    max_cap_utilisation: 99.25
-    mean_capacity_utilisation: 2.21
-    mean_nb_alloc: 0.312
-  id: S-222415:5
+    max_alloc: 108
+    max_cap_utilisation: 99.524
+    mean_capacity_utilisation: 1.231
+    mean_nb_alloc: 0.389
+  id: S-c30250:2
   last_alloc_ts: 1609423790
-  mean_nb_alloc: 0.312
+  mean_nb_alloc: 0.389
 - disks:
   - capacity: 1000
     id: 0
     last_alloc_time: 1609443332
     max_alloc: 35
-    max_cap_utilisation: 99.524
-    mean_capacity_utilisation: 1.309
-    mean_nb_alloc: 0.283
-  id: S-222415:6
+    max_cap_utilisation: 71.36
+    mean_capacity_utilisation: 0.794
+    mean_nb_alloc: 0.266
+  id: S-c30250:3
   last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.283
+  mean_nb_alloc: 0.266
 - disks:
   - capacity: 1000
     id: 0
     last_alloc_time: 1609423790
-    max_alloc: 42
-    max_cap_utilisation: 97.014
-    mean_capacity_utilisation: 1.226
-    mean_nb_alloc: 0.299
-  id: S-222415:7
+    max_alloc: 158
+    max_cap_utilisation: 99.524
+    mean_capacity_utilisation: 2.043
+    mean_nb_alloc: 0.322
+  id: S-c30250:4
   last_alloc_ts: 1609423790
-  mean_nb_alloc: 0.299
+  mean_nb_alloc: 0.322
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 34
+    max_cap_utilisation: 97.014
+    mean_capacity_utilisation: 1.648
+    mean_nb_alloc: 0.271
+  id: S-c30250:5
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.271
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609441000
+    max_alloc: 43
+    max_cap_utilisation: 94.751
+    mean_capacity_utilisation: 8.279
+    mean_nb_alloc: 0.291
+  id: S-c30250:6
+  last_alloc_ts: 1609441000
+  mean_nb_alloc: 0.291
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 53
+    max_cap_utilisation: 79.348
+    mean_capacity_utilisation: 0.797
+    mean_nb_alloc: 0.34
+  id: S-c30250:7
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.34
 refused_delayed_requests_count: 0
 refused_split_requests_count: 0
 registrations_count: 1
@@ -101,9 +101,9 @@ scheduler_fallbacks_count: 0
 sim_duration: 31515560
 sim_first_ts: 1577931378
 sim_last_ts: 1609446938
-simulation_fallbacks_count: 460
+simulation_fallbacks_count: 463
 split_requests_count: 0
 split_threshold_gb: 100000
-tt_allocated_gb: 279387.4696135194
-tt_deallocated_gb: 279387.4696135194
+tt_allocated_gb: 277960.7844027724
+tt_deallocated_gb: 277960.78440277243
 tt_delay_time_minutes: 0

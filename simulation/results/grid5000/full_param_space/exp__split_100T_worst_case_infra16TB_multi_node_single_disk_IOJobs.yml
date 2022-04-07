@@ -9,101 +9,101 @@ nodes:
     id: 0
     last_alloc_time: 1609443332
     max_alloc: 23
-    max_cap_utilisation: 82.464
-    mean_capacity_utilisation: 2.353
-    mean_nb_alloc: 0.362
-  id: S-32d447:0
+    max_cap_utilisation: 92.803
+    mean_capacity_utilisation: 2.236
+    mean_nb_alloc: 0.37
+  id: S-2fff83:0
   last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.362
+  mean_nb_alloc: 0.37
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609441000
+    max_alloc: 23
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 2.655
+    mean_nb_alloc: 0.368
+  id: S-2fff83:1
+  last_alloc_ts: 1609441000
+  mean_nb_alloc: 0.368
 - disks:
   - capacity: 2000
     id: 0
     last_alloc_time: 1609443332
     max_alloc: 23
-    max_cap_utilisation: 95.07
-    mean_capacity_utilisation: 8.227
-    mean_nb_alloc: 0.373
-  id: S-32d447:1
+    max_cap_utilisation: 90.621
+    mean_capacity_utilisation: 2.735
+    mean_nb_alloc: 0.365
+  id: S-2fff83:2
   last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.373
-- disks:
-  - capacity: 2000
-    id: 0
-    last_alloc_time: 1609443332
-    max_alloc: 23
-    max_cap_utilisation: 82.464
-    mean_capacity_utilisation: 2.132
-    mean_nb_alloc: 0.366
-  id: S-32d447:2
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.366
+  mean_nb_alloc: 0.365
 - disks:
   - capacity: 2000
     id: 0
     last_alloc_time: 1609443332
     max_alloc: 23
     max_cap_utilisation: 98.96
-    mean_capacity_utilisation: 2.129
-    mean_nb_alloc: 0.358
-  id: S-32d447:3
+    mean_capacity_utilisation: 2.139
+    mean_nb_alloc: 0.366
+  id: S-2fff83:3
   last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.358
-- disks:
-  - capacity: 2000
-    id: 0
-    last_alloc_time: 1609446938
-    max_alloc: 23
-    max_cap_utilisation: 92.803
-    mean_capacity_utilisation: 2.232
-    mean_nb_alloc: 0.355
-  id: S-32d447:4
-  last_alloc_ts: 1609446938
-  mean_nb_alloc: 0.355
+  mean_nb_alloc: 0.366
 - disks:
   - capacity: 2000
     id: 0
     last_alloc_time: 1609443332
-    max_alloc: 23
-    max_cap_utilisation: 88.835
-    mean_capacity_utilisation: 2.141
-    mean_nb_alloc: 0.358
-  id: S-32d447:5
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.358
-- disks:
-  - capacity: 2000
-    id: 0
-    last_alloc_time: 1609443332
-    max_alloc: 23
-    max_cap_utilisation: 85.139
-    mean_capacity_utilisation: 2.309
-    mean_nb_alloc: 0.363
-  id: S-32d447:6
-  last_alloc_ts: 1609443332
-  mean_nb_alloc: 0.363
-- disks:
-  - capacity: 2000
-    id: 0
-    last_alloc_time: 1609441000
     max_alloc: 22
-    max_cap_utilisation: 82.474
-    mean_capacity_utilisation: 1.565
-    mean_nb_alloc: 0.346
-  id: S-32d447:7
-  last_alloc_ts: 1609441000
-  mean_nb_alloc: 0.346
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 1.977
+    mean_nb_alloc: 0.354
+  id: S-2fff83:4
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.354
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609285030
+    max_alloc: 23
+    max_cap_utilisation: 88.296
+    mean_capacity_utilisation: 2.186
+    mean_nb_alloc: 0.351
+  id: S-2fff83:5
+  last_alloc_ts: 1609285030
+  mean_nb_alloc: 0.351
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 87.183
+    mean_capacity_utilisation: 2.453
+    mean_nb_alloc: 0.354
+  id: S-2fff83:6
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.354
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 87.183
+    mean_capacity_utilisation: 1.324
+    mean_nb_alloc: 0.351
+  id: S-2fff83:7
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.351
 refused_delayed_requests_count: 0
 refused_split_requests_count: 0
 registrations_count: 1
 requests_count: 24001
 retries_allowed: 'no'
 scheduler_fallbacks_count: 217
-sim_duration: 31515560
+sim_duration: 31511954
 sim_first_ts: 1577931378
-sim_last_ts: 1609446938
-simulation_fallbacks_count: 8
+sim_last_ts: 1609443332
+simulation_fallbacks_count: 2
 split_requests_count: 0
 split_threshold_gb: 100000
-tt_allocated_gb: 629801.6702868249
-tt_deallocated_gb: 629801.6702868249
+tt_allocated_gb: 638354.1403142372
+tt_deallocated_gb: 638354.1403142372
 tt_delay_time_minutes: 0

@@ -19,7 +19,7 @@ nodes:
     max_cap_utilisation: 85.303
     mean_capacity_utilisation: 2.658
     mean_nb_alloc: 0.337
-  id: S-0d5a2b:0
+  id: S-8bc1b1:0
   last_alloc_ts: 1609443332
   mean_nb_alloc: 0.664
 - disks:
@@ -37,7 +37,7 @@ nodes:
     max_cap_utilisation: 99.25
     mean_capacity_utilisation: 1.216
     mean_nb_alloc: 0.347
-  id: S-0d5a2b:1
+  id: S-8bc1b1:1
   last_alloc_ts: 1609443332
   mean_nb_alloc: 0.692
 - disks:
@@ -55,7 +55,7 @@ nodes:
     max_cap_utilisation: 97.014
     mean_capacity_utilisation: 3.413
     mean_nb_alloc: 0.331
-  id: S-0d5a2b:2
+  id: S-8bc1b1:2
   last_alloc_ts: 1609443332
   mean_nb_alloc: 0.668
 - disks:
@@ -73,7 +73,7 @@ nodes:
     max_cap_utilisation: 99.524
     mean_capacity_utilisation: 1.063
     mean_nb_alloc: 0.332
-  id: S-0d5a2b:3
+  id: S-8bc1b1:3
   last_alloc_ts: 1609446938
   mean_nb_alloc: 0.656
 refused_delayed_requests_count: 0
