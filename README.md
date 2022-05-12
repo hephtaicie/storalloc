@@ -1,5 +1,3 @@
-[![pipeline status](https://gitlab.inria.fr/Kerdata/kerdata-projects/storalloc/badges/develop/pipeline.svg)](https://gitlab.inria.fr/Kerdata/kerdata-projects/storalloc/-/commits/develop)
-[![coverage report](https://gitlab.inria.fr/Kerdata/kerdata-projects/storalloc/badges/develop/coverage.svg)](https://gitlab.inria.fr/Kerdata/kerdata-projects/storalloc/-/commits/develop)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # Storalloc - A Scheduler for Storage Resources
