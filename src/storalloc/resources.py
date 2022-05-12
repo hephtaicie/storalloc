@@ -191,6 +191,27 @@ class ResourceCatalog:
             key=lambda x: x.end_time.timestamp()
         )
 
+    def del_allocation(self, server_id: str, node_id: int, disk_id: int, request: StorageRequest):
+        """Remove allocation using a request by its job_id"""
+
+        delete_index = -1
+
+        for idx, alloc_request in enumerate(
+            self.storage_resources[server_id][node_id].disks[disk_id].allocations
+        ):
+            if request.job_id == alloc_request.job_id:
+                delete_index = idx
+                break
+
+        if delete_index != -1:
+            del self.storage_resources[server_id][node_id].disks[disk_id].allocations[delete_index]
+            self.storage_resources[server_id][node_id].disks[disk_id].allocations.sort(
+                key=lambda x: x.end_time.timestamp()
+            )
+            return True
+
+        return False
+
     def get_node(self, server_id: str, node_id: int):
         """Get a specific node from list of resources"""
         return self.storage_resources[server_id][node_id]

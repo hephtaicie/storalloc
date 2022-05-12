@@ -121,16 +121,22 @@ class SimulationClient:
                     self.log.info(f"# - {processed} processed requests (at this point)")
                     self.log.info(f"# - {errors} errors received from orchestrator")
                     self.log.info(
-                        f"# - {discarded_no_write} requests not sent because writtenBytes == 0"
+                        f"# - {discarded_no_write} requests not sent because writtenBytes == 0 "
+                        " & readBytes == 0"
                     )
                     continue
 
-                if job["writtenBytes"] > 0:
+                # Use either read or written bytes, depending on which has the higher
+                # storage requirement (but we suppose the sum of the two is not reliable
+                # due to potential overlap in the data read and written)
+                capacity_requirement = max(job["writtenBytes"], job["readBytes"])
+
+                if capacity_requirement > 0:
                     start_time = datetime.datetime.fromisoformat(job["startTime"])
                     end_time = datetime.datetime.fromisoformat(job["endTime"])
 
                     request = StorageRequest(
-                        capacity=job["writtenBytes"] / 1000000000,  # COnvert to GB
+                        capacity=capacity_requirement / 1000000000,  # Convert to GB
                         duration=end_time - start_time,
                         start_time=start_time,
                     )

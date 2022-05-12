@@ -66,6 +66,7 @@ class Router:
         self.conf = config_from_yaml(config_path)
         self.log = get_storalloc_logger(verbose, logger_name=self.uid)
         self.simulation = simulation
+        self.eos = None
         # Init transports (as soon as possible after logger, as it will
         # possibly append a handler on it)
         self.transports = self.zmq_init()
@@ -79,6 +80,7 @@ class Router:
             ReqState.ALLOCATED: 0,
             ReqState.FAILED: 0,
             ReqState.ENDED: 0,
+            ReqState.ABORTED: 0,
             "sent_to_scheduler": 0,
             "recv_from_scheduler": 0,
             "sent_to_qm": 0,
@@ -94,7 +96,7 @@ class Router:
         self.scheduler = Scheduler(
             f"{self.uid}-SC",
             make_strategy(self.conf["sched_strategy"]),
-            self.conf['allow_retry'],
+            self.conf["allow_retry"],
             make_resource_catalog(self.conf["res_catalog"]),
             verbose,
             (
@@ -287,14 +289,16 @@ class Router:
 
             # Does the request need to be divided into blocks ?
             requests = self.divide_allocation(req)
-            if len(requests) > 1:
+            request_number = len(requests)
+            if request_number > 1:
                 self.log.info(f"Request from client {req.client_id} has been splitted")
 
             for sp_idx, req in enumerate(requests):
-                # Update request state
+                # Update request state (and set a UNIQUE job_id to each request)
                 req.job_id = f"{self.uid}-{self.stats['req_count']}-{sp_idx}"
                 req.client_id = client_id
                 req.state = ReqState.PENDING
+                req.divided = request_number
                 self.log.info(req)
 
                 # To scheduler for processing
@@ -315,7 +319,7 @@ class Router:
             self.log.debug("Processing EoS from client {client_id}")
             self.stats[message.category] += 1
             # Propagate the end of simulation flag to the simulation socket
-            self.transports["simulation"].send_multipart(message, "sim")
+            self.eos = message
         else:
             self.log.warning("Undesired message ({message.category}) received from a client")
 
@@ -376,7 +380,6 @@ class Router:
         request = self.schema.load(message.content)
 
         if request.start_time != request.original_start_time:
-            print(f"Delayed requests spotted : {request}")
             self.stats["delayed_requests"] += 1
             delay = (request.start_time - request.original_start_time).total_seconds() / 60
             self.stats["total_delayed_minutes"] += delay
@@ -431,6 +434,13 @@ class Router:
             # Notify client (if still connected ?) that storage space has been reclaimed
             self.transports["client"].send_multipart(message, request.client_id)
             self.log.debug(f"All components notified of deallocation of request {request.job_id}")
+        elif request.state == ReqState.ABORTED:
+            self.log.error(f"Request {request.job_id} ABORTED by queue manager")
+            self.transports["client"].send_multipart(message, request.client_id)
+            if not self.simulation:
+                self.transports["scheduler"].send_multipart(message)
+
+            self.stats[request.state] += 1
         else:
             self.log.error(
                 f"Request transmitted by queue manager has state {request.state},"
@@ -501,6 +511,14 @@ class Router:
                     self.log.info(f"# {self.stats['events']} events processed so far")
                     self.print_stats()
                     event_nb = 0
+
+                # Might very well be too slow
+                if (
+                    self.eos is not None
+                    and self.stats["sent_to_scheduler"] == self.stats["recv_from_scheduler"]
+                ):
+                    self.transports["simulation"].send_multipart(self.eos, "sim")
+                    self.eos = None
 
             except KeyboardInterrupt:
                 self.log.info("[!] Router stopped, not forwarding anymore messaged")

@@ -82,7 +82,7 @@ class AllocationQueue(Process):
             info["ttl"] -= 1
             if info["ttl"] <= 0 and info["due_parts"] > 0:
                 for request in info["requests"]:
-                    request.state = ReqState.ENDED
+                    request.state = ReqState.ABORTED
                     request.reason = "TTL exceeded before receiving all parts of splitted requests"
                     self.transport.send_multipart(
                         Message(MsgCat.REQUEST, self.schema.dump(request))
@@ -105,6 +105,7 @@ class AllocationQueue(Process):
         socket = context.socket(zmq.DEALER)  # pylint: disable=no-member
         socket.setsockopt(zmq.IDENTITY, self.uid.encode("utf-8"))  # pylint: disable=no-member
         socket.connect("ipc://queue_manager.ipc")
+        socket.set_hwm(50000)
         self.transport = Transport(socket)
 
         self.log = get_storalloc_logger(self.verbose, True, self.uid)

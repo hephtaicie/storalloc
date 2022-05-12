@@ -1,0 +1,105 @@
+alloc_delayed_requests_count: 0
+alloc_split_requests_count: 0
+delayed_requests_count: 0
+max_concurrent_allocations: 182
+nodes:
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 98.963
+    mean_capacity_utilisation: 1.913
+    mean_nb_alloc: 0.362
+  id: S-ffd225:0
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.362
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609441000
+    max_alloc: 23
+    max_cap_utilisation: 85.139
+    mean_capacity_utilisation: 3.016
+    mean_nb_alloc: 0.355
+  id: S-ffd225:1
+  last_alloc_ts: 1609441000
+  mean_nb_alloc: 0.355
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 93.221
+    mean_capacity_utilisation: 2.831
+    mean_nb_alloc: 0.358
+  id: S-ffd225:2
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.358
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 87.646
+    mean_capacity_utilisation: 2.239
+    mean_nb_alloc: 0.345
+  id: S-ffd225:3
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.345
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 96.004
+    mean_capacity_utilisation: 7.639
+    mean_nb_alloc: 0.356
+  id: S-ffd225:4
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.356
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 96.809
+    mean_capacity_utilisation: 2.246
+    mean_nb_alloc: 0.367
+  id: S-ffd225:5
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.367
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 2.495
+    mean_nb_alloc: 0.367
+  id: S-ffd225:6
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.367
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 23
+    max_cap_utilisation: 82.475
+    mean_capacity_utilisation: 2.824
+    mean_nb_alloc: 0.37
+  id: S-ffd225:7
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.37
+registrations_count: 1
+requests_count: 24001
+retries_allowed: 'yes'
+scheduler_fallbacks_count: 228
+sim_duration: 31515560
+sim_first_ts: 1577931378
+sim_last_ts: 1609446938
+split_requests_count: 0
+split_threshold_gb: 100000
+tt_allocated_gb: 627503.6337441931
+tt_deallocated_gb: 627503.6337441931
+tt_delay_time_minutes: 0

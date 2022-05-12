@@ -1,0 +1,93 @@
+alloc_delayed_requests_count: 0
+alloc_split_requests_count: 0
+delayed_requests_count: 0
+failed_split_requests_count: 0
+max_concurrent_allocations: 8
+nodes:
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1604106131
+    max_alloc: 3
+    max_cap_utilisation: 95.689
+    mean_capacity_utilisation: 7.516
+    mean_nb_alloc: 0.093
+  - capacity: 2000
+    id: 1
+    last_alloc_time: 1602927623
+    max_alloc: 2
+    max_cap_utilisation: 87.183
+    mean_capacity_utilisation: 2.264
+    mean_nb_alloc: 0.076
+  id: S-f8e261:0
+  last_alloc_ts: 1604106131
+  mean_nb_alloc: 0.169
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1604078165
+    max_alloc: 2
+    max_cap_utilisation: 86.082
+    mean_capacity_utilisation: 2.748
+    mean_nb_alloc: 0.196
+  - capacity: 2000
+    id: 1
+    last_alloc_time: 1603986960
+    max_alloc: 2
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 2.002
+    mean_nb_alloc: 0.08
+  id: S-f8e261:1
+  last_alloc_ts: 1604078165
+  mean_nb_alloc: 0.276
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1603944093
+    max_alloc: 2
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 2.53
+    mean_nb_alloc: 0.088
+  - capacity: 2000
+    id: 1
+    last_alloc_time: 1604078165
+    max_alloc: 2
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 2.723
+    mean_nb_alloc: 0.113
+  id: S-f8e261:2
+  last_alloc_ts: 1604078165
+  mean_nb_alloc: 0.201
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1603986960
+    max_alloc: 2
+    max_cap_utilisation: 82.464
+    mean_capacity_utilisation: 0.442
+    mean_nb_alloc: 0.079
+  - capacity: 2000
+    id: 1
+    last_alloc_time: 1604078165
+    max_alloc: 3
+    max_cap_utilisation: 90.801
+    mean_capacity_utilisation: 3.195
+    mean_nb_alloc: 0.146
+  id: S-f8e261:3
+  last_alloc_ts: 1604078165
+  mean_nb_alloc: 0.225
+refused_delayed_requests_count: 0
+refused_split_requests_count: 0
+registrations_count: 1
+requests_count: 205
+retries_allowed: 'no'
+scheduler_fallbacks_count: 0
+sim_duration: 2557588
+sim_first_ts: 1601548543
+sim_last_ts: 1604106131
+simulation_fallbacks_count: 51
+split_requests_count: 0
+split_threshold_gb: 100000
+tt_allocated_gb: 71053.87056370896
+tt_deallocated_gb: 71053.87056370896
+tt_delay_time_minutes: 0

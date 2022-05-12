@@ -8,9 +8,8 @@ Beware : May take a long time to run depending on the size of the dataset.
 
 """
 
-import itertools
-import datetime as dt
 import subprocess
+import shutil
 from pathlib import Path
 import signal
 import time
@@ -31,22 +30,7 @@ def remove_output():
         print("No local copy of output.yml found")
 
 
-def prepare_result_directory():
-    """Create a  timestamped directory in "../results" where
-    results from this experiment run will be stored
-    """
-
-    dir_name = f"exp__{dt.datetime.now().strftime('%d-%b-%y_%H-%M')}"
-
-    results_path = Path(f"./results/{dir_name}")
-    if results_path.exists():
-        raise RuntimeError(f"Result directory {dir_name} already exists !")
-
-    results_path.mkdir()
-    return str(results_path)
-
-
-def copy_results(exp_dir, algo, infra, jobs):
+def copy_results(exp_dir, algo, split, infra, jobs):
     """Copy experiment result to the correct directory"""
 
     output_path = Path("./output.yml")
@@ -55,8 +39,8 @@ def copy_results(exp_dir, algo, infra, jobs):
             f"Couldn't find a result file for experiment with algo {algo} and infra {infra}"
         )
 
-    new_path = Path(exp_dir).joinpath(Path(f"exp__{algo}_{infra}_{jobs}.yml"))
-    output_path.replace(new_path)
+    new_path = Path(exp_dir).joinpath(Path(f"exp__{split}_{algo}_{infra}_{jobs}.yml"))
+    shutil.move(str(output_path), str(new_path))
 
 
 def run_exp(exp_dir, config_file, system_file, job_file):
@@ -116,6 +100,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     copy_results(
         exp_dir,
         Path(config_file).stem.lstrip("config_"),
+        Path(config_file).parent.stem,
         f"{Path(system_file).parent.stem}_{Path(system_file).stem}",
         Path(job_file).stem,
     )
@@ -123,44 +108,6 @@ def run_exp(exp_dir, config_file, system_file, job_file):
 
 if __name__ == "__main__":
 
-    BASE_PATH_CONFIG = "../config"
+    import sys
 
-    BASE_PATH_SYSTEM = [
-        f"{BASE_PATH_CONFIG}/systems/infra8TB",
-        f"{BASE_PATH_CONFIG}/systems/infra16TB",
-        f"{BASE_PATH_CONFIG}/systems/infra64TB",
-    ]
-
-    CONFIG_DETAILS = "split_100T"
-    CONFIG_FILES = [
-        f"{BASE_PATH_CONFIG}/{CONFIG_DETAILS}/{algo}"
-        for algo in [
-            "config_worst_case.yml",
-            "config_random.yml",
-            "config_rr.yml",
-            "config_worst_fit.yml",
-        ]
-    ]
-
-    # I was too lazy to add a damn loop, and copy paste is so fast in vim...
-    SYSTEM_FILES = [f"{base_path}/mutli_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
-    SYSTEM_FILES += [f"{base_path}/single_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
-    SYSTEM_FILES += [f"{base_path}/multi_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
-    SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
-
-    BASE_PATH_DATA = "../data"
-    JOB_FILES = [
-        f"{BASE_PATH_DATA}/IOJobsOct.yml",
-    ]
-
-    EXP_DIR = prepare_result_directory()
-    print(f"## Directory for experiment results is : {EXP_DIR}")
-    print(f"## Using SYSTEM FILES : {SYSTEM_FILES}")
-    print(f"## Using JOB_FILES : {JOB_FILES}")
-    print(f"## Using CONFIG_FILES : {CONFIG_FILES}")
-    print("___________________________________________________________________")
-
-    for permutation in itertools.product(CONFIG_FILES, SYSTEM_FILES, JOB_FILES):
-
-        config_file, system_file, job_file = permutation
-        run_exp(EXP_DIR, config_file, system_file, job_file)
+    run_exp(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
