@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 
 """ Running the simulations on Grid5000 clusters
+
+    This script is specifically used on the Paravance cluster at INRIA Rennes
+    and would probably need some updates for a more general use.
+
+    You will most certainly need to update a few paths and configurations in the
+    global variables below.
+
 """
 
 from pathlib import Path
@@ -10,14 +17,20 @@ import enoslib as en
 
 WORK_DIR = "/tmp/storalloc"
 
+REPO_URL = "gitlab.inria.fr/Kerdata/kerdata-projects/storalloc.git"
+REPO_KEY = ""
+
+# Where to find StorAlloc configuration files
 BASE_PATH_CONFIG = f"{WORK_DIR}/config"
 
+# Which storage system SIZE to use
 BASE_PATH_SYSTEM = [
     f"{BASE_PATH_CONFIG}/systems/infra8TB",
     f"{BASE_PATH_CONFIG}/systems/infra16TB",
     f"{BASE_PATH_CONFIG}/systems/infra64TB",
 ]
 
+# Which strategies to use
 # CONFIG_OPTIONS = ["split_100T", "split_200G", "split_100T_retry", "split_200G_retry"]
 # CONFIG_OPTIONS = ["split_100T", "split_100T_retry"]
 CONFIG_OPTIONS = ["split_200G", "split_200G_retry"]
@@ -34,13 +47,16 @@ CONFIG_FILES = [
     )
 ]
 
+# Which storage system LAYOUT to use
 # I was too lazy to add a damn loop, and copy paste is so fast in vim...
 SYSTEM_FILES = [f"{base_path}/multi_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
 SYSTEM_FILES += [f"{base_path}/single_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
 SYSTEM_FILES += [f"{base_path}/multi_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
 SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
 
+# Where is the data file
 BASE_PATH_DATA = "/home/jmonniot/StorAlloc/data"
+# Which data file to use
 JOB_FILES = [
     f"{BASE_PATH_DATA}/IOJobs.yml",
 ]
@@ -135,8 +151,7 @@ def run_batch(node_number: int, params: list, results_dir: str):
 
         play.apt(name="git", state="present")
         play.git(
-            # TODO: remove the key and use a new one
-            repo="https://oauth2:glpat-W7MXcHS1tkjmr7JAr95H@gitlab.inria.fr/Kerdata/kerdata-projects/storalloc.git",
+            repo=f"https://oauth2:{REPO_KEY}@{REPO_URL}",
             dest="/tmp/storalloc",
             depth=1,
             version="feature-g5ksim",
@@ -168,6 +183,13 @@ def run_batch(node_number: int, params: list, results_dir: str):
 
 def run():
     """Main"""
+
+    if REPO_KEY == "":
+        print(
+            "Update the script by adding a deployment key for the"
+            "targetted repository before running"
+        )
+        return
 
     params = prepare_params()
     results_dir = params[0][0][0]
