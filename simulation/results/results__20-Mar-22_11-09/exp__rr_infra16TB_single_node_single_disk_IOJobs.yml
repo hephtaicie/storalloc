@@ -1,0 +1,23 @@
+max_concurrent_allocations: 178
+nb_of_delayed_requests: 20
+nb_of_registrations: 1
+nb_of_requests: 24255
+nb_of_scheduler_failures: 130
+nodes:
+- disks:
+  - capacity: 16000
+    id: 0
+    last_alloc_time: 1609446938
+    max_alloc: 178
+    max_cap_utilisation: 99.719
+    mean_capacity_utilisation: 2.577
+    mean_nb_alloc: 2.987
+  id: S-957d4a:0
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 2.987
+sim_duration: 31515560
+sim_first_ts: 1577931378
+sim_last_ts: 1609446938
+tt_gb_allocated: 1068258.0172591342
+tt_gb_deallocated: 1068258.0172591342
+tt_waiting_time_minutes: 1188000.0

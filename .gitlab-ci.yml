@@ -1,0 +1,29 @@
+before_script:
+  - date
+  - env
+
+stages:
+  - lint
+  - test
+
+black:
+  stage: lint
+  image: python:3.9.7
+  script:
+    - pip install tox
+    - tox -e black
+  tags:
+    - storalloc
+
+pytest:
+  stage: test
+  image: python:3.9.7
+  script:
+    - pip install tox
+    - tox -e pytest-cov
+    - tox -e report
+  tags:
+    - storalloc
+  artifacts:
+    reports:
+      cobertura: coverage.xml

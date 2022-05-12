@@ -1,0 +1,100 @@
+max_concurrent_allocations: 181
+nb_of_delayed_requests: 1
+nb_of_registrations: 1
+nb_of_requests: 24255
+nb_of_scheduler_failures: 942
+nodes:
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 33
+    max_cap_utilisation: 97.014
+    mean_capacity_utilisation: 1.728
+    mean_nb_alloc: 0.367
+  id: S-cd7c4b:0
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.367
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609423790
+    max_alloc: 36
+    max_cap_utilisation: 99.756
+    mean_capacity_utilisation: 2.89
+    mean_nb_alloc: 0.355
+  id: S-cd7c4b:1
+  last_alloc_ts: 1609423790
+  mean_nb_alloc: 0.355
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 31
+    max_cap_utilisation: 87.082
+    mean_capacity_utilisation: 1.191
+    mean_nb_alloc: 0.351
+  id: S-cd7c4b:2
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.351
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 31
+    max_cap_utilisation: 91.327
+    mean_capacity_utilisation: 1.313
+    mean_nb_alloc: 0.347
+  id: S-cd7c4b:3
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.347
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 33
+    max_cap_utilisation: 99.524
+    mean_capacity_utilisation: 6.097
+    mean_nb_alloc: 0.347
+  id: S-cd7c4b:4
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.347
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609423790
+    max_alloc: 33
+    max_cap_utilisation: 99.524
+    mean_capacity_utilisation: 7.177
+    mean_nb_alloc: 0.353
+  id: S-cd7c4b:5
+  last_alloc_ts: 1609423790
+  mean_nb_alloc: 0.353
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609216015
+    max_alloc: 36
+    max_cap_utilisation: 97.92
+    mean_capacity_utilisation: 14.374
+    mean_nb_alloc: 0.351
+  id: S-cd7c4b:6
+  last_alloc_ts: 1609216015
+  mean_nb_alloc: 0.351
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609441000
+    max_alloc: 34
+    max_cap_utilisation: 99.25
+    mean_capacity_utilisation: 1.762
+    mean_nb_alloc: 0.35
+  id: S-cd7c4b:7
+  last_alloc_ts: 1609441000
+  mean_nb_alloc: 0.35
+sim_duration: 31511954
+sim_first_ts: 1577931378
+sim_last_ts: 1609443332
+tt_gb_allocated: 233993.2535399798
+tt_gb_deallocated: 233993.2535399798
+tt_waiting_time_minutes: 18000.0

@@ -1,0 +1,12 @@
+hosts:
+  - hostname: infra_single_node_multi_disk
+    ipv4: 10.0.0.1
+    network_bw: 12.5 #GBps (100Gb Eth)
+    disks:
+      - vendor: Intel  # Let's assume a fake RAID 10 with 8 8TB disk ?
+        model: SSDPE2KX080T8
+        serial: BTLJ9342009D8P0HGN
+        capacity: 16000 #GB
+        write_bandwidth: 1.465 #GBps
+        read_bandwidth: 1.565  #GPBS
+        block_device: /dev/md1

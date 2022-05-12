@@ -1,0 +1,84 @@
+max_concurrent_allocations: 181
+nb_of_delayed_requests: 14
+nb_of_registrations: 1
+nb_of_requests: 24255
+nb_of_scheduler_failures: 569
+nodes:
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 3.071
+    mean_nb_alloc: 0.365
+  - capacity: 1000
+    id: 1
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 5.758
+    mean_nb_alloc: 0.352
+  id: S-5683b8:0
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.716
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 2.589
+    mean_nb_alloc: 0.361
+  - capacity: 1000
+    id: 1
+    last_alloc_time: 1609423790
+    max_alloc: 23
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 2.896
+    mean_nb_alloc: 0.365
+  id: S-5683b8:1
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.727
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 3.798
+    mean_nb_alloc: 0.354
+  - capacity: 1000
+    id: 1
+    last_alloc_time: 1609446938
+    max_alloc: 22
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 4.271
+    mean_nb_alloc: 0.37
+  id: S-5683b8:2
+  last_alloc_ts: 1609446938
+  mean_nb_alloc: 0.724
+- disks:
+  - capacity: 1000
+    id: 0
+    last_alloc_time: 1609443332
+    max_alloc: 23
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 3.772
+    mean_nb_alloc: 0.369
+  - capacity: 1000
+    id: 1
+    last_alloc_time: 1609404044
+    max_alloc: 23
+    max_cap_utilisation: 100.0
+    mean_capacity_utilisation: 3.424
+    mean_nb_alloc: 0.355
+  id: S-5683b8:3
+  last_alloc_ts: 1609443332
+  mean_nb_alloc: 0.725
+sim_duration: 31515560
+sim_first_ts: 1577931378
+sim_last_ts: 1609446938
+tt_gb_allocated: 676476.5456397206
+tt_gb_deallocated: 676476.5456397206
+tt_waiting_time_minutes: 1098000.0

@@ -1,0 +1,24 @@
+---
+orchestrator_hostname: localhost
+orchestrator_addr: 127.0.0.1
+orchestrator_fe_ipc: client_ipc
+orchestrator_be_ipc: server_ipc
+res_catalog: inmemory
+allow_retry: False
+block_size_gb: 200
+min_block_size_gb: 200
+client_port: 35010
+server_port: 35020
+log_server_addr: 127.0.0.1
+log_server_port: 35030
+log_server_sync_port: 35031
+simulation_addr: 127.0.0.1
+simulation_port: 35040
+s_visualisation_port: 35050
+o_visualisation_port: 35055
+transport: tcp
+sched_strategy: worst_fit
+res_catalog: inmemory
+visualisation:
+  max_points: 5000
+...
