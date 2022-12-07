@@ -27,6 +27,7 @@ BASE_PATH_CONFIG = f"{WORK_DIR}/config"
 BASE_PATH_SYSTEM = [
     f"{BASE_PATH_CONFIG}/systems/infra8TB",
     f"{BASE_PATH_CONFIG}/systems/infra16TB",
+    f"{BASE_PATH_CONFIG}/systems/infra32TB",
     f"{BASE_PATH_CONFIG}/systems/infra64TB",
 ]
 
@@ -63,7 +64,7 @@ JOB_FILES = [
 
 
 PERMUTATIONS = list(itertools.product(CONFIG_FILES, SYSTEM_FILES, JOB_FILES))
-MAX_TASKS_PER_NODE = 3
+MAX_TASKS_PER_NODE = 4
 MAX_NODES = 32
 CLUSTER = "paravance"
 

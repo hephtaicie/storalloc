@@ -215,7 +215,7 @@ class Router:
 
     def print_stats(self):
         """Print short stats about current number of processed events"""
-        self.log.info(self.stats)
+        self.log.info(str(self.stats))
         print(self.stats)
 
     def divide_allocation(self, initial_request):
@@ -299,7 +299,8 @@ class Router:
                 req.client_id = client_id
                 req.state = ReqState.PENDING
                 req.divided = request_number
-                self.log.info(req)
+                req.capacity = math.ceil(req.capacity)
+                self.log.info(str(req))
 
                 # To scheduler for processing
                 pending_req = self.schema.dump(req)
@@ -457,8 +458,8 @@ class Router:
         # When the process is ready, we should receive a message
         if self.transports[socket_name].poll(timeout=3000):
             identities, message = self.transports[socket_name].recv_multipart()
-            self.log.info(identities)
-            self.log.info(message)
+            self.log.info(identities[0])
+            self.log.info(str(message))
         else:
             raise ConnectionError(
                 f"Unable to establish contact with IPC socket {socket_name} in sub process"
