@@ -9,7 +9,6 @@ Beware : May take a long time to run depending on the size of the dataset.
 """
 
 import subprocess
-import os
 import shutil
 from pathlib import Path
 import signal
@@ -44,7 +43,7 @@ def copy_results(exp_dir, algo, split, infra, jobs):
     shutil.move(str(output_path), str(new_path))
 
 
-def run_exp(exp_dir, config_file, system_file, job_file):
+def run_exp(exp_dir, config_file, system_file, job_file, logs_dir):
     """Run simulation"""
 
     print(f"## Running simulation with config {config_file} / {system_file} / {job_file}")
@@ -56,11 +55,8 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     infra = f"{Path(system_file).parent.stem}_{Path(system_file).stem}"
     jobs = Path(job_file).stem
 
-    log_dir = f"./logs/exp__{split}_{algo}_{infra}_{jobs}__logs"
-    os.mkdir(f"{log_dir}")
-
     # Start a sim-server :
-    sim_server_log_path = Path(f"./{log_dir}/sim_server.log")
+    sim_server_log_path = Path(f"{logs_dir}/sim_server.log")
     sim_server_log_file = open(sim_server_log_path, "w", encoding="utf-8")
     sim_server = subprocess.Popen(
         ["storalloc", "sim-server", "-c", config_file],
@@ -71,7 +67,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     print(f"Started subprocess sim_server with PID {sim_server.pid}")
 
     # Start an orchestrator :
-    orchestrator_log_path = Path(f"./{log_dir}/orchestrator.log")
+    orchestrator_log_path = Path(f"{logs_dir}/orchestrator.log")
     orchestrator_log_file = open(orchestrator_log_path, "w", encoding="utf-8")
     orchestrator = subprocess.Popen(
         ["storalloc", "orchestrator", "-c", config_file],
@@ -82,7 +78,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     print(f"Started subprocess orchestrator with PID {orchestrator.pid}")
 
     # Start a server :
-    server_log_path = Path(f"./{log_dir}/server.log")
+    server_log_path = Path(f"{logs_dir}/server.log")
     server_log_file = open(server_log_path, "w", encoding="utf-8")
     server = subprocess.Popen(
         ["storalloc", "server", "-c", config_file, "-s", system_file],
@@ -93,7 +89,7 @@ def run_exp(exp_dir, config_file, system_file, job_file):
     print(f"Started subprocess server with PID {server.pid}")
 
     # Start a sim-client :
-    client_log_path = Path(f"./{log_dir}/client.log")
+    client_log_path = Path(f"{logs_dir}/client.log")
     client_log_file = open(client_log_path, "w", encoding="utf-8")
     sim_client = subprocess.Popen(
         ["storalloc", "sim-client", "-c", config_file, "-j", job_file],
@@ -122,6 +118,6 @@ if __name__ == "__main__":
     import sys
 
     start = time.time()
-    run_exp(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+    run_exp(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
     duration = time.time() - start
     print(f"Duration for options {sys.argv[1:]} = {duration}")

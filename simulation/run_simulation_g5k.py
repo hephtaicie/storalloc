@@ -76,6 +76,13 @@ def results_dir_name():
     return str(results_path)
 
 
+def logs_dir_name():
+    """Generate a timestampd directory name including compute host information"""
+    dir_name = f"logs__{dt.datetime.now().strftime('%d-%b-%y_%H-%M')}"
+    logs_path = Path(f"/home/jmonniot/StorAlloc/logs/{dir_name}")
+    return str(logs_path)
+
+
 def split_permutations(permutations: list, split_size: int):
     """Split the list of permutations into multiple sublists"""
 
@@ -87,6 +94,7 @@ def prepare_params():
     """Prepare a list of parameters for each simulation to be run"""
 
     results_dir = results_dir_name()
+    logs_dir = logs_dir_name()
     print(f"There will be {len(PERMUTATIONS)} simulations to run on {CLUSTER}")
     nb_nodes = int(len(PERMUTATIONS) / MAX_TASKS_PER_NODE)
     if nb_nodes > MAX_NODES:
@@ -100,12 +108,13 @@ def prepare_params():
         for param in param_set:
             param = list(param)
             param.insert(0, results_dir)
+            param.append(logs_dir)
             params[idx].append(param)
 
     return params
 
 
-def run_batch(node_number: int, params: list, results_dir: str):
+def run_batch(node_number: int, params: list, results_dir: str, logs_dir: str):
     """Run a few simulations (whose parameters are given in a list) on a set of nodes"""
 
     ## Prepare Configuration
@@ -167,6 +176,7 @@ def run_batch(node_number: int, params: list, results_dir: str):
             + ">> /home/jmonniot/StorAlloc/results/{{ ansible_hostname }}_params.txt"
         )
         play.file(path=results_dir, state="directory")
+        play.file(path=logs_dir, state="directory")
         play.shell(
             chdir="/tmp/storalloc",
             command=". storalloc_venv/bin/activate &&"
@@ -194,6 +204,7 @@ def run():
 
     params = prepare_params()
     results_dir = params[0][0][0]
+    logs_dir = params[0][0][4]
     provider = None
 
     for idx, batch in enumerate(params):
@@ -205,7 +216,7 @@ def run():
             batch_params.append(str_params)
 
         print(f"Starting batch with {len(batch)} nodes")
-        provider = run_batch(len(batch), batch_params, results_dir)
+        provider = run_batch(len(batch), batch_params, results_dir, logs_dir)
 
     provider.destroy()
 
