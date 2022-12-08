@@ -10,6 +10,7 @@ Beware : May take a long time to run depending on the size of the dataset.
 
 import subprocess
 import shutil
+import os
 from pathlib import Path
 import signal
 import time
@@ -43,6 +44,17 @@ def copy_results(exp_dir, algo, split, infra, jobs):
     shutil.move(str(output_path), str(new_path))
 
 
+def create_exp_log_dir(base_log_dir: str, algo, split, infra, jobs):
+    """Create a log dir for this specific experiment (same fashion as the results dir)"""
+
+    new_path = Path(base_log_dir).joinpath(Path(f"logs__{split}_{algo}_{infra}_{jobs}"))
+    if new_path.exists():
+        raise RuntimeError(f"Log dir already exists at {new_path}")
+
+    os.mkdir(new_path)
+    return str(new_path)
+
+
 def run_exp(exp_dir, config_file, system_file, job_file, logs_dir):
     """Run simulation"""
 
@@ -54,6 +66,8 @@ def run_exp(exp_dir, config_file, system_file, job_file, logs_dir):
     split = Path(config_file).parent.stem
     infra = f"{Path(system_file).parent.stem}_{Path(system_file).stem}"
     jobs = Path(job_file).stem
+
+    logs_dir = create_exp_log_dir(logs_dir, algo, split, infra, jobs)
 
     # Start a sim-server :
     sim_server_log_path = Path(f"{logs_dir}/sim_server.log")

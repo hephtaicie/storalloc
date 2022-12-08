@@ -171,6 +171,7 @@ class ResourceCatalog:
                 self.storage_resources[server_uid].append(new_node)
 
         self.log.info(f"storage_resources catalog now contains {len(self.storage_resources)} nodes")
+        self.pretty_print()
 
     def pretty_print(self):
         """Pretty print list of currently registered resources"""

@@ -64,6 +64,7 @@ class Router:
 
         self.uid = uid or f"R-{str(uuid.uuid4().hex)[:6]}"
         self.conf = config_from_yaml(config_path)
+        print(self.uid)
         self.log = get_storalloc_logger(verbose, logger_name=self.uid)
         self.simulation = simulation
         self.eos = None

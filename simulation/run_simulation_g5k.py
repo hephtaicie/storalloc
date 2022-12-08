@@ -59,7 +59,7 @@ SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BAS
 BASE_PATH_DATA = "/home/jmonniot/StorAlloc/data"
 # Which data file to use
 JOB_FILES = [
-    f"{BASE_PATH_DATA}/IOJobs.yml",
+    f"{BASE_PATH_DATA}/IOJobsOct.yml",
 ]
 
 
@@ -118,13 +118,14 @@ def run_batch(node_number: int, params: list, results_dir: str, logs_dir: str):
     """Run a few simulations (whose parameters are given in a list) on a set of nodes"""
 
     ## Prepare Configuration
-    prod_network = en.G5kNetworkConf(
-        id="net_storalloc",
-        type="prod",
-        roles=["storalloc_net"],
-        site="rennes",
-    )
+    # prod_network = en.G5kNetworkConf(
+    #    id="net_storalloc",
+    #    type="prod",
+    #    roles=["storalloc_net"],
+    #    site="rennes",
+    # )
 
+    # .add_network_conf(prod_network)
     conf = (
         en.G5kConf.from_settings(
             job_name="storalloc_sim",
@@ -132,19 +133,18 @@ def run_batch(node_number: int, params: list, results_dir: str, logs_dir: str):
             job_type=["allow_classic_ssh"],
             # key=str(Path.home() / ".ssh" / "id_rsa_grid5000.pub"),
         )
-        .add_network_conf(prod_network)
         .add_machine(
             roles=["compute_storalloc"],
             cluster=CLUSTER,
             nodes=node_number,
-            primary_network=prod_network,
+            # primary_network=prod_network,
         )
         .finalize()
     )
 
     provider = en.G5k(conf)
     roles, network = provider.init()
-    roles = en.sync_info(roles, network)
+    # roles = en.sync_info(roles, network)
 
     ### Prepare parameters
     for node, param in zip(roles["compute_storalloc"], params):
@@ -156,18 +156,18 @@ def run_batch(node_number: int, params: list, results_dir: str, logs_dir: str):
     results = None
     with en.actions(
         roles=roles,
-        gather_facts=True,
+        # gather_facts=False,
     ) as play:
 
         play.apt(name="git", state="present")
         play.git(
             repo=f"https://oauth2:{REPO_KEY}@{REPO_URL}",
-            dest="/tmp/storalloc",
+            dest=WORK_DIR,
             depth=1,
-            version="feature-g5ksim",
+            version="develop",
         )
         play.pip(
-            chdir="/tmp/storalloc",
+            chdir=WORK_DIR,
             name=".",
             virtualenv="storalloc_venv",
         )
@@ -178,7 +178,7 @@ def run_batch(node_number: int, params: list, results_dir: str, logs_dir: str):
         play.file(path=results_dir, state="directory")
         play.file(path=logs_dir, state="directory")
         play.shell(
-            chdir="/tmp/storalloc",
+            chdir=WORK_DIR,
             command=". storalloc_venv/bin/activate &&"
             + " cd simulation &&"
             + " ./run_simulation.py {{ storalloc_params }}",
