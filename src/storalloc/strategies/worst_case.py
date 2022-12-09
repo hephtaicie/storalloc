@@ -28,9 +28,19 @@ class WorstCase(StrategyInterface):
             self.log.debug(f"[WC:compute] Looking for candidates in NODE::{node.uid}")
 
             self.log.debug(f"[WC:compute] {len(node.disks)} disks before filtering")
-            filtered_disks = [
-                disk for disk in node.disks if disk.disk_status.capacity >= request.capacity
-            ]
+            filtered_disks = []
+            for disk in node.disks:
+                if disk.disk_status.capacity >= request.capacity:
+                    filtered_disks.append(disk)
+                else:
+                    self.log.debug(
+                        f"[WC:compute] Disk \n {disk} \n currently has only "
+                        + f"{disk.disk_status.capacity}GB of predicted free space. We can't use it."
+                    )
+
+            # filtered_disks = [
+            #     disk for disk in node.disks if disk.disk_status.capacity >= request.capacity
+            # ]
             self.log.debug(f"[WC:compute] {len(filtered_disks)} disks after filtering")
             # Add every not filtered out disk to the candidates
             candidates.extend([(server_id, node, disk) for disk in filtered_disks])
@@ -45,9 +55,7 @@ class WorstCase(StrategyInterface):
         # Sort candidates and pick the best
         sorted_disks = sorted(candidates, key=lambda t: -t[2].disk_status.bandwidth)
         best_bandwidth = sorted_disks[0][2].disk_status.bandwidth
-        scd_best_bandwidth = sorted_disks[1][2].disk_status.bandwidth
         self.log.debug(f"[WC:compute] Best bandwidth among disks for this node : {best_bandwidth}")
-        self.log.debug(f"[WC:compute] 2nd best for this node : {scd_best_bandwidth}")
         final_choices = []
         for server_id, node, disk in sorted_disks:
             if disk.disk_status.bandwidth < best_bandwidth:
@@ -76,7 +84,7 @@ class WorstCase(StrategyInterface):
 
             self.log.debug(
                 f"[WC] .. Access bandwidth for {server_id}:{node.uid}"
-                + f"= {node.node_status.bandwidth} GB/s per disk"
+                + f"= {node.node_status.bandwidth} GB/s potentially free for new request"
             )
 
     def __compute_worst_node_disk_bandwidth(self, node, request):
@@ -101,13 +109,13 @@ class WorstCase(StrategyInterface):
             max_agg_bw += disk_data[1]  # sum bw of all active disks
 
         if max_agg_bw < node.bandwidth:
-            # Node bw doen't throttle disks
+            # Node bw doen't throttle disks, we compute what "free" bw is left
             worst_case_mean_node_bandwidth = node.bandwidth - max_agg_bw
         else:
             # Node bw may throttle disk. Each gets an equal part of the
             # node network bandwidth, which may be > or < to the own disk
-            # bw, depending on the number of disks per node
-            worst_case_mean_node_bandwidth = node.bandwidth / nb_overlap_disks
+            # bw, depending on the number of disks per node (+1 for our own new request)
+            worst_case_mean_node_bandwidth = node.bandwidth / (nb_overlap_disks + 1)
 
         node.node_status.bandwidth = worst_case_mean_node_bandwidth
         # Throttle disk bandwidth according to node capacity
@@ -119,11 +127,15 @@ class WorstCase(StrategyInterface):
     def __compute_worst_disk_bw(self, disk, request):
         """List all requests overlapping with our new request"""
 
+        self.log.debug(f"[WC:disk] Worst BW compute for disk {disk.uid}")
         num_allocations = len(disk.allocations)
-        self.log.debug(f"[WC_lo] .. This disk currently has {num_allocations} on-going allocations")
+        self.log.debug(
+            f"[WC:disk] .. This disk currently has {num_allocations} on-going allocations"
+        )
 
         overlap_durations = []
         disk.disk_status.capacity = disk.capacity  # Reset 'status' value to full capacity
+        self.log.debug(f"[WC:disk] .. Free current capacity : {disk.disk_status.capacity}")
 
         # Loop through allocations (from
         for idx, allocation in enumerate(disk.allocations[::-1]):
@@ -145,17 +157,17 @@ class WorstCase(StrategyInterface):
             if overlap_duration != 0.0:
                 self.log.debug(
                     f"[WC:disk] .. Alloc {idx} and our request's alloc "
-                    + "overlap for {overlap_duration}s"
+                    + f"overlap for {overlap_duration}s"
                 )
 
                 overlap_durations.append(overlap_duration)
                 disk.disk_status.capacity -= allocation.capacity
-                disk.disk_status.capacity = min(disk.disk_status.capacity, 0)
+                disk.disk_status.capacity = max(disk.disk_status.capacity, 0)
 
         self.log.debug(f"[WC:disk] We have {len(overlap_durations)} overlapping requests")
-        self.log.debug(f"[WC:disk] Overlap durations: {overlap_durations}")
 
         if overlap_durations:
+            self.log.debug(f"[WC:disk] Overlap durations: {overlap_durations}")
             num_overlaps = len(overlap_durations) + 1  # +1 for our request
             max_overlap_duration = max(overlap_durations)
             self.log.debug(f"[WC:disk] Max overlap duration: {max_overlap_duration}")

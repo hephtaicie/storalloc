@@ -51,12 +51,12 @@ if __name__ == "__main__":
     BASE_PATH_CONFIG = "../config"
 
     BASE_PATH_SYSTEM = [
-        # f"{BASE_PATH_CONFIG}/systems/infra8TB",
-        # f"{BASE_PATH_CONFIG}/systems/infra16TB",
-        # f"{BASE_PATH_CONFIG}/systems/infra32TB",
-        # f"{BASE_PATH_CONFIG}/systems/infra32TBBB",
-        f"{BASE_PATH_CONFIG}/systems/infra64TBBB",
-        # f"{BASE_PATH_CONFIG}/systems/infra64TB",
+        f"{BASE_PATH_CONFIG}/systems/infra8TB",
+        f"{BASE_PATH_CONFIG}/systems/infra16TB",
+        f"{BASE_PATH_CONFIG}/systems/infra32TB",
+        #f"{BASE_PATH_CONFIG}/systems/infra32TBBB",
+        # f"{BASE_PATH_CONFIG}/systems/infra64TBBB",
+        f"{BASE_PATH_CONFIG}/systems/infra64TB",
     ]
 
     CONFIG_DETAILS = "split_200G"  # split_100T ; split_100T_retry ; split_200G ; split_200G_retry
@@ -71,9 +71,9 @@ if __name__ == "__main__":
     ]
 
     SYSTEM_FILES = [f"{base_path}/multi_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
-    # SYSTEM_FILES += [f"{base_path}/single_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
-    # SYSTEM_FILES += [f"{base_path}/multi_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
-    # SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
+    SYSTEM_FILES += [f"{base_path}/single_node_multi_disk.yml" for base_path in BASE_PATH_SYSTEM]
+    SYSTEM_FILES += [f"{base_path}/multi_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
+    SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BASE_PATH_SYSTEM]
 
     BASE_PATH_DATA = "../data"
     JOB_FILES = [
