@@ -6,35 +6,35 @@ hosts:
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ9342009D8P1HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme0n1
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ93420AFN8P2HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme1n1
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ9342009D8P3HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme2n1
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ93420AFN8P4HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme3n1
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ9342009D8P5HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme4n1
@@ -45,35 +45,35 @@ hosts:
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ9342009D8P1HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme0n1
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ93420AFN8P2HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme1n1
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ9342009D8P3HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme2n1
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ93420AFN8P4HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme3n1
       - vendor: INTEL
         model: SSDPE2KX080T8
         serial: BTLJ9342009D8P5HGN
-        capacity: 800 #GB
+        capacity: 1600 #GB
         write_bandwidth: 2.93 #GBps
         read_bandwidth: 3.13 #GPBS
         block_device: /dev/nvme4n1
@@ -84,14 +84,14 @@ hosts:
       - vendor: SEAGATE
         model: HDDAPE2KX080T8
         serial: BTLJ934100LT8P6HGN
-        capacity: 1000 #GB
+        capacity: 2000 #GB
         write_bandwidth: 0.05 #GBps
         read_bandwidth: 0.1 #GPBS
         block_device: /dev/hdd0
       - vendor: SEAGATE
         model: HDDAPE2KX080T8
         serial: BTLJ934100LT8P6HGN
-        capacity: 1000 #GB
+        capacity: 2000 #GB
         write_bandwidth: 0.05 #GBps
         read_bandwidth: 0.1 #GPBS
         block_device: /dev/hdd1
@@ -102,14 +102,14 @@ hosts:
       - vendor: SEAGATE
         model: HDDAPE2KX080T8
         serial: BTLJ934100LT8P6HGN
-        capacity: 1000 #GB
+        capacity: 2000 #GB
         write_bandwidth: 0.05 #GBps
         read_bandwidth: 0.1 #GPBS
         block_device: /dev/hdd0
       - vendor: SEAGATE
         model: HDDAPE2KX080T8
         serial: BTLJ934100LT8P6HGN
-        capacity: 1000 #GB
+        capacity: 2000 #GB
         write_bandwidth: 0.05 #GBps
         read_bandwidth: 0.1 #GPBS
         block_device: /dev/hdd1
@@ -120,14 +120,14 @@ hosts:
       - vendor: SEAGATE
         model: HDDAPE2KX080T8
         serial: BTLJ934100LT8P6HGN
-        capacity: 1000 #GB
+        capacity: 2000 #GB
         write_bandwidth: 0.05 #GBps
         read_bandwidth: 0.1 #GPBS
         block_device: /dev/hdd0
       - vendor: SEAGATE
         model: HDDAPE2KX080T8
         serial: BTLJ934100LT8P6HGN
-        capacity: 1000 #GB
+        capacity: 2000 #GB
         write_bandwidth: 0.05 #GBps
         read_bandwidth: 0.1 #GPBS
         block_device: /dev/hdd1
@@ -138,14 +138,14 @@ hosts:
       - vendor: SEAGATE
         model: HDDAPE2KX080T8
         serial: BTLJ934100LT8P6HGN
-        capacity: 1000 #GB
+        capacity: 2000 #GB
         write_bandwidth: 0.05 #GBps
         read_bandwidth: 0.1 #GPBS
         block_device: /dev/hdd0
       - vendor: SEAGATE
         model: HDDAPE2KX080T8
         serial: BTLJ934100LT8P6HGN
-        capacity: 1000 #GB
+        capacity: 2000 #GB
         write_bandwidth: 0.05 #GBps
         read_bandwidth: 0.1 #GPBS
         block_device: /dev/hdd1

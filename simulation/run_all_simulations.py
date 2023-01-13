@@ -54,17 +54,17 @@ if __name__ == "__main__":
         # f"{BASE_PATH_CONFIG}/systems/infra8TB",
         # f"{BASE_PATH_CONFIG}/systems/infra16TB",
         # f"{BASE_PATH_CONFIG}/systems/infra32TB",
-        f"{BASE_PATH_CONFIG}/systems/infra32TBBB",
-        # f"{BASE_PATH_CONFIG}/systems/infra64TBBB",
+        #f"{BASE_PATH_CONFIG}/systems/infra32TBBB",
         # f"{BASE_PATH_CONFIG}/systems/infra64TB",
+        f"{BASE_PATH_CONFIG}/systems/infra64TBBB",
     ]
 
     CONFIG_DETAILS = "split_200G"  # split_100T ; split_100T_retry ; split_200G ; split_200G_retry
     CONFIG_FILES = [
         f"{BASE_PATH_CONFIG}/{CONFIG_DETAILS}/{algo}"
         for algo in [
-            # "config_worst_case.yml",
-            "config_random.yml",
+            "config_worst_case.yml",
+            # "config_random.yml",
             # "config_rr.yml",
             # "config_worst_fit.yml",
         ]
