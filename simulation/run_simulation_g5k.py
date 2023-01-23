@@ -27,13 +27,17 @@ BASE_PATH_CONFIG = f"{WORK_DIR}/config"
 BASE_PATH_SYSTEM = [
     f"{BASE_PATH_CONFIG}/systems/infra8TB",
     f"{BASE_PATH_CONFIG}/systems/infra16TB",
+    f"{BASE_PATH_CONFIG}/systems/infra32TB",
     f"{BASE_PATH_CONFIG}/systems/infra64TB",
 ]
 
 # Which strategies to use
 # CONFIG_OPTIONS = ["split_100T", "split_200G", "split_100T_retry", "split_200G_retry"]
 # CONFIG_OPTIONS = ["split_100T", "split_100T_retry"]
-CONFIG_OPTIONS = ["split_200G", "split_200G_retry"]
+# CONFIG_OPTIONS = ["split_200G", "split_200G_retry"]
+CONFIG_OPTIONS = [
+    "split_200G_retry",
+]
 CONFIG_FILES = [
     f"{BASE_PATH_CONFIG}/{opt}/{algo}"
     for algo, opt in itertools.product(
@@ -63,7 +67,7 @@ JOB_FILES = [
 
 
 PERMUTATIONS = list(itertools.product(CONFIG_FILES, SYSTEM_FILES, JOB_FILES))
-MAX_TASKS_PER_NODE = 3
+MAX_TASKS_PER_NODE = 2
 MAX_NODES = 32
 CLUSTER = "paravance"
 
@@ -73,6 +77,13 @@ def results_dir_name():
     dir_name = f"exp__{dt.datetime.now().strftime('%d-%b-%y_%H-%M')}"
     results_path = Path(f"/home/jmonniot/StorAlloc/results/{dir_name}")
     return str(results_path)
+
+
+def logs_dir_name():
+    """Generate a timestampd directory name including compute host information"""
+    dir_name = f"logs__{dt.datetime.now().strftime('%d-%b-%y_%H-%M')}"
+    logs_path = Path(f"/home/jmonniot/StorAlloc/logs/{dir_name}")
+    return str(logs_path)
 
 
 def split_permutations(permutations: list, split_size: int):
@@ -86,6 +97,7 @@ def prepare_params():
     """Prepare a list of parameters for each simulation to be run"""
 
     results_dir = results_dir_name()
+    logs_dir = logs_dir_name()
     print(f"There will be {len(PERMUTATIONS)} simulations to run on {CLUSTER}")
     nb_nodes = int(len(PERMUTATIONS) / MAX_TASKS_PER_NODE)
     if nb_nodes > MAX_NODES:
@@ -99,42 +111,30 @@ def prepare_params():
         for param in param_set:
             param = list(param)
             param.insert(0, results_dir)
+            param.append(logs_dir)
             params[idx].append(param)
 
     return params
 
 
-def run_batch(node_number: int, params: list, results_dir: str):
+def run_batch(node_number: int, params: list, results_dir: str, logs_dir: str):
     """Run a few simulations (whose parameters are given in a list) on a set of nodes"""
-
-    ## Prepare Configuration
-    prod_network = en.G5kNetworkConf(
-        id="net_storalloc",
-        type="prod",
-        roles=["storalloc_net"],
-        site="rennes",
-    )
 
     conf = (
         en.G5kConf.from_settings(
             job_name="storalloc_sim",
-            walltime="02:00:00",
-            job_type=["allow_classic_ssh"],
-            # key=str(Path.home() / ".ssh" / "id_rsa_grid5000.pub"),
+            walltime="01:30:00",
         )
-        .add_network_conf(prod_network)
         .add_machine(
             roles=["compute_storalloc"],
             cluster=CLUSTER,
             nodes=node_number,
-            primary_network=prod_network,
         )
         .finalize()
     )
 
     provider = en.G5k(conf)
     roles, network = provider.init()
-    roles = en.sync_info(roles, network)
 
     ### Prepare parameters
     for node, param in zip(roles["compute_storalloc"], params):
@@ -146,32 +146,29 @@ def run_batch(node_number: int, params: list, results_dir: str):
     results = None
     with en.actions(
         roles=roles,
-        gather_facts=True,
     ) as play:
 
         play.apt(name="git", state="present")
         play.git(
             repo=f"https://oauth2:{REPO_KEY}@{REPO_URL}",
-            dest="/tmp/storalloc",
+            dest=WORK_DIR,
             depth=1,
-            version="feature-g5ksim",
-        )
-        play.pip(
-            chdir="/tmp/storalloc",
-            name=".",
-            virtualenv="storalloc_venv",
-        )
-        play.shell(
-            command="echo '{{ storalloc_params  }}' "
-            + ">> /home/jmonniot/StorAlloc/results/{{ ansible_hostname }}_params.txt"
+            version="feature_worst_case",
         )
         play.file(path=results_dir, state="directory")
+        play.file(path=logs_dir, state="directory")
         play.shell(
-            chdir="/tmp/storalloc",
-            command=". storalloc_venv/bin/activate &&"
-            + " cd simulation &&"
-            + " ./run_simulation.py {{ storalloc_params }}",
+            "echo '{{ storalloc_params  }}' "
+            + ">> /home/jmonniot/StorAlloc/results/{{ inventory_hostname }}_params.txt"
         )
+        play.shell(
+            ". /home/jmonniot/StorAlloc/storalloc_venv/bin/activate && cd simulation && ./run_simulation.py {{ storalloc_params }}",
+            chdir=WORK_DIR,
+        )
+        play.shell(
+            "echo 'DONE' >> /home/jmonniot/StorAlloc/results/{{ inventory_hostname }}_params.txt"
+        )
+
         results = play.results
 
     for result in results:
@@ -193,6 +190,7 @@ def run():
 
     params = prepare_params()
     results_dir = params[0][0][0]
+    logs_dir = params[0][0][4]
     provider = None
 
     for idx, batch in enumerate(params):
@@ -204,11 +202,19 @@ def run():
             batch_params.append(str_params)
 
         print(f"Starting batch with {len(batch)} nodes")
-        provider = run_batch(len(batch), batch_params, results_dir)
+        provider = run_batch(len(batch), batch_params, results_dir, logs_dir)
 
     provider.destroy()
 
 
 if __name__ == "__main__":
     _ = en.init_logging()
+
+    print("#### WARNING ####")
+    print(
+        "THis script expects to use a virtualenv ALREADY existing"
+        + " (and up-to-date) in my /home mountpoint."
+        + " Make sure that the virtualenv exists and the latest version of"
+        + " the required packets are installed."
+    )
     run()
