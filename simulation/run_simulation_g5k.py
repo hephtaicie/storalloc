@@ -34,7 +34,10 @@ BASE_PATH_SYSTEM = [
 # Which strategies to use
 # CONFIG_OPTIONS = ["split_100T", "split_200G", "split_100T_retry", "split_200G_retry"]
 # CONFIG_OPTIONS = ["split_100T", "split_100T_retry"]
-CONFIG_OPTIONS = ["split_200G", "split_200G_retry"]
+# CONFIG_OPTIONS = ["split_200G", "split_200G_retry"]
+CONFIG_OPTIONS = [
+    "split_200G_retry",
+]
 CONFIG_FILES = [
     f"{BASE_PATH_CONFIG}/{opt}/{algo}"
     for algo, opt in itertools.product(
@@ -59,12 +62,12 @@ SYSTEM_FILES += [f"{base_path}/single_node_single_disk.yml" for base_path in BAS
 BASE_PATH_DATA = "/home/jmonniot/StorAlloc/data"
 # Which data file to use
 JOB_FILES = [
-    f"{BASE_PATH_DATA}/IOJobsOct.yml",
+    f"{BASE_PATH_DATA}/IOJobs.yml",
 ]
 
 
 PERMUTATIONS = list(itertools.product(CONFIG_FILES, SYSTEM_FILES, JOB_FILES))
-MAX_TASKS_PER_NODE = 4
+MAX_TASKS_PER_NODE = 2
 MAX_NODES = 32
 CLUSTER = "paravance"
 
@@ -117,34 +120,21 @@ def prepare_params():
 def run_batch(node_number: int, params: list, results_dir: str, logs_dir: str):
     """Run a few simulations (whose parameters are given in a list) on a set of nodes"""
 
-    ## Prepare Configuration
-    # prod_network = en.G5kNetworkConf(
-    #    id="net_storalloc",
-    #    type="prod",
-    #    roles=["storalloc_net"],
-    #    site="rennes",
-    # )
-
-    # .add_network_conf(prod_network)
     conf = (
         en.G5kConf.from_settings(
             job_name="storalloc_sim",
-            walltime="02:00:00",
-            job_type=["allow_classic_ssh"],
-            # key=str(Path.home() / ".ssh" / "id_rsa_grid5000.pub"),
+            walltime="01:30:00",
         )
         .add_machine(
             roles=["compute_storalloc"],
             cluster=CLUSTER,
             nodes=node_number,
-            # primary_network=prod_network,
         )
         .finalize()
     )
 
     provider = en.G5k(conf)
     roles, network = provider.init()
-    # roles = en.sync_info(roles, network)
 
     ### Prepare parameters
     for node, param in zip(roles["compute_storalloc"], params):
@@ -156,7 +146,6 @@ def run_batch(node_number: int, params: list, results_dir: str, logs_dir: str):
     results = None
     with en.actions(
         roles=roles,
-        # gather_facts=False,
     ) as play:
 
         play.apt(name="git", state="present")
@@ -164,25 +153,22 @@ def run_batch(node_number: int, params: list, results_dir: str, logs_dir: str):
             repo=f"https://oauth2:{REPO_KEY}@{REPO_URL}",
             dest=WORK_DIR,
             depth=1,
-            version="develop",
-        )
-        play.pip(
-            chdir=WORK_DIR,
-            name=".",
-            virtualenv="storalloc_venv",
-        )
-        play.shell(
-            command="echo '{{ storalloc_params  }}' "
-            + ">> /home/jmonniot/StorAlloc/results/{{ ansible_hostname }}_params.txt"
+            version="feature_worst_case",
         )
         play.file(path=results_dir, state="directory")
         play.file(path=logs_dir, state="directory")
         play.shell(
-            chdir=WORK_DIR,
-            command=". storalloc_venv/bin/activate &&"
-            + " cd simulation &&"
-            + " ./run_simulation.py {{ storalloc_params }}",
+            "echo '{{ storalloc_params  }}' "
+            + ">> /home/jmonniot/StorAlloc/results/{{ inventory_hostname }}_params.txt"
         )
+        play.shell(
+            ". /home/jmonniot/StorAlloc/storalloc_venv/bin/activate && cd simulation && ./run_simulation.py {{ storalloc_params }}",
+            chdir=WORK_DIR,
+        )
+        play.shell(
+            "echo 'DONE' >> /home/jmonniot/StorAlloc/results/{{ inventory_hostname }}_params.txt"
+        )
+
         results = play.results
 
     for result in results:
@@ -223,4 +209,12 @@ def run():
 
 if __name__ == "__main__":
     _ = en.init_logging()
+
+    print("#### WARNING ####")
+    print(
+        "THis script expects to use a virtualenv ALREADY existing"
+        + " (and up-to-date) in my /home mountpoint."
+        + " Make sure that the virtualenv exists and the latest version of"
+        + " the required packets are installed."
+    )
     run()

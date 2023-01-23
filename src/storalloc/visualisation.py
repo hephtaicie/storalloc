@@ -9,7 +9,7 @@ import datetime
 import zmq
 
 import bokeh
-from bokeh.plotting import figure
+from bokeh.plotting import figure, curdoc
 from bokeh.models import ColumnDataSource, DatetimeTickFormatter
 from bokeh.server.server import Server
 from bokeh.transform import dodge
@@ -74,6 +74,8 @@ class Visualisation:
     def simulation_vis(self, doc):
         """Start a Bokeh app for simulation events"""
 
+        # doc = curdoc()
+
         # Sources
         sources = {}
         sources["alloc"] = ColumnDataSource(data={"time": [], "value": []})
@@ -88,6 +90,7 @@ class Visualisation:
             x_axis_type="datetime",
             title="Used GBs across all disks - Simulation",
             sizing_mode="stretch_both",
+            height=400,
         )
         alloc_plot.xaxis[0].formatter = DatetimeTickFormatter()
         alloc_plot.step(
@@ -100,6 +103,7 @@ class Visualisation:
             x_axis_label="Simulation Time",
             x_axis_type="datetime",
             title="Number of concurrent allocations - Simulation",
+            width=400,
             sizing_mode="stretch_both",
         )
         calloc_plot.xaxis[0].formatter = DatetimeTickFormatter()
@@ -110,7 +114,8 @@ class Visualisation:
             x_range=(0, 5),
             title="Concurrent Allocations per disk",
             width=400,
-            sizing_mode="stretch_height",
+            height=350,
+            # sizing_mode="stretch_both",
         )
 
         ca_per_disk.hbar(
@@ -169,8 +174,13 @@ class Visualisation:
 
         doc.add_root(
             bokeh.layouts.row(
-                bokeh.layouts.column(alloc_plot, calloc_plot, sizing_mode="stretch_width"),
-                bokeh.layouts.column(ca_per_node, ca_per_disk),
+                children=[
+                    bokeh.layouts.column(
+                        children=[alloc_plot, calloc_plot], sizing_mode="scale_width"
+                    ),
+                    bokeh.layouts.column(children=[ca_per_node, ca_per_disk]),
+                ],
+                sizing_mode="stretch_both",
             )
         )
 
@@ -274,12 +284,12 @@ class Visualisation:
 
         if simulation:
             bkserver = Server({"/": self.simulation_vis}, num_procs=1)
+            bkserver.start()
         else:
             raise NotImplementedError("Visualisation can only be used with simulation so far.")
 
         try:
             bkserver.io_loop.add_callback(bkserver.show, "/")
-            bkserver.start()
             bkserver.io_loop.start()
         except KeyboardInterrupt:
             self.log.info("Visualisation server terminated by keyboard interrupt")
