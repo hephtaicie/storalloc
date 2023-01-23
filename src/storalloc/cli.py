@@ -72,7 +72,7 @@ def run_server(ctx, config, system, reset, simulate):
 def run_orchestrator(ctx, config):
     """Orchestrator command"""
     click.secho("[~] Starting orchestrator...", fg="yellow")
-    orchestrator = router.Router(config, ctx.obj["verbose"])
+    orchestrator = router.Router(config, verbose=ctx.obj["verbose"])
     orchestrator.run()
     click.secho("[~] Stopping orchestrator.", fg="red")
 

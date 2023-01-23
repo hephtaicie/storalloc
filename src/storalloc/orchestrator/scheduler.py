@@ -4,7 +4,6 @@
 
 from multiprocessing import Process
 import datetime
-import copy
 
 import zmq
 
@@ -65,12 +64,14 @@ class Scheduler(Process):
 
         # Add entry
         if short_job_id not in self.ongoing_splits:
+            self.log.debug("[accumulate] New split request")
             self.ongoing_splits[short_job_id] = {full_job_id: [request]}
         # Update entry
         elif (
             short_job_id in self.ongoing_splits
             and (len(self.ongoing_splits[short_job_id]) + 1) < request.divided
         ):
+            self.log.debug("[accumulate] New split request PART ")
             self.ongoing_splits[short_job_id][full_job_id] = [request]
         # Flush entry
         elif (
@@ -78,6 +79,7 @@ class Scheduler(Process):
             and (len(self.ongoing_splits[short_job_id]) + 1) == request.divided
         ):
 
+            self.log.debug("[accumulate] New split request part AND WE NOW HAVE FULL REQUEST")
             self.ongoing_splits[short_job_id][full_job_id] = [request]
 
             # Try to allocate every request
@@ -92,9 +94,12 @@ class Scheduler(Process):
                     break
                 # Store scheduler results
                 value.append(alloc_res)
+                self.log.debug("[accumulate] Registering new allocation in catalog")
                 self.resource_catalog.add_allocation(*alloc_res, request)
 
             if all_allocated is False:
+
+                self.log.debug("[accumulate] Cleaning up split allocations part after failure")
 
                 for req_id, value in self.ongoing_splits[short_job_id].items():
 
@@ -118,14 +123,16 @@ class Scheduler(Process):
             else:
                 # Every subrequest could be allocated, do it
                 for _, value in self.ongoing_splits[short_job_id].items():
-                    self.process_allocation_request(value[0], *value[1])
+                    self.process_allocation_request(value[0], *value[1], in_catalog=True)
         else:
             print("###########################################################")
             print("############## SHOULD NEVER TRIGGER THIS ##################")
             print("###########################################################")
             raise ValueError("Triggered unknown state in accumulate_requests")
 
-    def process_allocation_request(self, request, server_id, target_node, target_disk):
+    def process_allocation_request(
+        self, request, server_id, target_node, target_disk, in_catalog: bool = False
+    ):
         """Run scheduling algo and attempt to find an optimal allocation for a given request"""
 
         self.log.debug(f"Processing PENDING allocation request : {request}")
@@ -138,7 +145,10 @@ class Scheduler(Process):
             self.log.debug(
                 f"Request {request.job_id} [GRANTED] on {server_id}:{target_node}:{target_disk}"
             )
-            self.resource_catalog.add_allocation(server_id, target_node, target_disk, request)
+
+            if not in_catalog:
+                self.log.debug("[process_allocation] Registering request to catalog")
+                self.resource_catalog.add_allocation(server_id, target_node, target_disk, request)
             # Send back the allocated request to the orchestrator
             self.transport.send_multipart(Message(MsgCat.REQUEST, self.schema.dump(request)))
         elif self.allow_retry:

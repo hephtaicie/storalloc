@@ -1,0 +1,86 @@
+alloc_delayed_requests_count: 0
+alloc_split_requests_count: 0
+alloc_split_requests_duration: 0
+alloc_split_requests_gb: 0
+delayed_requests_count: 0
+failed_requests_count: 0
+failed_split_requests_count: 0
+max_concurrent_allocations: 182
+nodes:
+- disks:
+  - capacity: 2000
+    id: 0
+    last_alloc_time: 1609443332
+    max_cap_utilisation: 87.45
+    max_nb_alloc: 36
+    mean_capacity_utilisation: 2.333
+    mean_nb_alloc: 0.365
+  - capacity: 2000
+    id: 1
+    last_alloc_time: 1609423790
+    max_cap_utilisation: 96.65
+    max_nb_alloc: 31
+    mean_capacity_utilisation: 1.818
+    mean_nb_alloc: 0.363
+  - capacity: 2000
+    id: 2
+    last_alloc_time: 1609441000
+    max_cap_utilisation: 99.95
+    max_nb_alloc: 33
+    mean_capacity_utilisation: 2.013
+    mean_nb_alloc: 0.357
+  - capacity: 2000
+    id: 3
+    last_alloc_time: 1609441000
+    max_cap_utilisation: 82.5
+    max_nb_alloc: 30
+    mean_capacity_utilisation: 1.556
+    mean_nb_alloc: 0.341
+  - capacity: 2000
+    id: 4
+    last_alloc_time: 1609446938
+    max_cap_utilisation: 84.15
+    max_nb_alloc: 30
+    mean_capacity_utilisation: 2.557
+    mean_nb_alloc: 0.36
+  - capacity: 2000
+    id: 5
+    last_alloc_time: 1609443332
+    max_cap_utilisation: 93.85
+    max_nb_alloc: 33
+    mean_capacity_utilisation: 2.112
+    mean_nb_alloc: 0.371
+  - capacity: 2000
+    id: 6
+    last_alloc_time: 1609443332
+    max_cap_utilisation: 91.35
+    max_nb_alloc: 30
+    mean_capacity_utilisation: 2.358
+    mean_nb_alloc: 0.363
+  - capacity: 2000
+    id: 7
+    last_alloc_time: 1609443332
+    max_cap_utilisation: 87.25
+    max_nb_alloc: 32
+    mean_capacity_utilisation: 1.915
+    mean_nb_alloc: 0.36
+  id: S-1dc6cd:0
+  last_alloc_ts: 1609446938
+  max_nb_alloc: 182
+  mean_nb_alloc: 2.88
+refused_delayed_requests_count: 0
+refused_requests_count: 218
+refused_split_requests_count: 0
+refused_split_requests_duration: 0
+refused_split_requests_gb: 0
+registrations_count: 1
+requests_count: 24001
+retries_allowed: 'no'
+sim_duration: 31515560
+sim_first_ts: 1577931378
+sim_last_ts: 1609446938
+split_requests_count: 0
+split_threshold_gb: 100000
+tt_allocated_gb: 661059.0
+tt_deallocated_gb: 661059.0
+tt_delay_time_minutes: 0

@@ -171,6 +171,7 @@ class ResourceCatalog:
                 self.storage_resources[server_uid].append(new_node)
 
         self.log.info(f"storage_resources catalog now contains {len(self.storage_resources)} nodes")
+        self.pretty_print()
 
     def pretty_print(self):
         """Pretty print list of currently registered resources"""
@@ -185,6 +186,13 @@ class ResourceCatalog:
 
     def add_allocation(self, server_id: str, node_id: int, disk_id: int, request: StorageRequest):
         """Add allocation in a given disk of a given node, for a specific request"""
+
+        self.log.debug(
+            f"[Resource:add_allocation] New allocation registered on {server_id}"
+            + f"{node_id}:{disk_id} for requests {request.job_id} with capacity"
+            + f"{request.capacity}"
+        )
+
         self.storage_resources[server_id][node_id].disks[disk_id].allocations.append(request)
         # After each insertion, ensure that allocations for disk are ordered by increasing end_time
         self.storage_resources[server_id][node_id].disks[disk_id].allocations.sort(

@@ -93,16 +93,22 @@ class Simulation:
             "max_ca": 0,  # max concurrent allocations until now
             "requests_nb": 0,  # Total number of requests received (any state)
             "registrations_nb": 0,  # Number of server registrations reveived
-            "scheduler_fallbacks": 0,  # Requests received by simulation in REFUSED state
-            "simulation_fallbacks": 0,  # Requests proved to be invalid when unrolling simulation
+            "refused_requests": 0,  # Requests received by simulation in REFUSED state
+            "total_gb_refused_requests": 0,  # Total capacity not alloc because of REFUSED reqs
+            "failed_requests": 0,  # Requests proved to be invalid when unrolling simulation
+            "total_gb_failed_requests": 0,  # Total capacity no alloc because of FAILED reqs
             "total_waiting_time_minutes": 0,  # Total cumulated waiting time for delayed requests
             "delayed_requests": 0,  # Number of requests that have been delayed (GRANTED state only)
             "allocated_delayed_requests": 0,  # Nb of delayed and successfully allocated reqs
             "refused_delayed_requests": 0,  # Number of requests delayed and still refused by sched
             "split_requests": 0,  # Tt nb of split requests (even those bound to fail)
             "allocated_split_requests": 0,  # Nb of split reqs whose subreqs have all been allocated
+            "total_gb_allocated_split_requests": 0,  # Volume of allocation (GB) of allocated split requests
+            "allocated_split_requests_duration": 0,  # cumulated duration of allocated split requests
             "failed_split_requests": 0,  # Nb of split reqs with at least one failure in sub reqs
             "refused_split_requests": 0,  # Nb of split reqs refused by scheduler before simulation
+            "total_gb_refused_split_requests": 0,  # Volume of refused allocation (GB) for split reqs
+            "refused_split_requests_duration": 0,  # cumulated duration of allocated split requests
             "total_gb_alloc": 0,
             "total_gb_dealloc": 0,
             "first_event_time": 0,  # First allocation
@@ -162,8 +168,7 @@ class Simulation:
         return transports
 
     def track_split_request(self, request: StorageRequest):
-        """Split request accounting (for not yet allocated requests or for
-        allocated requests, depending on the split_store)"""
+        """Split request accounting"""
 
         # Ignore non-split requests
         if request.divided == 1:
@@ -211,16 +216,18 @@ class Simulation:
 
         self.log.warning(f"Initiating mass deallocation process for {request.job_id}")
 
+        # Blacklist request, so that we won't try to allocate next parts.
         full_job_id = request.job_id
         last_dash = full_job_id.rfind("-")
         short_job_id = full_job_id[:last_dash]
         self.split_request_blacklist.add(short_job_id)
 
+        # If the failure doesn't happen on the first request, we need to revert a counter
         if full_job_id[last_dash:] != "-0":
-            # At least the first part was validated, so stat was
-            # incorrectly incremented
             self.stats["allocated_split_requests"] -= 1
 
+        # In any case, that's one more failed split. This is incremented only once
+        # because now the request is blacklisted, no other part will reach this point.
         self.stats["failed_split_requests"] += 1
 
         # Deallocate every subrequest that was already processed
@@ -249,8 +256,13 @@ class Simulation:
         full_job_id = request.job_id
         last_dash = full_job_id.rfind("-")
         short_job_id = full_job_id[:last_dash]
+
+        # Count allocated split requests once (not for all sub-requests)
         if full_job_id[last_dash:] == "-0":
             self.stats["allocated_split_requests"] += 1
+            self.stats["allocated_split_requests_duration"] += request.duration.total_seconds()
+
+        self.stats["total_gb_allocated_split_requests"] += request.capacity
         self.split_request_ids[short_job_id][full_job_id]["allocated"] = True
 
     def update_disk(self, server_id, node_id, disk_id, allocation):
@@ -263,12 +275,15 @@ class Simulation:
         #### Try to allocate the requested capacity on virtual storage
         if allocation > 0:
 
+            # Check for resource space availability
             if container.level + allocation > container.capacity:
                 self.log.warning(
                     f"[SIM ERROR] Allocation on {server_id}:{node_id}:{disk_id}"
                     + " can't happen as capacity is not sufficient"
                 )
-                self.stats["simulation_fallbacks"] += 1
+                # Failure from scheduler, the allocation decision was incorrect
+                self.stats["failed_requests"] += 1
+                self.stats["total_gb_failed_requests"] += allocation
                 raise ValueError("Not enough space (allocation)")
 
             # DISK/NODE-related stats: Mean capacity utilisation and mean number of allocations
@@ -294,10 +309,13 @@ class Simulation:
             if utilisation > disk.sim_max_cap_utilisation:  # max utilisation per disk
                 disk.sim_max_cap_utilisation = utilisation
             disk.sim_nb_alloc += 1
-            if disk.sim_nb_alloc > disk.sim_max_alloc:  # max alloc per disk
-                disk.sim_max_alloc = disk.sim_nb_alloc
+            if disk.sim_nb_alloc > disk.sim_max_nb_alloc:  # max alloc per disk
+                disk.sim_max_nb_alloc = disk.sim_nb_alloc
 
             node.sim_nb_alloc += 1
+            if node.sim_nb_alloc > node.sim_max_nb_alloc:  # max alloc per node
+                node.sim_max_nb_alloc = node.sim_nb_alloc
+
             disk.sim_last_alloc_time = self.env.now
             node.sim_last_alloc_time = self.env.now
 
@@ -327,12 +345,13 @@ class Simulation:
         #### Try to deallocate a request from virtual storage
         elif allocation < 0:
 
-            if container.level - allocation < 0:
+            if container.level - (-allocation) < 0:
                 self.log.error(
                     f"[SIM ERROR] Deallocation on {server_id}:{node_id}:{disk_id}"
-                    + "causes level to get below 0. Something bad is happening"
+                    + f" for {allocation} GB (going below 0 used GB on disk,  "
+                    + f"which has current level: {container.level}."
                 )
-                raise ValueError("Not enough space (deallocation)")
+                raise ValueError("Not enough space (deallocation) - (should not happen)")
 
             # DISK/NODE-related stats
             disk.sim_mean_nb_alloc += (self.env.now - disk.sim_last_alloc_time) * disk.sim_nb_alloc
@@ -340,9 +359,12 @@ class Simulation:
             disk.sim_mean_cap_utilisation += (self.env.now - disk.sim_last_alloc_time) * (
                 (container.level * 100) / container.capacity
             )
+
             disk.sim_last_alloc_time = self.env.now
             node.sim_last_alloc_time = self.env.now
+
             container.get(-allocation)
+
             disk.sim_nb_alloc -= 1
             node.sim_nb_alloc -= 1
 
@@ -395,6 +417,7 @@ class Simulation:
             self.stats["delayed_requests"] += 1
 
         # Stats and validation step for possible split request
+        # Needs to be done BEFORE allocating any split request
         self.track_split_request(request)
 
         # Wait for the actual allocation time of request
@@ -409,7 +432,7 @@ class Simulation:
             self.stats["first_event_time"] = self.env.now
 
         # If one of the other subrequests have failed to be allocated,
-        # they are all blacklist and no more request from this split
+        # they are all blacklisted and no more request from this split
         # should be allocated
         if self.split_blacklisted(request):
             self.log.error(f"[SIM] Subrequest {request.job_id} blacklisted, skipping alloc")
@@ -439,17 +462,24 @@ class Simulation:
             self.log.error(f"[SIM] Subreq {request.job_id} blacklisted, skipping DEalloc")
             return
 
+        # Deallocate from disk.
         try:
             self.update_disk(request.server_id, request.node_id, request.disk_id, -storage)
         except ValueError as exc:
-            self.log.error(f"Failure at deallocation at {self.env.now} : {exc}")
+            self.log.error(f"[SIM] Failure at deallocation at {self.env.now} : {exc}")
+            self.log.error(f"[SIM] Incriminated request: {request}")
+            self.log.error(f"[SIM] Request.divided = {request.divided}")
+            raise exc
         else:
+            # Record last event time only if update_disk was successful
             self.log.info(f"[SIM] {request.job_id} deallocated from disk")
             self.stats["last_event_time"] = self.env.now
 
     def record_refused_request(self, request: StorageRequest):
         """Record a failed request during simulation (at the correct time,
-        in case we want to plot it during simulation)"""
+        in case we want to plot it during simulation)
+        Handle split requests case (only counts as one refused request)
+        """
 
         self.log.debug(
             f"[SIM] Recording failure for {request.job_id} ({request.capacity} GB on "
@@ -462,23 +492,27 @@ class Simulation:
             self.env,
             delay=int(request.start_time.timestamp()),
         )
-        self.stats["scheduler_fallbacks"] += 1
+        self.stats["refused_requests"] += 1
         if request.start_time > request.original_start_time:
             self.stats["refused_delayed_requests"] += 1
         if request.divided > 1:
+            self.stats["total_gb_refused_split_requests"] += request.capacity
             last_dash = request.job_id.rfind("-")
             if request.job_id[last_dash:] == "-0":
                 self.stats["refused_split_requests"] += 1
+                self.stats["refused_split_requests_duration"] += request.duration.total_seconds()
+        else:
+            self.stats["total_gb_refused_requests"] += request.capacity
 
     def process_request(self, request: StorageRequest):
         """Process a storage request, which might be any state"""
 
         if request.state is ReqState.OPENED:
-            self.log.debug("New request is in OPENED state")
+            self.log.error("New request is in OPENED state")
         elif request.state is ReqState.PENDING:
-            self.log.debug("New request is in PENDING state")
+            self.log.error("New request is in PENDING state")
         elif request.state is ReqState.GRANTED:
-            self.log.debug("New request is in GRANTED state")
+            self.log.error("New request is in GRANTED state")
         elif request.state is ReqState.REFUSED:
             self.log.debug("New request is in REFUSED state")
             self.env.process(self.record_refused_request(request))
@@ -486,14 +520,13 @@ class Simulation:
             self.log.debug("New request is in ALLOCATED state")
             self.env.process(self.allocate(request))
         elif request.state is ReqState.FAILED:
-            self.log.warning("New request is in FAILED state")
-            # self.env.process(self.record_refused_request(request))
+            self.log.error("New request is in FAILED state")
         elif request.state is ReqState.ENDED:
-            self.log.debug("New request is in ENDED state")
+            self.log.error("New request is in ENDED state")
         elif request.state is ReqState.ABORTED:
-            self.log.debug("New request is in ABORTED state")
+            self.log.error("New request is in ABORTED state")
         else:
-            self.log.warning("Request is in an unknown state")
+            self.log.error("Request is in an unknown state")
 
     def process_registration(self, identity: bytes, node_data: dict):
         """Process new registration from server (by adding containers in the simulation)"""
@@ -506,6 +539,7 @@ class Simulation:
             setattr(node, "sim_nb_alloc", 0)
             setattr(node, "sim_mean_nb_alloc", 0)
             setattr(node, "sim_last_alloc_time", 0)
+            setattr(node, "sim_max_nb_alloc", 0)
 
             for disk in node.disks:
                 # Colocate a simulation container with each disk of a node.
@@ -523,7 +557,7 @@ class Simulation:
                 setattr(disk, "sim_last_alloc_time", 0)
                 setattr(disk, "sim_mean_cap_utilisation", 0)
                 setattr(disk, "sim_max_cap_utilisation", 0)
-                setattr(disk, "sim_max_alloc", 0)
+                setattr(disk, "sim_max_nb_alloc", 0)
 
             self.resource_catalog.append_resources(identity, [node])
 
@@ -577,19 +611,25 @@ class Simulation:
         )
         self.log.info(f"[POST-SIM] Total GB allocated: {self.stats['total_gb_alloc']}")
         self.log.info(f"[POST-SIM] Total GB deallocated: {self.stats['total_gb_dealloc']}")
+        self.log.info(f"[POST-SIM] Total request count: {self.stats['requests_nb']}")
+        self.log.info(f"[POST-SIM] Total split request count: {self.stats['split_requests']}")
         self.log.info(f"Full stats: {self.stats}")
 
         if self.stats["last_event_time"] == self.stats["first_event_time"]:
             sim_duration = 1
+            self.log.error("SIM DURATION ERROR -> Simulation lasted for 1s, that seems weird.")
         else:
             sim_duration = self.stats["last_event_time"] - self.stats["first_event_time"]
+
         for server_id, node, disk in self.resource_catalog.list_resources():
+
             disk.sim_mean_nb_alloc /= sim_duration
             disk.sim_mean_cap_utilisation /= sim_duration
+
             self.log.info(
                 f"Disk {server_id}:{node.uid}:{disk.uid} \n"
                 f"  - allocations average = {disk.sim_mean_nb_alloc:.2f}\n"
-                f"  - max allocations = {disk.sim_max_alloc} \n"
+                f"  - max allocations = {disk.sim_max_nb_alloc} \n"
                 f"  - utilisation average = {disk.sim_mean_cap_utilisation:.2f}%\n"
                 f"  - max utilisation = {disk.sim_max_cap_utilisation:.2f}%"
             )
@@ -599,13 +639,17 @@ class Simulation:
             "max_concurrent_allocations": self.stats["max_ca"],
             "registrations_count": self.stats["registrations_nb"],
             "requests_count": self.stats["requests_nb"],
-            "scheduler_fallbacks_count": self.stats["scheduler_fallbacks"],
-            "simulation_fallbacks_count": self.stats["simulation_fallbacks"],
+            "refused_requests_count": self.stats["refused_requests"],
+            "failed_requests_count": self.stats["failed_requests"],
             "split_threshold_gb": self.conf["block_size_gb"],
             "split_requests_count": self.stats["split_requests"],
             "alloc_split_requests_count": self.stats["allocated_split_requests"],
+            "alloc_split_requests_gb": self.stats["total_gb_allocated_split_requests"],
+            "alloc_split_requests_duration": self.stats["allocated_split_requests_duration"],
             "failed_split_requests_count": self.stats["failed_split_requests"],
             "refused_split_requests_count": self.stats["refused_split_requests"],
+            "refused_split_requests_gb": self.stats["total_gb_refused_split_requests"],
+            "refused_split_requests_duration": self.stats["refused_split_requests_duration"],
             "retries_allowed": "yes" if self.conf["allow_retry"] else "no",
             "delayed_requests_count": self.stats["delayed_requests"],
             "tt_delay_time_minutes": self.stats["total_waiting_time_minutes"],
@@ -620,13 +664,14 @@ class Simulation:
                 {
                     "id": f"{server_id}:{node.uid}",
                     "mean_nb_alloc": round(node.sim_mean_nb_alloc / sim_duration, 3),
+                    "max_nb_alloc": node.sim_max_nb_alloc,
                     "last_alloc_ts": node.sim_last_alloc_time,
                     "disks": [
                         {
                             "id": disk.uid,
                             "capacity": disk.capacity,
                             "mean_nb_alloc": round(disk.sim_mean_nb_alloc, 3),
-                            "max_alloc": disk.sim_max_alloc,
+                            "max_nb_alloc": disk.sim_max_nb_alloc,
                             "last_alloc_time": disk.sim_last_alloc_time,
                             "mean_capacity_utilisation": round(disk.sim_mean_cap_utilisation, 3),
                             "max_cap_utilisation": round(disk.sim_max_cap_utilisation, 3),
