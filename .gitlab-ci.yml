@@ -26,4 +26,6 @@ pytest:
     - storalloc
   artifacts:
     reports:
-      coverage: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
